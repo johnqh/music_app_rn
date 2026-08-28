@@ -1,6 +1,6 @@
 {
   "name": "music_app_rn",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "private": true,
   "engines": {
     "node": ">=20"
@@ -17,7 +17,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "verify": "bun run format:check && bun run typecheck && bun run lint && bun run test",
-    "postinstall": "patch-package",
+    "postinstall": "patch-package --error-on-fail",
     "prestart": "node scripts/generate-theme-css.js",
     "premacos": "node scripts/generate-theme-css.js",
     "test:components": "jest",
@@ -40,8 +40,8 @@
     "@sudobility/music_codecs": "^0.2.13",
     "@sudobility/music_drawing": "^0.0.21",
     "@sudobility/music_editing": "^0.0.6",
-    "@sudobility/music_io": "^0.9.17",
-    "@sudobility/music_lib": "^1.9.16",
+    "@sudobility/music_io": "^0.9.18",
+    "@sudobility/music_lib": "^1.9.17",
     "@sudobility/music_player": "^0.1.13",
     "@sudobility/music_types": "^0.13.12",
     "@sudobility/types": "^1.9.67",
