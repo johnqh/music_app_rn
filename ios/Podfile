@@ -1,0 +1,104 @@
+# Resolve react_native_pods.rb with node to allow for hoisting
+require Pod::Executable.execute_command('node', ['-p',
+  'require.resolve(
+    "react-native/scripts/react_native_pods.rb",
+    {paths: [process.argv[1]]},
+  )', __dir__]).strip
+
+platform :ios, min_ios_version_supported
+
+# ---- Prebuilt React Native artifacts --------------------------------------
+#
+# Downloads React Native's core and its C++ dependencies (Folly, glog, fmt,
+# boost, double-conversion) as xcframeworks instead of compiling them. That is
+# the single biggest build-time lever there is: React-Core alone is 231
+# translation units and React-Fabric another 118, and this replaces the lot
+# with an 18MB and a 79MB download that Meta has already built and tested.
+#
+# Read at `pod install` time, not build time, because they change which pods
+# are declared. `||=` so an explicit value from the environment still wins.
+#
+# Verified present on Maven for react-native 0.81.6. Deliberately NOT set in
+# `macos/Podfile`: react-native-macos publishes no such artifacts under its own
+# version — both URLs 404 at 0.81.9 — so enabling it there only prints a
+# fallback warning before building from source anyway.
+ENV['RCT_USE_RN_DEP'] ||= '1'
+ENV['RCT_USE_PREBUILT_RNCORE'] ||= '1'
+
+prepare_react_native_project!
+
+linkage = ENV['USE_FRAMEWORKS']
+if linkage != nil
+  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
+  use_frameworks! :linkage => linkage.to_sym
+end
+
+target 'MoosiacRN' do
+  config = use_native_modules!
+
+  use_react_native!(
+    :path => config[:reactNativePath],
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  post_install do |installer|
+    # fmt's format-string checks become `consteval` functions when the compiler
+    # is new enough, and the version React Native pins then fails its own
+    # constant evaluation under clang 21 / Xcode 26. Every error in the build is
+    # in `fmt/format-inl.h` — none in this app, its patched audio dependency or
+    # Skia.
+    #
+    # It has to be patched in the header rather than defined on the command
+    # line: the chain that sets `FMT_USE_CONSTEVAL` begins with a plain `#if`
+    # and no `#ifndef` guard, so the header redefines whatever the compiler was
+    # told. Forcing the first branch true selects the `0` arm and puts those
+    # functions back to ordinary `constexpr`, which is what every earlier
+    # toolchain compiled. Remove when React Native ships a newer fmt.
+    base_h = File.join(installer.sandbox.root, 'fmt', 'include', 'fmt', 'base.h')
+    if File.exist?(base_h)
+      text = File.read(base_h)
+      needle = '#if !defined(__cpp_lib_is_constant_evaluated)'
+      if text.include?(needle)
+        # Pod sources land read-only, so the mode has to be relaxed first.
+        File.chmod(0o644, base_h)
+        File.write(base_h, text.sub(needle, '#if 1 // forced by Podfile: consteval is broken under clang 21'))
+        Pod::UI.puts 'fmt: FMT_USE_CONSTEVAL forced off (clang 21 workaround)'
+      end
+    end
+    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
+    react_native_post_install(
+      installer,
+      config[:reactNativePath],
+      :mac_catalyst_enabled => false,
+    )
+
+    # ---- Build-speed settings -------------------------------------------
+    #
+    # Xcode's DerivedData is the real cache and needs no configuration — it
+    # only needs to be *used*, which means never passing `-derivedDataPath` to
+    # a build. These three settings cut what a build has to do in the first
+    # place, and none of them changes the produced binary's behaviour.
+    #
+    # No ccache, deliberately. Measured on a 1,192-file macOS build with the
+    # launcher wired in: ccache saw 1,421 invocations and cached none of them.
+    # 81.67% of uncacheable calls were "Could not use modules" — React Native
+    # compiles with clang modules throughout, and only `sloppiness=modules`
+    # makes those cacheable, which ccache disables by default because it can
+    # serve an incorrect object file. Warm DerivedData and the prebuilt
+    # artifacts do this job; a compiler wrapper on every invocation does not.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        # The index store feeds Xcode's editor — symbol navigation and
+        # autocomplete. A command-line build generates it and then throws it
+        # away, so this is pure waste for `xcodebuild` and costs nothing real.
+        config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'
+        next unless config.name == 'Debug'
+        # One architecture instead of a universal binary, and no separate dSYM
+        # bundle. Both only matter for distribution, which Debug is not.
+        config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
+        config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf'
+      end
+    end
+  end
+end

@@ -1,0 +1,101 @@
+/**
+ * This app's wiring for `useProjectGeneration`.
+ *
+ * The rules — poll the *project* rather than the job, compare `updatedAt`
+ * strictly, reload before unlocking, slow the cadence when nothing is running —
+ * live in `@sudobility/music_client`, because they are rules about this server
+ * and both apps obey them. What lives here is what only this app knows: which
+ * store (a per-document one, not a singleton), which client, and how to tell
+ * whether anybody is looking.
+ */
+import { useMemo } from 'react';
+import { AppState } from 'react-native';
+import { useProjectGeneration } from '@sudobility/music_client';
+import type {
+  ForegroundPort,
+  GenerationClient,
+  ProjectGeneration,
+} from '@sudobility/music_client';
+import { getMusicClient } from '@/config/server';
+import { useAuth } from '@/auth/AuthContext';
+import type { MusicDocument } from '@/documents/document';
+
+/**
+ * A native app is in the foreground when `AppState` says `active`.
+ *
+ * Module-level rather than built per render: it is passed as a hook dependency,
+ * and a fresh object each render would tear down and rebuild the poll timer
+ * continuously.
+ *
+ * `inactive` counts as background deliberately — on iOS that is the app-switcher
+ * card and a phone call banner, where nobody is reading a score.
+ */
+const APP_FOREGROUND: ForegroundPort = {
+  isForeground: () => AppState.currentState === 'active',
+  subscribe: onForeground => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state === 'active') onForeground();
+    });
+    return () => subscription.remove();
+  },
+};
+
+export type UseDocumentGenerationOptions = {
+  /** Called when the server's copy has moved on. Awaited before unlocking. */
+  onApplied?: () => void | Promise<void>;
+  /**
+   * Writes any pending edit before the job starts.
+   *
+   * The job reads the *stored* score. Passed in rather than taken from the
+   * store, because in this app the store knows nothing about saving — a
+   * document is a file, and who writes it is the document layer's business.
+   */
+  flush?: () => Promise<unknown> | unknown;
+  /** Tests inject a stub; production uses the configured client. */
+  client?: GenerationClient;
+};
+
+/**
+ * Watches a project, or reports a permanently idle one when there is no server.
+ *
+ * A build with no API configured, or a document that is not a server project,
+ * still has to answer "are you generating?" — and the honest answer is no,
+ * rather than a hook that throws or a screen that has to check first.
+ */
+export function useDocumentGeneration(
+  document: MusicDocument,
+  projectId: string | null,
+  options: UseDocumentGenerationOptions = {},
+): ProjectGeneration {
+  const { getToken } = useAuth();
+  const configured = options.client ?? getMusicClient();
+
+  /*
+    A client that answers nothing, for a build with no server.
+
+    `useProjectGeneration` must still be called — hooks cannot be skipped — so
+    it is handed a client whose calls never happen, together with a null
+    project id, which is what actually stops the poll.
+  */
+  const client = useMemo<GenerationClient>(
+    () =>
+      configured ??
+      ({
+        createJob: () => Promise.reject(new Error('No server configured.')),
+        getJob: () => Promise.reject(new Error('No server configured.')),
+        cancelJob: () => Promise.resolve(undefined),
+        cancelProjectGeneration: () => Promise.resolve(undefined),
+        getProjectStatus: () => Promise.reject(new Error('No server.')),
+      } as unknown as GenerationClient),
+    [configured],
+  );
+
+  return useProjectGeneration(configured ? projectId : null, {
+    store: document.store,
+    client,
+    getToken,
+    foreground: APP_FOREGROUND,
+    ...(options.flush ? { flush: options.flush } : {}),
+    ...(options.onApplied ? { onApplied: options.onApplied } : {}),
+  });
+}

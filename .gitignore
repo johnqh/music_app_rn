@@ -1,0 +1,21 @@
+node_modules/
+ios/Pods/
+macos/Pods/
+*.log
+.DS_Store
+dist/
+
+ios/build/
+android/build/
+android/app/build/
+android/.gradle/
+vendor/
+
+# Vendored instrument samples (~300MB). Recreate with:
+#   node scripts/fetch-soundfont-packs.mjs
+assets/soundfont/
+
+# native build outputs (the ios/ android/ macos/ sources stay tracked)
+macos/build/
+macos/DerivedData/
+android/app/.cxx/

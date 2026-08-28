@@ -1,0 +1,3 @@
+<resources>
+    <bool name="lock_landscape">false</bool>
+</resources>

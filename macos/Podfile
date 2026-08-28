@@ -1,0 +1,84 @@
+require 'pathname'
+
+# react-native-audio-api ships prebuilt Ogg/Vorbis/Opus static libraries whose
+# macOS slices are built for **macCatalyst**, not for macOS proper — so the
+# linker rejects them with "building for 'macOS', but linking in object file
+# built for 'macCatalyst'". Its podspec reads this from the environment and
+# builds the codecs from source instead when it is set. It has to live here
+# rather than in a shell that happens to run `pod install`: a plain
+# `pod install` must produce a project that links, or this comes back as a
+# link error nobody can place.
+ENV['DISABLE_AUDIOAPI_STATIC_EXTERNAL_LIBS'] = '1'
+
+# And FFmpeg with it, for the mirror-image reason: the podspec vendors the
+# FFmpeg xcframeworks under `s.ios` only, so on macOS the decoder *compiles*
+# with nothing to link against and the build ends in "_swr_init, referenced
+# from ... symbol(s) not found". Neither library is used here — the app decodes
+# audio through `music_io`'s own codec — so both are off rather than half on.
+ENV['DISABLE_AUDIOAPI_FFMPEG'] = '1'
+
+ws_dir = Pathname.new(__dir__)
+ws_dir = ws_dir.parent until
+  File.exist?("#{ws_dir}/node_modules/react-native-macos/scripts/react_native_pods.rb") ||
+  ws_dir.expand_path.to_s == '/'
+require "#{ws_dir}/node_modules/react-native-macos/scripts/react_native_pods.rb"
+
+prepare_react_native_project!
+
+target 'music_app_rn-macOS' do
+  platform :macos, '14.0'
+  use_native_modules!
+
+  # Flags change depending on the env values.
+  flags = get_default_flags()
+
+  use_react_native!(
+    :path => '../node_modules/react-native-macos',
+    :fabric_enabled => ENV['RCT_NEW_ARCH_ENABLED'] == '1',
+    # An absolute path to your application root.
+    :app_path => "#{Pod::Config.instance.installation_root}/.."
+  )
+
+  post_install do |installer|
+    react_native_post_install(installer)
+
+    # ---- Build-speed settings -------------------------------------------
+    #
+    # Xcode's DerivedData is the real cache and needs no configuration — it
+    # only needs to be *used*, which means never passing `-derivedDataPath` to
+    # a build. These three settings cut what a build has to do in the first
+    # place, and none of them changes the produced binary's behaviour.
+    #
+    # No ccache, deliberately. Measured on a 1,192-file macOS build with the
+    # launcher wired in: ccache saw 1,421 invocations and cached none of them.
+    # 81.67% of uncacheable calls were "Could not use modules" — React Native
+    # compiles with clang modules throughout, and only `sloppiness=modules`
+    # makes those cacheable, which ccache disables by default because it can
+    # serve an incorrect object file. Warm DerivedData and the prebuilt
+    # artifacts do this job; a compiler wrapper on every invocation does not.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        # The index store feeds Xcode's editor — symbol navigation and
+        # autocomplete. A command-line build generates it and then throws it
+        # away, so this is pure waste for `xcodebuild` and costs nothing real.
+        config.build_settings['COMPILER_INDEX_STORE_ENABLE'] = 'NO'
+        next unless config.name == 'Debug'
+        # One architecture instead of a universal binary, and no separate dSYM
+        # bundle. Both only matter for distribution, which Debug is not.
+        config.build_settings['ONLY_ACTIVE_ARCH'] = 'YES'
+        config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf'
+      end
+    end
+
+    # fmt used to need patching here: its format-string checks became
+    # `consteval` under clang 21 and failed their own constant evaluation, and
+    # the chain setting `FMT_USE_CONSTEVAL` had no `#ifndef` guard, so it had to
+    # be forced in the header rather than on the command line.
+    #
+    # `react-native-macos@0.81.9` brings fmt 12.1.0, which fixes it — the line
+    # the patch keyed on is gone, and macOS builds clean on the same toolchain
+    # that originally broke. The patch was deleted rather than left in place: a
+    # workaround whose needle no longer matches is a silent no-op that reads as
+    # protection, so the next regression would look like a new bug.
+  end
+end

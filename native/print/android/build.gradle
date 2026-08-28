@@ -1,0 +1,29 @@
+apply plugin: 'com.android.library'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+android {
+    namespace 'com.moosiac.print'
+    compileSdk safeExtGet('compileSdkVersion', 35)
+
+    defaultConfig {
+        minSdk safeExtGet('minSdkVersion', 24)
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+def safeExtGet(prop, fallback) {
+    rootProject.ext.has(prop) ? rootProject.ext.get(prop) : fallback
+}
+
+dependencies {
+    implementation 'com.facebook.react:react-android'
+    implementation 'org.jetbrains.kotlin:kotlin-stdlib'
+}

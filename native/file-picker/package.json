@@ -1,0 +1,8 @@
+{
+  "name": "@moosiac/file-picker",
+  "version": "0.0.0",
+  "description": "Asking macOS for a file, which React Native macOS has no way to do.",
+  "main": "index.js",
+  "react-native": "index.js",
+  "types": "index.d.ts"
+}

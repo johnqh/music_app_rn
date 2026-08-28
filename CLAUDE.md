@@ -1,0 +1,264 @@
+# music_app_rn (Moosiac, native)
+
+> **Git policy — never auto-commit or auto-push.** Leave your work in the
+> working tree. Run `git commit`, `git push` or `gh pr create` **only when the
+> user explicitly asks in that turn.**
+
+The native Moosiac app: iOS, iPad, Android phone and tablet, and macOS.
+**Windows is out of scope** — see `music_app/docs/rn-windows-findings.md` for
+the research, which is parked rather than deleted.
+
+Like `music_app`, this repo is **UI and arrangement only**. Every rule about
+music lives in the libraries: `music_types` (the model), `music_editing`
+(editing and its state), `music_lib` (application state, commands, adapters),
+`music_drawing` (layout and the renderer), `music_player` (sound),
+`music_io` (files), `music_client` (network). If you are about to write score
+maths here, it belongs somewhere else.
+
+## Commands
+
+- `bun install` — dependencies (runs `patch-package` afterwards; see Patches)
+- `bun run verify` — format, typecheck, lint, both test suites. Before any push.
+- `bun run test` / `bun run test:watch` — vitest, the plain-TypeScript half
+- `bun run test:components` — jest, the half that renders
+- `bun run start` — Metro on port 8083
+- `bun run ios` / `bun run android` / `bun run macos`
+
+## What is different from the web app
+
+- **The store is per document, not per app.** `createEditingStore()` from
+  `music_editing` makes an independent store with no server, no project row and
+  no autosaver behind it. That is the whole reason music_editing was split out
+  of music_lib: a desktop edits several scores at once, and one app-wide store
+  cannot hold two. `src/documents/document.ts` is one document; the editing
+  slices are unchanged and do not know the difference.
+- **There is no auth gate.** A local file needs no account. `StoreContext`'s
+  `client` and `getToken` are optional, and anything server-backed reports
+  itself unavailable through `serverAvailable` rather than failing. Signing in
+  adds server projects later; it does not gate what is already on disk.
+- **Drawing is Skia, through the same renderer.** `createSkiaContext2D` turns an
+  `SkCanvas` into the `DrawingContext2D` `music_drawing` wants — that one
+  adapter is the whole of React Native support, and `CanvasScoreRenderer` runs
+  unchanged. Drawing happens inside `createPicture`, so a scroll replays a
+  recorded picture rather than re-running VexFlow.
+- **Translations are bundled, not fetched.** A locale that arrives over the
+  network is a blank screen on a train. `locale-parity.test.ts` pins both
+  halves: the same keys in both files, and every zh string actually containing
+  CJK — key parity alone passes happily when English was copied across.
+
+## Gotchas
+
+- **Two test runners, split by extension.** `*.test.ts` is vitest's and runs
+  under `node` with no React Native in it at all; `*.test.tsx` is jest's, with
+  the React Native preset, because rendering a component needs the babel
+  transform for React Native's Flow-typed source and vitest's esbuild pipeline
+  does not have it. Three things in `jest.config.cjs` are load-bearing and each
+  cost a debugging cycle. The **transform allow-list** must name every ESM-only
+  dependency by hand (`immer`, `zustand`, `i18next`, every `@sudobility`
+  package) *and* allow for bun's `.bun/<pkg>@<ver>/node_modules/<pkg>` layout,
+  which the usual pattern misses. The **legacy Paper renderer is mapped to a
+  stub**: its build asserts an exact React version and this app pins React to
+  what react-native-macos requires, a patch ahead of what react-native's Paper
+  build was compiled against — so merely *loading* it throws, which
+  `Animated`'s native driver does through `RendererImplementation`. Nothing in
+  the app reaches it (all three platforms run Fabric), so the stub removes a
+  test-only path rather than hiding a real mismatch. And the **timeout is
+  20s**, because starting i18next costs a couple of seconds the first time in a
+  process and the failure it causes is a timeout with nothing wrong in the test.
+
+- **React, react-native and react-native-macos are one locked trio, and getting
+  it wrong crashes the app at launch.** `react@19.1.4`, `react-native@0.81.6`,
+  `react-native-macos@0.81.9` — the combination `react-native-macos` itself
+  peers. Each React Native ships a *renderer bundle compiled against one exact
+  React version* and asserts it at load: 0.81.5's wanted 19.1.0 while
+  react-native-macos wanted 19.1.4, so iOS and Android died on the first screen
+  with **"Incompatible React versions: react: 19.1.4, react-native-renderer:
+  19.1.0"** while macOS ran perfectly — a split that makes it look like an iOS
+  bug rather than a version one. And it is not avoidable by "running Fabric":
+  `RendererImplementation.findNodeHandle` requires the **Paper** shim
+  unconditionally, with no Fabric branch, so anything reaching it — `Animated`
+  with the native driver, for one — loads Paper and trips its assert. That is
+  also why the jest config maps the Paper renderer to a stub; the two are the
+  same root cause, and treating the test failure as test-only is what hid the
+  runtime crash for a whole session. `react-versions.test.ts` now reads the
+  literal each renderer asserts and compares it against the installed `react`,
+  so the next mismatch fails a test instead of a launch — and the jest stub that
+  used to hide it has been deleted, because a workaround for a fixed bug is a
+  blindfold for its recurrence.
+
+- **RNTL is pinned to v13, and that pin is about React.** v14 renders through
+  `test-renderer`, whose `react-reconciler` is built for React **19.1.0**
+  exactly, and this app is on 19.1.4 for react-native-macos. There is no
+  stable 0.33.x reconciler for 19.1.4, so v14 cannot work here; v13 uses
+  `react-test-renderer`, which *is* published at 19.1.4. The visible symptom of
+  getting this wrong is an `AggregateError` from `render` with no cause in it.
+
+- **Printing needs no PDF writer.** Every one of the three print services takes
+  a *drawing* and produces the document itself: `PrintedPdfDocument` hands back
+  a `Canvas` on Android, `UIPrintInteractionController` lays out page images on
+  iOS, and `NSPrintOperation` calls `drawRect:` with a print context on macOS.
+  So `print-pages.ts` renders each page into a Skia offscreen surface with the
+  same renderer the editor draws with, and `native/print` hands the PNGs over.
+  Everything about *what* a printed page is — page mode, one ink, no gutter, no
+  editor state, paper sizes, margins, and page turns that land where the player
+  has bars free — lives in `music_drawing` and is shared with the web app.
+  `print-plan.ts` is split from the drawing precisely so the pagination can be
+  tested under `node` with no Skia in it.
+
+- **A file picker is three controls.** iOS and iPadOS raise a
+  `UIDocumentPickerViewController`, Android goes through the Storage Access
+  Framework, and macOS puts up an `NSOpenPanel` — and
+  `@react-native-documents/picker` declares `:ios` only, because there is no
+  Mac equivalent of that class. The Mac half is `native/file-picker`, a local
+  autolinked module of about ten lines of AppKit, selected by
+  `file-picker.macos.ts`. On a sandboxed build the panel is not a convenience:
+  it is where the *permission* to read the file comes from, which is why a path
+  from anywhere else cannot be opened.
+
+- **A project-level `platforms` entry replaces a package's own.** Listing
+  `@moosiac/file-picker` in `react-native.config.js` with
+  `platforms: { ios: null, android: null }` wiped the `macos` entry the package
+  declares for itself, and it disappeared from autolinking entirely — the pod
+  was never installed, with no error anywhere, because `loadConfig` swallows a
+  failed dependency in a bare `catch`. A package that declares its own
+  platforms needs no entry here; only add one to *remove* a platform it does
+  declare. Diagnose with `bunx react-native config | grep <package>`.
+
+  A second trap in the same file: `podspecPath` is **absolute** and
+  `sourceDir` (Android) is **relative to the package root** — the Android
+  resolver joins it onto the root itself, so an absolute path there resolves to
+  nothing and the module is silently not linked. And `react-native config` from
+  the project root is not the oracle for macOS: it reports `macos: null` for
+  packages that macOS autolinking does install, because the macOS Podfile does
+  its own `list_native_modules!`. Check `macos/Podfile.lock` instead.
+
+- **Two macOS build flags live in `macos/Podfile`, not in a shell.**
+  `react-native-audio-api` ships prebuilt Ogg/Vorbis/Opus libraries whose macOS
+  slices are built for **macCatalyst**, and vendors its FFmpeg xcframeworks
+  under `s.ios` only. `DISABLE_AUDIOAPI_STATIC_EXTERNAL_LIBS=1` fixes the
+  first; without `DISABLE_AUDIOAPI_FFMPEG=1` as well it merely swaps one link
+  error (*"built for 'macCatalyst'"*) for another (*"_swr_init … symbol(s) not
+  found"*), which reads like the fix regressing. Passing them to one
+  `pod install` by hand leaves the next one producing a project that does not
+  link.
+
+- **The generation rules are `music_client`'s.** Polling the *project* rather
+  than the job, comparing `updatedAt` strictly rather than for difference,
+  reloading before unlocking, and slowing the cadence when nothing is running
+  are rules about *this server*, and both apps obey them — so
+  `useProjectGeneration` lives there and `useDocumentGeneration` here supplies
+  only what differs: the per-document store, the client, a `flush` (this app's
+  store knows nothing about saving), and a `ForegroundPort` over `AppState`
+  where the web app passes one over `document.hidden`.
+
+- **`advanceCaret` defaults to false.** `insertNoteAtCaret` leaves the caret
+  where it is unless told otherwise, so a run of taps writes every note at the
+  same tick. The piano-keyboard and tap-to-note paths in music_editing pass
+  `true`; so must any note-entry UI here. A test pins it.
+- **Multi-codepoint musical characters do not render.** `𝅝`, `𝄽`, `𝆔` and `𝄐`
+  are outside the system font's coverage and draw as `?` boxes, where the
+  single-codepoint `♩`, `♪`, `♭`, `♯` and `♮` are fine. Note values are labelled
+  by denominator for this reason. The real fix is to share the web app's drawn
+  SVG glyphs through the drawing library; until then, check a glyph actually
+  renders before using it.
+- **A horizontal `ScrollView` in a column needs `flexGrow: 0` and a height.**
+  It has no intrinsic height and takes whatever it is offered, which puts an
+  empty band above and below a toolbar.
+- **A `className` must appear in the source as a complete literal.** Tailwind
+  extracts classes by scanning text, so
+  `` className={`flex-1 ${row ? 'flex-row' : ''}`} `` generates no `flex-row`
+  utility — the class never appears whole in any file. It fails **silently and
+  partially**: colours and borders keep working (those literals occur
+  elsewhere), while layout classes vanish, and the score renders into a box of
+  zero height. Write two complete strings and choose between them:
+  `className={row ? 'min-h-0 flex-1 flex-row' : 'min-h-0 flex-1 flex-col'}`.
+- **The design theme is Swiss, and it must match in four places.**
+  `music_app`'s composition root calls `configureTheme(swissTheme)`; the two
+  apps are one product, and a different palette on native would be a different
+  product wearing the same name. On React Native that theme has to be stated in
+  `tailwind.config.js`, `src/config/designTheme.ts`, `src/config/themeVars.ts`
+  and `scripts/generate-theme-css.js` — NativeWind cannot switch CSS-variable
+  blocks on native, so the variables are applied at runtime by
+  `ThemeVarsProvider` with `vars()`. Change one alone and the utilities and the
+  variables disagree.
+- **The UI mirrors the web app's, through the same component library.** The
+  layout order — title bar, score with the inspector beside it, keyboard,
+  transport, status strip — is `music_app`'s `AppLayout`, and the pieces come
+  from `@sudobility/components-rn`, the React Native port of the
+  `@sudobility/components` the web app uses. Build UI from those rather than
+  from bare `View`/`Pressable`: a hand-rolled control does not inherit the
+  design tokens, so the two apps drift the first time the palette moves. If a
+  component exists on the web and not in RN, port it into
+  `mail_box_components_rn` rather than reimplementing it here.
+- **Never size anything from `useWindowDimensions()`.** On macOS it reports the
+  *display*, not the app's window — measured: a 1280pt window on a 3440pt
+  screen laid the keyboard out at 3440 and clipped it, so the app showed three
+  octaves of an eighty-eight-key keyboard and a score whose bars ran off the
+  right edge. The same bug appears on iPad in Split View and in any resizable
+  window. `useContainerSize()` measures the view with `onLayout`, which is the
+  honest number everywhere and updates on resize.
+- **A container that waits to be measured must state its own height.** If its
+  size comes from a child that only renders once measured, it collapses to zero
+  and never measures — the keyboard panel went blank exactly this way. State
+  the height on the container, or render at a fallback size and let the first
+  layout correct it.
+- **Read the active track through `selectActiveTrackId`/`selectSelectedTrack`,
+  never `state.activeTrackId` raw.** The selectors fall back to the first
+  track, which is what makes "one track is always active" true with no
+  reconciliation step. Reading it raw gives `null` on a fresh score, and the
+  inspector then renders nothing at all.
+- **Position must not be read high in the tree.** It arrives ~30 times a second;
+  a component that re-renders on it re-renders the notation with it.
+  `PositionReadout` subscribes on its own, exactly as the web app's
+  `MeasureBeatReadout` does. Keep new readouts isolated.
+- **`bun add` reinstalls `node_modules` from the registry**, silently replacing
+  any `@sudobility/*` build you rsynced in during cross-repo work. Re-sync after
+  one, or the next typecheck fails on a symbol you just added upstream.
+- **Phones are landscape-only; tablets are free.** On iOS that is declarative —
+  `UISupportedInterfaceOrientations` is landscape and
+  `UISupportedInterfaceOrientations~ipad` carries the full set — so the OS never
+  animates into an orientation the app is about to reject. Android cannot ask
+  "is this a tablet" from the manifest, so `MainActivity` reads
+  `R.bool.lock_landscape`, which `values-sw600dp` overrides to false.
+- **A failed save must leave the document dirty.** `saveDocument` writes first
+  and marks clean second; the reverse leaves a document that looks safe to
+  close after the write failed. A test pins it.
+- **A document from a newer format version is refused, not read hopefully.**
+  A newer file may say something this build would drop, and losing half a score
+  on the next save is worse than not opening it.
+
+## Patches
+
+Three, all for macOS, all applied by `patch-package` on `postinstall`:
+`react-native-audio-api` (the library declares `:ios` alone, though its audio
+graph is `AVAudioEngine`/`AVAudioSourceNode`, which macOS has),
+`@shopify/react-native-skia` (`UIImage` is UIKit and does not exist on macOS),
+and `react-native-macos` (codegen). The last two are ported from
+`sudojo_app_rn`. See `patches/README.md`.
+
+**A `Podfile.lock` entry proves a pod resolved, not that it compiles.** Skia
+was assumed to build on macOS because `sudojo_app_rn` links it; it builds there
+because that repo patches it, and the same patch was needed here.
+
+**The macOS Podfile patches `fmt` in `post_install`.** React Native 0.81 pins a
+version whose `consteval` format-string checks fail under clang 21 / Xcode 26 —
+every error is inside `fmt/format-inl.h`. It has to be patched in the header,
+not defined on the command line: the chain setting `FMT_USE_CONSTEVAL` opens
+with a plain `#if` and no `#ifndef`, so the header overrides whatever the
+compiler was told. Pod sources land read-only, so it `chmod`s first.
+
+## Structure
+
+- `src/documents/` — the document model, the open-document list, the file
+  format, and storage. All platform-free except `rn-storage.ts`.
+- `src/config/initialize.ts` — the composition root: player first (music_lib's
+  adapter resolves it from a singleton on first use), then io, then copy.
+- `src/i18n/` — bundled locales and the copy the libraries do not carry.
+- `src/features/score/` — the Skia score view.
+- `src/features/transport/`, `src/features/note-entry/`,
+  `src/features/documents/`, `src/features/editor/` — UI.
+
+## Related projects
+
+`music_types` · `music_codecs` · `music_drawing` · `music_player` · `music_io` ·
+`music_editing` · `music_client` · `music_lib` · `music_app` · `music_api`

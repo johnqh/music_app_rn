@@ -1,0 +1,8 @@
+{
+  "name": "@moosiac/print",
+  "version": "0.0.0",
+  "description": "Handing page images to each platform's print service.",
+  "main": "index.js",
+  "react-native": "index.js",
+  "types": "index.d.ts"
+}

@@ -1,0 +1,62 @@
+/**
+ * The shell every non-editor screen shares.
+ *
+ * Scrolling body, consistent padding, and one place for the "this needs a
+ * server" state — which several screens have and which must read the same way
+ * in each, or it looks like a different failure every time.
+ */
+import type { ReactNode } from 'react';
+import { Pressable, ScrollView, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Heading, Text } from '@sudobility/components-rn';
+
+export function ScreenScaffold({
+  title,
+  children,
+}: {
+  title?: string;
+  children: ReactNode;
+}) {
+  return (
+    <ScrollView
+      className="bg-background flex-1"
+      contentContainerClassName="p-4 gap-4"
+    >
+      {title ? <Heading className="text-foreground">{title}</Heading> : null}
+      {children}
+    </ScrollView>
+  );
+}
+
+/**
+ * What a screen shows when this build has no server.
+ *
+ * Deliberately not an error: a local-only build is a supported state, and the
+ * feature is *unavailable*, not broken. The same words everywhere, from the
+ * library's own message catalogue.
+ */
+export function ServerUnavailable() {
+  const { t } = useTranslation();
+  return (
+    <View className="items-center py-8">
+      <Text className="text-muted-foreground text-center">
+        {t('library.serverUnavailable')}
+      </Text>
+    </View>
+  );
+}
+
+/** Signed-out state for a screen that needs an account. */
+export function SignInRequired({ onSignIn }: { onSignIn: () => void }) {
+  const { t } = useTranslation();
+  return (
+    <View className="items-center gap-3 py-8">
+      <Text className="text-muted-foreground text-center">
+        {t('library.authRequired')}
+      </Text>
+      <Pressable accessibilityRole="button" onPress={onSignIn}>
+        <Text className="text-primary">{t('nav.signIn')}</Text>
+      </Pressable>
+    </View>
+  );
+}
