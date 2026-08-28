@@ -28,6 +28,22 @@ module.exports = {
   },
   project: {
     macos: { sourceDir: 'macos' },
-    ios: { sourceDir: 'ios' },
+    /*
+      `automaticPodsInstallation: false`, and it is the *declaration* of this
+      key that makes it necessary.
+
+      `ios` is auto-detected, so the sibling apps declare no `project.ios` at
+      all — and because the CLI's schema only applies defaults inside a
+      declared object, their `automaticPodsInstallation` stays undefined and
+      the pods step never runs. Declaring `ios` here opts this app in, since
+      the schema default is `true`, and `run-ios` then tries `bundle exec pod
+      install` for every launch. That needs Ruby >= 3.0 for its `ffi`, which
+      is not what is on this machine, so every simulator run died at
+      "Installing CocoaPods" with the real reason swallowed.
+
+      Pods are installed explicitly with `pod install` when the native deps
+      change, not on every run, which is what the other apps do implicitly.
+    */
+    ios: { sourceDir: 'ios', automaticPodsInstallation: false },
   },
 };

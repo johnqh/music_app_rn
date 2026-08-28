@@ -13,7 +13,15 @@
 module.exports = {
   dependency: {
     platforms: {
-      ios: { podspecPath: __dirname + '/MoosiacPrint.podspec' },
+      /*
+        No `podspecPath` here: this CLI's `dependency.platforms.ios` schema
+        allows only `scriptPhases` and `configurations`, and rejects the whole
+        config when it sees anything else — which made `run-ios` fail at
+        "Installing CocoaPods" with no useful message. The podspec sits at the
+        package root, where the CLI finds it on its own. `macos` below is not
+        validated as strictly, so it keeps its explicit path.
+      */
+      ios: {},
       macos: { podspecPath: __dirname + '/MoosiacPrint.podspec' },
       // Relative to the package root, unlike `podspecPath`: the Android
       // resolver joins it onto the root itself, so an absolute path here
