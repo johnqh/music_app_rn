@@ -166,8 +166,96 @@ describe('EditorToolbar', () => {
   });
 
   it('starts lyric entry through its caller, which owns the note list', () => {
+    // Behind More actions, where the web bar keeps it: a real action, but not
+    // one reached often enough to be worth permanent width on the bar.
     const { view, onEnterLyrics } = setup();
-    fireEvent.press(view.getByLabelText(/lyrics/i));
+    fireEvent.press(view.getByLabelText(/more actions/i));
+    fireEvent.press(view.getByLabelText(/enter lyrics/i));
     expect(onEnterLyrics).toHaveBeenCalled();
+  });
+
+  /*
+    Six note values, five accidentals, five articulations, five ornaments and
+    four quantize grids were twenty-five chips on one bar. Each is a picker
+    now, exactly as the web draws them — one glyph on the trigger, the words in
+    the sheet — and the thing worth pinning is that the trigger still *acts*
+    rather than merely opening.
+  */
+  describe('the pickers', () => {
+    it('arms a note value chosen from the duration sheet', () => {
+      const { view, document } = setup();
+      expect(document.store.getState().snapGrid).not.toBe('half');
+      fireEvent.press(view.getByLabelText(/note duration/i));
+      act(() => {
+        fireEvent.press(view.getByLabelText('Half'));
+      });
+      expect(document.store.getState().snapGrid).toBe('half');
+    });
+
+    it('keeps the armed modifier when only the base changes', () => {
+      // The web's `withBase`: choosing "quarter" while Dotted is on gives a
+      // dotted quarter, which is what the six separate buttons did.
+      const { view, document } = setup();
+      fireEvent.press(view.getByLabelText(/^dotted$/i));
+      fireEvent.press(view.getByLabelText(/note duration/i));
+      act(() => {
+        fireEvent.press(view.getByLabelText('Half'));
+      });
+      expect(document.store.getState().snapGrid).toBe('dotted-half');
+    });
+
+    it('leaves the accidental picker unavailable with nothing selected', () => {
+      // Eleven controls act on the selection and quietly return when it is
+      // empty. A control that invites a tap and gives no feedback is worse
+      // than one that is plainly unavailable.
+      const { view } = setup();
+      expect(
+        view.getByLabelText(/^accidental$/i).props.accessibilityState.disabled,
+      ).toBe(true);
+    });
+
+    it('applies an accidental to the selection', () => {
+      const { view, document } = setup();
+      selectFirstNote(document);
+      fireEvent.press(view.getByLabelText(/^accidental$/i));
+      act(() => {
+        fireEvent.press(view.getByLabelText('Flat'));
+      });
+      const score = document.store.getState().score!;
+      const note =
+        score.tracks[0].measures[0].voices[0].events.find(isNoteEvent)!;
+      expect(note.pitch.accidental).toBe(-1);
+    });
+  });
+
+  it('needs two notes for a mark that spans a run', () => {
+    // A wedge over one note has nowhere to open to, and a slur over one note
+    // means nothing — so both disable rather than doing nothing.
+    const { view, document } = setup();
+    selectFirstNote(document);
+    expect(
+      view.getByLabelText(/crescendo/i).props.accessibilityState.disabled,
+    ).toBe(true);
+    expect(
+      view.getByLabelText(/fermata/i).props.accessibilityState.disabled,
+    ).toBe(false);
+  });
+
+  it('switches the voice the next note is written into', () => {
+    const { view, document } = setup();
+    expect(document.store.getState().activeVoiceIndex).toBe(0);
+    fireEvent.press(view.getByLabelText('Voice 2'));
+    expect(document.store.getState().activeVoiceIndex).toBe(1);
+  });
+
+  it('toggles between written and concert pitch', () => {
+    // The label names what tapping *does*, not the current state — so the two
+    // names are two states of one control, not two controls.
+    const { view, document } = setup();
+    expect(document.store.getState().pitchDisplay).toBe('concert');
+    fireEvent.press(view.getByLabelText(/show written pitch/i));
+    expect(document.store.getState().pitchDisplay).toBe('written');
+    fireEvent.press(view.getByLabelText(/show concert pitch/i));
+    expect(document.store.getState().pitchDisplay).toBe('concert');
   });
 });

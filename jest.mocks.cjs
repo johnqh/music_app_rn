@@ -7,6 +7,21 @@
  */
 require('react-native-gesture-handler/jestSetup');
 
+/*
+  Key-value storage, which a component test has no device for.
+
+  `AsyncStorage` resolves its native module at import time and throws when
+  there is none, so anything that reaches it — `ThemeContext`, and through it
+  everything that asks what colour scheme is in force — fails to *load* rather
+  than failing to store. The package ships this mock for exactly that; it is an
+  in-memory map, so a test that writes a preference can read it back.
+*/
+jest.mock(
+  '@react-native-async-storage/async-storage',
+  () =>
+    require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+);
+
 jest.mock('react-native-safe-area-context', () => {
   const React = require('react');
   const inset = { top: 0, right: 0, bottom: 0, left: 0 };

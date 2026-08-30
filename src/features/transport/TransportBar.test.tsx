@@ -68,7 +68,9 @@ function recordingPlayer() {
 function Harness({ document }: { document: ReturnType<typeof testDocument> }) {
   const score = document.store.getState().score!;
   const transport = useTransport(score);
-  return <TransportBar score={score} transport={transport} />;
+  return (
+    <TransportBar score={score} transport={transport} store={document.store} />
+  );
 }
 
 function setup() {
@@ -76,7 +78,7 @@ function setup() {
   installTestAppServices({ player });
   const document = testDocument();
   const view = renderWithApp(<Harness document={document} />);
-  return { view, calls };
+  return { view, calls, document };
 }
 
 function setupLoading() {
@@ -147,5 +149,53 @@ describe('TransportBar', () => {
     const { view, calls } = setup();
     fireEvent.press(view.getByLabelText(/stop/i));
     expect(calls).toContain('stop');
+  });
+
+  it('sends a speed chosen from the sheet to the engine', () => {
+    // A picker, not a chip that cycles: six multipliers reached one press at a
+    // time meant five presses to slow a passage down, and no way to see what
+    // the choices were.
+    const { view, calls } = setup();
+    fireEvent.press(view.getByLabelText(/playback speed/i));
+    fireEvent.press(view.getByLabelText('0.5x'));
+    expect(calls).toContain('setTempoMultiplier');
+  });
+
+  /*
+    Tempo is the one control here that edits the *score*. Everything else is
+    real-time device control and reaches the player; the BPM is persisted with
+    the music, so it goes through the document's store.
+  */
+  describe('tempo', () => {
+    it('shows the opening tempo as a readout', () => {
+      const { view } = setup();
+      expect(view.getByText(/\d+ BPM/)).toBeTruthy();
+    });
+
+    it('writes a new tempo into the score, not into the player', () => {
+      const { view, calls, document } = setup();
+      fireEvent.press(view.getByLabelText(/tempo/i));
+      const field = view.getByLabelText(/tempo/i);
+      fireEvent.changeText(field, '96');
+      act(() => {
+        fireEvent(field, 'blur');
+      });
+      expect(document.store.getState().score!.tempoMap[0]!.bpm).toBe(96);
+      expect(calls).not.toContain('setTempoMultiplier');
+    });
+
+    it('refuses a tempo that is not a number, leaving the score alone', () => {
+      // The field is numeric, but a paste can still put anything in it — and a
+      // score with a NaN tempo has no tempo at all.
+      const { view, document } = setup();
+      const before = document.store.getState().score!.tempoMap[0]!.bpm;
+      fireEvent.press(view.getByLabelText(/tempo/i));
+      const field = view.getByLabelText(/tempo/i);
+      fireEvent.changeText(field, 'fast');
+      act(() => {
+        fireEvent(field, 'blur');
+      });
+      expect(document.store.getState().score!.tempoMap[0]!.bpm).toBe(before);
+    });
   });
 });

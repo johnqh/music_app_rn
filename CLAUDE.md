@@ -64,7 +64,12 @@ maths here, it belongs somewhere else.
   the app reaches it (all three platforms run Fabric), so the stub removes a
   test-only path rather than hiding a real mismatch. And the **timeout is
   20s**, because starting i18next costs a couple of seconds the first time in a
-  process and the failure it causes is a timeout with nothing wrong in the test.
+  process and the failure it causes is a timeout with nothing wrong in the test. A
+  fourth is `jest.mocks.cjs`, which exists for native modules that **throw at
+  import** rather than degrading — `AsyncStorage` is one, so anything reaching
+  `ThemeContext` (and through it anything asking what colour scheme is in
+  force) fails to *load*, in a suite that has nothing to do with storage. The
+  package ships its own in-memory mock; use it rather than stubbing methods.
 
 - **React, react-native and react-native-macos are one locked trio, and getting
   it wrong crashes the app at launch.** `react@19.1.4`, `react-native@0.81.6`,
@@ -155,12 +160,74 @@ maths here, it belongs somewhere else.
   where it is unless told otherwise, so a run of taps writes every note at the
   same tick. The piano-keyboard and tap-to-note paths in music_editing pass
   `true`; so must any note-entry UI here. A test pins it.
-- **Multi-codepoint musical characters do not render.** `𝅝`, `𝄽`, `𝆔` and `𝄐`
-  are outside the system font's coverage and draw as `?` boxes, where the
-  single-codepoint `♩`, `♪`, `♭`, `♯` and `♮` are fine. Note values are labelled
-  by denominator for this reason. The real fix is to share the web app's drawn
-  SVG glyphs through the drawing library; until then, check a glyph actually
-  renders before using it.
+- **Multi-codepoint musical characters do not render, and the fix is that the
+  glyphs are data now.** `𝅝`, `𝄽`, `𝆔` and `𝄐` are outside the system font's
+  coverage and draw as `?` boxes, where the single-codepoint `♩`, `♪`, `♭`, `♯`
+  and `♮` are fine. So no notation mark is a character: `NOTATION_ICONS` in
+  music_types holds every one of them as shapes, `NotationIcon.tsx` replays
+  them with `react-native-svg`, and the web toolbar replays the same table —
+  a semiquaver here *is* the web's semiquaver rather than a lookalike. Reach
+  for `NotationIcon` before reaching for a character; if a mark is missing from
+  the table, add it there (authored in `music_app`'s `notation-icons.tsx` and
+  generated, see that repo's CLAUDE.md) rather than finding a codepoint.
+- **A notation glyph's colour is passed, and it must come from the theme.**
+  `currentColor` is an SVG idea `react-native-svg` does not resolve, so every
+  `NotationIcon` is handed a literal colour — which is exactly the thing that
+  cannot follow light/dark. The toolbar hardcoded `#18181b`, so every drawn
+  glyph on the editing bar vanished in dark mode while the heroicons beside
+  them, tinted through `className`, did not. `useNotationInk()` resolves
+  `foreground` / `primaryForeground` / `mutedForeground` from the same
+  `swissTheme` tokens `themeVars.ts` applies, so there is one statement of what
+  "foreground" is rather than a hex copy of it. Never write a hex for a glyph.
+- **The editing bar and the playback bar are the web app's, control for
+  control** — same groups, same order, same dividers, same glyphs, same
+  availability rules. They are one product, and a native bar that offers a
+  different set of tools is a different app wearing the same name. Two things
+  about that are load-bearing. **Several choices are a picker, not a row of
+  chips**: six note values, five accidentals, five articulations, five
+  ornaments and four quantize grids came to twenty-five chips and a bar three
+  screens wide, where the web's fits one — each is a `ToolbarSelect` with one
+  glyph on the trigger and the words in the sheet, which is what the web's
+  `Select` does and for the same reason (five near-identical marks are
+  unreadable as a row of 18px glyphs). No library select can be used for this:
+  `Select`, `PopupSelect` and `SheetSelector` each draw their own bordered text
+  trigger and none accepts one, so only the sheet is ours. And **zoom, layout,
+  pitch display and the inspector toggle sit outside the scroller**, pinned
+  right: they change how you look at the score rather than the score itself,
+  and inside the scroller they are the first thing to go past the edge —
+  reachable only by scrolling the whole bar past every tool on it.
+- **Availability is the other half of copying the bar.** Eleven controls act on
+  the selection and quietly return when it is empty; leaving them live is a
+  control that invites a tap and gives no feedback, which is worse than one
+  plainly unavailable. `canEdit` is "there is a score and the transport is not
+  playing"; a mark that spans a run (slur, either hairpin) needs two notes; one
+  that sits on a note (arpeggio, beam override, fermata) needs one; Paste
+  follows the clipboard and Copy stays live while playing, because it only
+  reads. The bar used to gate everything on `playing` alone.
+- **Volume and pan are painted here, not taken from the library.**
+  `components-rn`'s `Slider` fills over a `bg-muted` groove, which against
+  these surfaces is very nearly the background — a quiet track reads as a short
+  bar floating in space with nothing to say how much further it goes. The web
+  app rejected its own library slider for exactly this and paints
+  `bg-border` instead; `components/controls/LevelSlider.tsx` is that drawing,
+  with the web's geometry restated in numbers because NativeWind cannot express
+  `::-webkit-slider-thumb`. **Pan is drawn as a position, not an amount**:
+  square bed, centre detent, fill growing out of the middle, an 8×16 slotted
+  knob instead of a bead, and a `C`/`L40`/`R25` readout — a bar growing from
+  the left says "40% of maximum pan", which is not a thing. Both rows come from
+  `features/tracks/MixerSliders.tsx` and each owns its whole row, label column
+  and all, because they sit directly above one another and any difference
+  between them reads as a mistake. The **gesture takes its origin on grant**
+  (`pageX - locationX`) and measures the drag against it; the library slider
+  uses `gesture.moveX` raw, which is a screen coordinate and correct only for a
+  track whose left edge is the window's.
+- **The tempo field is the one control on the playback bar that edits the
+  score.** Loop, metronome, speed, volume and seeking are real-time device
+  control and go to the player; BPM is persisted with the music and goes
+  through `setOpeningTempo`, which is why `TransportBar` takes the document's
+  store as well as its score. Whole numbers only, and a non-numeric draft is
+  refused rather than committed — a score with a `NaN` tempo has no tempo at
+  all.
 - **A horizontal `ScrollView` in a column needs `flexGrow: 0` and a height.**
   It has no intrinsic height and takes whatever it is offered, which puts an
   empty band above and below a toolbar.
@@ -257,6 +324,14 @@ compiler was told. Pod sources land read-only, so it `chmod`s first.
 - `src/features/score/` — the Skia score view.
 - `src/features/transport/`, `src/features/note-entry/`,
   `src/features/documents/`, `src/features/editor/` — UI.
+- `src/features/tracks/` — the mixer rows the property sheet's Track tab is
+  built from, drawn the way the web draws them.
+- `src/components/controls/` — the two controls the shared libraries cannot
+  supply: `LevelSlider` (a slider painted like the web's, level and pan) and
+  `ToolbarSelect` (a picker whose trigger is a toolbar button rather than a
+  bordered text field).
+- `src/components/icons/` — `NotationIcon`, which replays music_types'
+  `NOTATION_ICONS`, and `notation-ink.ts`, which says what colour to draw one.
 
 ## Related projects
 

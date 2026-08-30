@@ -244,7 +244,11 @@ export function AppLayout({
         collapsed={keyboardCollapsed}
         onToggle={() => setKeyboardCollapsed(value => !value)}
       />
-      <TransportBar score={score} transport={transport} />
+      <TransportBar
+        score={score}
+        transport={transport}
+        store={document.store}
+      />
       <StatusBar document={document} />
       {exportSheet}
     </SafeAreaView>
