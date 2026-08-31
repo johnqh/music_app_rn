@@ -64,6 +64,21 @@ export type GenerateScoreSheetProps = {
   onClose: () => void;
   onSubmit: (request: GenerateScoreRequest) => void;
   submitting?: boolean;
+  /**
+   * Whether the balance is spent, decided by the caller.
+   *
+   * Passed in rather than looked up here, and that is a layering decision with
+   * teeth: reading it would mean importing the auth provider, which imports
+   * Firebase, which is how a form for choosing a key signature ends up unable
+   * to render in a test without a Firebase transform. The screen has the auth
+   * context already; the sheet renders.
+   *
+   * A **courtesy** gate, and only at zero — never when the estimate merely
+   * exceeds the balance. A job may overdraw once by design, and a stricter rule
+   * here would refuse work `POST /jobs` would have accepted. The 402 still has
+   * to be handled: somebody whose credits ran out in another session gets here.
+   */
+  outOfCredits?: boolean;
 };
 
 export function GenerateScoreSheet({
@@ -71,6 +86,7 @@ export function GenerateScoreSheet({
   onClose,
   onSubmit,
   submitting = false,
+  outOfCredits = false,
 }: GenerateScoreSheetProps) {
   const { t } = useTranslation();
   const [title, setTitle] = useState('');
@@ -121,7 +137,7 @@ export function GenerateScoreSheet({
           onPress: () => {
             if (request) onSubmit(request);
           },
-          disabled: request === null,
+          disabled: request === null || outOfCredits,
           loading: submitting,
         },
       ]}
@@ -274,6 +290,18 @@ export function GenerateScoreSheet({
         <Text className="text-muted-foreground text-xs">
           {t('generate.estimate', { count: credits })}
         </Text>
+        {/*
+          A courtesy gate, and only at zero. Deliberately *not* disabled when
+          the estimate exceeds the balance: a job may overdraw once by design,
+          and a stricter rule here would refuse work `POST /jobs` would have
+          accepted. The 402 still has to be handled — this is a courtesy, and
+          somebody whose credits ran out in another session reaches it.
+        */}
+        {outOfCredits ? (
+          <Text className="text-destructive text-xs">
+            {t('credits.outOfCreditsTitle')}
+          </Text>
+        ) : null}
       </ScrollView>
     </FormModal>
   );

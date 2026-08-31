@@ -20,6 +20,12 @@ import {
   noteIndexAtOrAfter,
   trackNotesInOrder,
 } from '@sudobility/music_types';
+import {
+  deleteSelected,
+  selectAll,
+  useClipboardPrompts,
+} from '@sudobility/music_editing';
+import { ClipboardPromptSheets } from '@/features/score-editor/ClipboardPromptSheets';
 import type { LayoutMode } from '@sudobility/music_drawing';
 import type { ReplaceScope } from '@sudobility/music_types';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
@@ -27,6 +33,8 @@ import { TransportBar } from '@/features/transport/TransportBar';
 import { useTransport } from '@/features/transport/useTransport';
 import { KeyboardPanel } from '@/features/piano-keyboard/KeyboardPanel';
 import { InspectorPanel } from '@/features/inspector/InspectorPanel';
+import { ScoreActionsSheet } from '@/features/score-editor/ScoreActionsSheet';
+import type { ScoreAction } from '@/features/score-editor/ScoreActionsSheet';
 import { DocumentTabs } from '@/features/documents/DocumentTabs';
 import { EditorToolbar } from '@/features/score-editor/EditorToolbar';
 import { LyricEntryBar } from '@/features/score-editor/LyricEntryBar';
@@ -154,6 +162,33 @@ export function AppLayout({
     );
   }, [lyricNotes]);
 
+  /*
+    The long-press menu. Held here rather than in `ScrollingScore` because the
+    actions it offers are the store's, and the score view's job ends at turning
+    a touch into a place in the music.
+  */
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const hasSelection = useStore(
+    document.store,
+    s => s.selection.eventIds.length > 0 || s.selection.measureIds.length > 0,
+  );
+  const hasClipboard = useStore(document.store, s => s.clipboard !== null);
+  const isPlaying = useStore(document.store, s => s.state) === 'playing';
+  const clipboardPrompts = useClipboardPrompts(document.store);
+
+  const runScoreAction = useCallback(
+    (action: ScoreAction) => {
+      const store = document.store;
+      if (action === 'selectAll') selectAll(store);
+      else if (action === 'copy') store.getState().copySelection();
+      else if (isPlaying) return; // content is immutable mid-playback
+      else if (action === 'cut') clipboardPrompts.requestCut();
+      else if (action === 'paste') clipboardPrompts.requestPaste();
+      else if (action === 'delete') deleteSelected(store);
+    },
+    [document, isPlaying, clipboardPrompts],
+  );
+
   if (!score) return null;
   return (
     <SafeAreaView className="bg-background flex-1" edges={['top', 'bottom']}>
@@ -174,7 +209,6 @@ export function AppLayout({
         onLayoutModeChange={setLayoutMode}
         onEnterLyrics={beginLyricEntry}
         inspectorVisible={inspectorVisible}
-        {...(onReplace ? { onReplace } : {})}
         {...(onGenerateTrack ? { onGenerateTrack } : {})}
         onToggleInspector={() => setInspectorOpen(!inspectorVisible)}
       />
@@ -202,6 +236,12 @@ export function AppLayout({
               layoutMode={layoutMode}
               pitchDisplay={pitchDisplay}
               onMeasureTap={onMeasureTap}
+              onMeasureLongPress={hit => {
+                // The press aims the caret first, so the menu acts where the
+                // reader pressed rather than wherever the caret happened to be.
+                onMeasureTap(hit);
+                setActionsOpen(true);
+              }}
             />
           </View>
           {inspectorVisible ? (
@@ -212,7 +252,16 @@ export function AppLayout({
                   : 'border-border border-t'
               }
             >
-              <InspectorPanel document={document} />
+              {/*
+                Replace goes to the property sheet, not the toolbar: the scope
+                is the tab. Replace Notes sits beside the note you selected,
+                Replace Measures beside the bars, Replace Track beside the
+                part — which is where the web app puts all three.
+              */}
+              <InspectorPanel
+                document={document}
+                {...(onReplace ? { onReplace } : {})}
+              />
             </View>
           ) : null}
         </View>
@@ -250,6 +299,15 @@ export function AppLayout({
         store={document.store}
       />
       <StatusBar document={document} />
+      <ScoreActionsSheet
+        open={actionsOpen}
+        hasSelection={hasSelection}
+        hasClipboard={hasClipboard}
+        canEdit={!isPlaying}
+        onAction={runScoreAction}
+        onClose={() => setActionsOpen(false)}
+      />
+      <ClipboardPromptSheets clipboard={clipboardPrompts} />
       {exportSheet}
     </SafeAreaView>
   );

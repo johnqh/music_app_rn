@@ -19,6 +19,8 @@ import { Button, Spinner, Text } from '@sudobility/components-rn';
 import { useProjects } from '@sudobility/music_client';
 import type { ProjectSummary } from '@sudobility/music_types';
 import { useAuth } from '@/auth/AuthContext';
+import { getMusicClient } from '@/config/server';
+import type { NativeUploadFile } from '@sudobility/music_client';
 import { useServerContext } from '@/config/useServerContext';
 import { ImportButtons } from '@/features/documents/ImportButtons';
 import { SyncToServerButton } from '@/features/documents/SyncToServerButton';
@@ -54,18 +56,52 @@ export function DashboardScreen() {
       </ScreenScaffold>
     );
   }
-  return <ProjectList context={context} onOpen={openProject} />;
+  return (
+    <ProjectList
+      context={context}
+      onOpen={openProject}
+      onOpened={openProject}
+    />
+  );
 }
 
 function ProjectList({
   context,
   onOpen,
+  onOpened,
 }: {
   context: NonNullable<ReturnType<typeof useServerContext>>;
   onOpen: (id: string) => void;
+  /** Opens the project a finished upload created. */
+  onOpened: (id: string) => void;
 }) {
   const { t } = useTranslation();
   const { data, isLoading, error, refetch } = useProjects(context);
+
+  /**
+   * Uploads a recording and opens the project it makes.
+   *
+   * The score does not exist yet when this returns: the project is created in a
+   * `transcribing` state and fills itself in when the job lands, which is why
+   * the editor is opened straight away rather than waited for — the same shape
+   * as a generation, and the editor already knows how to show one running.
+   */
+  const transcribeAudio = useCallback(
+    async (file: NativeUploadFile) => {
+      const client = getMusicClient();
+      // The button is only offered with a server behind it, but the token can
+      // still have expired between render and press.
+      if (!client || !context.token) return;
+      const saved = await client.transcribeAudio(
+        file,
+        file.name,
+        context.token,
+      );
+      await refetch();
+      onOpened(saved.id);
+    },
+    [context.token, refetch, onOpened],
+  );
 
   if (isLoading) {
     return (
@@ -99,7 +135,7 @@ function ProjectList({
               an Import control inside a project could only throw you out of
               the project you had open.
             */}
-            <ImportButtons />
+            <ImportButtons onTranscribeAudio={transcribeAudio} />
             <SyncToServerButton />
           </View>
         }

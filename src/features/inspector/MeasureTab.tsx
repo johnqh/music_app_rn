@@ -12,17 +12,19 @@
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import { Select, Switch, Text } from '@sudobility/components-rn';
+import { NumberInput, Select, Switch, Text } from '@sudobility/components-rn';
 import { DraftInput } from './DraftInput';
 import {
   removeTempoAt,
   selectSelectedMeasures,
   setBarline,
+  setKeySignature,
   setMeasureClef,
   setNavigation,
   setPickup,
   setRepeats,
   setTempoAt,
+  setTimeSignature,
 } from '@sudobility/music_editing';
 import {
   CLEFS,
@@ -30,11 +32,19 @@ import {
   REPEAT_JUMP_LABEL,
   barNumberAt,
   effectiveClef,
+  keySignatureOptions,
 } from '@sudobility/music_types';
-import type { BarlineStyle, Clef, RepeatJump } from '@sudobility/music_types';
+import type {
+  BarlineStyle,
+  Clef,
+  KeySignature,
+  RepeatJump,
+} from '@sudobility/music_types';
 import { Button } from '@sudobility/components-rn';
 import { useEffect, useState } from 'react';
 import { EmptyTab, Field } from './Field';
+import { ReplaceButton } from './ReplaceButton';
+import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
 
 /**
@@ -49,7 +59,13 @@ const INHERIT_CLEF = 'inherit';
 /** The same, for "this bar carries no jump". */
 const NO_JUMP = 'none';
 
-export function MeasureTab({ document }: { document: MusicDocument }) {
+export function MeasureTab({
+  document,
+  onReplace,
+}: {
+  document: MusicDocument;
+  onReplace?: (scope: ReplaceScope) => void;
+}) {
   const { t } = useTranslation();
   const store = document.store;
   const measures = useStore(store, selectSelectedMeasures);
@@ -67,6 +83,21 @@ export function MeasureTab({ document }: { document: MusicDocument }) {
   }
   const first = measures[0];
   if (!first) return <EmptyTab message={t('inspector.selectMeasure')} />;
+
+  const measureIds = measures.map(m => m.id);
+  const applyTimeSignature = (timeSignature: {
+    numerator: number;
+    denominator: number;
+  }): void => {
+    setTimeSignature(store, measureIds, timeSignature);
+  };
+  const applyKeySignature = (keySignature: KeySignature): void => {
+    setKeySignature(store, measureIds, keySignature);
+  };
+  const keySig: KeySignature = first.keySignature ?? {
+    fifths: 0,
+    mode: 'major',
+  };
 
   const index =
     score.tracks[0]?.measures.findIndex(m => m.id === first.id) ?? -1;
@@ -103,10 +134,94 @@ export function MeasureTab({ document }: { document: MusicDocument }) {
         </Text>
       </Field>
 
+      {/*
+        Editable, not a readout. The web panel has always let a bar's meter be
+        changed here and this one only printed it, so a score imported in 4/4
+        could not be put into 3/4 anywhere in the app.
+      */}
       <Field label={t('inspector.timeSignature')}>
-        <Text className="text-foreground text-sm">
-          {`${first.timeSignature.numerator}/${first.timeSignature.denominator}`}
-        </Text>
+        <View className="flex-row items-center gap-2">
+          <View
+            className="flex-1"
+            accessibilityLabel={t('inspector.timeSigNumerator')}
+          >
+            <NumberInput
+              value={first.timeSignature.numerator}
+              min={1}
+              max={32}
+              disabled={playing}
+              onChange={(value: number) =>
+                applyTimeSignature({
+                  numerator: Math.max(1, Math.round(value)),
+                  denominator: first.timeSignature.denominator,
+                })
+              }
+            />
+          </View>
+          <Text className="text-muted-foreground text-sm">/</Text>
+          <View
+            className="flex-1"
+            accessibilityLabel={t('inspector.timeSigDenominator')}
+          >
+            <NumberInput
+              value={first.timeSignature.denominator}
+              min={1}
+              max={64}
+              disabled={playing}
+              onChange={(value: number) =>
+                applyTimeSignature({
+                  numerator: first.timeSignature.numerator,
+                  denominator: Math.max(1, Math.round(value)),
+                })
+              }
+            />
+          </View>
+        </View>
+      </Field>
+
+      {/*
+        A key, named. "Key (fifths) 2" is the storage format; the reader is
+        looking at D major. The options follow the chosen mode, because two
+        sharps is D major or B minor depending on it — which is why the mode
+        picker sits beside the key rather than under it.
+      */}
+      <Field label={t('inspector.key')}>
+        <View className="flex-row gap-2">
+          <View className="flex-1">
+            <Select
+              value={String(keySig.fifths)}
+              accessibilityLabel={t('inspector.key')}
+              disabled={playing}
+              options={keySignatureOptions(keySig.mode).map(option => ({
+                value: String(option.fifths),
+                label: option.label,
+              }))}
+              onValueChange={(value: string) =>
+                applyKeySignature({
+                  fifths: Number(value),
+                  mode: keySig.mode,
+                })
+              }
+            />
+          </View>
+          <View className="flex-1">
+            <Select
+              value={keySig.mode}
+              accessibilityLabel={t('inspector.keyMode')}
+              disabled={playing}
+              options={[
+                { value: 'major', label: t('inspector.major') },
+                { value: 'minor', label: t('inspector.minor') },
+              ]}
+              onValueChange={(value: string) =>
+                applyKeySignature({
+                  fifths: keySig.fifths,
+                  mode: value as KeySignature['mode'],
+                })
+              }
+            />
+          </View>
+        </View>
       </Field>
 
       <Field label={t('inspector.barline')}>
@@ -313,11 +428,19 @@ export function MeasureTab({ document }: { document: MusicDocument }) {
           {t('editor.removeTempoChange')}
         </Button>
       ) : null}
+
+      {onReplace ? (
+        <ReplaceButton
+          scope="measures"
+          label={t('inspector.replaceMeasures')}
+          disabled={playing}
+          onReplace={onReplace}
+        />
+      ) : null}
     </View>
   );
 }
 
-/** A labelled switch, which this tab needs eight of. */
 function Toggle({
   label,
   checked,

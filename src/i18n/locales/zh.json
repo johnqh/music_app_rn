@@ -1,4 +1,15 @@
 {
+  "about": {
+    "title": "关于",
+    "tagline": "用 AI 创作，逐音修改",
+    "body": "{{appName}} 将完整的记谱编辑器和钢琴卷帘与 AI 生成结合：描述你想要的音乐，然后编辑每一个音符。",
+    "editorTitle": "真正的记谱编辑",
+    "editorBody": "同一份乐谱上的雕版记谱与钢琴卷帘，并具备完整的撤销历史。",
+    "aiTitle": "AI 生成",
+    "aiBody": "生成整首作品，或重新生成选中部分并预览多个候选结果。",
+    "formatsTitle": "MIDI 与 MusicXML",
+    "formatsBody": "导入和导出可与其他工具配合使用的标准格式。"
+  },
   "accidental": {
     "0": "还原号",
     "1": "升号",
@@ -33,14 +44,27 @@
     "open": "打开"
   },
   "community": {
-    "empty": "还没有发布的作品。"
+    "browseResources": "浏览资源",
+    "empty": "还没有发布的作品。",
+    "intro": "其他人分享的乐谱快照。任何人都可以聆听，无需账户。",
+    "loadFailed": "加载失败。",
+    "noMatch": "没有与「{{query}}」匹配的乐谱。",
+    "searchLabel": "搜索分享的乐谱",
+    "searchPlaceholder": "按标题或分享者搜索",
+    "sharedBy": "由 {{name}} 分享",
+    "title": "社区"
   },
   "credits": {
+    "balance": "余额",
+    "outOfCreditsBody": "生成需要消耗积分，您的余额已用完。充值后即可继续，您的工作不会丢失。",
+    "outOfCreditsTitle": "积分不足",
     "purchaseElsewhere": "点数请在网页版购买。",
-    "rate": "每小节每件乐器消耗一点。"
+    "rate": "每小节每件乐器消耗一点。",
+    "viewCredits": "查看积分"
   },
   "dashboard": {
     "empty": "还没有项目。",
+    "importMidi": "导入 MIDI",
     "syncToServer": "保存到服务器"
   },
   "devSettings": {
@@ -634,7 +658,7 @@
     "previousSyllable": "上一个音节",
     "print": "打印…",
     "quantize": "量化",
-    "quantizeGrid": "量化网格 {{grid}}",
+    "quantizeGrid": "量化网格",
     "quantizeGridHint": "量化所对齐的网格",
     "quantizeHint": "将选中内容对齐到量化网格",
     "redo": "重做",
@@ -649,6 +673,8 @@
     "saveNow": "立即保存",
     "saved": "已保存",
     "saving": "保存中…",
+    "scoreActions": "乐谱操作",
+    "scoreActionsHint": "长按乐谱即可打开此菜单。",
     "selectAll": "全选",
     "selectAllNotes": "选中所有音符",
     "showConcertPitch": "显示实际音高",
@@ -688,6 +714,12 @@
     "wav": "音频 (WAV)",
     "xm": "音轨模块 (XM)"
   },
+  "exportScope": {
+    "hiddenCount_one": "该乐谱有 {{count}} 条隐藏音轨。",
+    "hiddenCount_other": "该乐谱有 {{count}} 条隐藏音轨。",
+    "title": "导出隐藏的音轨？",
+    "visibleOnly": "仅可见音轨"
+  },
   "generate": {
     "action": "生成",
     "estimate": "这将消耗约 {{count}} 点数。",
@@ -719,6 +751,7 @@
     "title": "生成音轨"
   },
   "import": {
+    "audio": "导入音频",
     "failedTitle": "无法导入",
     "midi": "导入 MIDI",
     "musicXml": "导入 MusicXML",
@@ -727,6 +760,46 @@
     "warningsExplain": "文件中包含本应用不支持的内容，其余部分均已导入。",
     "warningsTitle": "已导入，但有说明"
   },
+  "importAudio": {
+    "choose": "选择录音",
+    "description": "录音会上传到服务器，由服务器分离音轨、逐声部转谱，并返回乐谱。",
+    "longRecording": "较长的录音需要一些时间，过长的录音会被拒绝。",
+    "title": "导入音频",
+    "unavailable": "此服务器不支持音频转谱。",
+    "upload": "转谱"
+  },
+  "importMidi": {
+    "colChannel": "声道",
+    "colClef": "谱号",
+    "colNotes": "音符",
+    "colProgram": "音色",
+    "colTrack": "音轨",
+    "description": "将 MIDI 文件作为新文档打开。在下方选择要导入的音轨以及如何解读它们的时值。",
+    "detectKey": "检测调号",
+    "fileKind": "MIDI 文件",
+    "gridEighth": "八分音符",
+    "gridHalf": "二分音符",
+    "gridNone": "不量化",
+    "gridQuarter": "四分音符",
+    "gridSixteenth": "十六分音符",
+    "gridThirtySecond": "三十二分音符",
+    "gridWhole": "全音符",
+    "includeTrack": "包含音轨：{{name}}",
+    "mergeDuplicates": "合并几乎重复的音符",
+    "minDuration": "最短音符时值（tick）",
+    "minDurationShort": "最短音符时值（tick）",
+    "pianoSplit": "钢琴谱表分谱",
+    "quantizeGrid": "量化网格",
+    "splitPoint": "分谱点（MIDI 音符）",
+    "splitPointLabel": "分谱点（MIDI 音符编号）",
+    "summaryLine_one": "{{count}} 个音轨，{{seconds}} 秒，{{ppq}} PPQ",
+    "summaryLine_other": "{{count}} 个音轨，{{seconds}} 秒，{{ppq}} PPQ",
+    "sustain": "延音踏板处理",
+    "sustainExtend": "按延音延长音符",
+    "sustainIgnore": "忽略延音踏板",
+    "trackSummary": "MIDI 音轨概览",
+    "tripletDetection": "三连音检测"
+  },
   "inspector": {
     "articulation": "演奏法",
     "bar": "小节",
@@ -734,34 +807,57 @@
     "barlineDouble": "双线",
     "barlineFinal": "终止线",
     "barlineSingle": "单线",
+    "beat": "拍",
     "centerPan": "声像居中",
+    "changeClef": "更改谱号",
     "chordSymbol": "和弦符号",
     "chordSymbolPlaceholder": "例如 Cmaj7",
+    "clearGraceNotes_one": "移除 1 个装饰音",
+    "clearGraceNotes_other": "移除 {{count}} 个装饰音",
+    "clef": "谱号",
     "clefInherit": "继承（{{clef}}）",
     "coda": "尾声记号",
     "composer": "作曲",
     "custom": "自定义",
+    "deleteTrack": "删除音轨",
+    "deleteTrackConfirm": "删除“{{name}}”及其所有音乐？只能通过撤销恢复。",
+    "drumKit": "鼓组",
     "duration": "时值",
     "dynamic": "力度",
     "dynamicHint": "标记力度的起点，直到下一个标记为止。",
     "fine": "结束",
     "fingering": "指法",
+    "glissando": "滑音",
     "instrument": "乐器",
     "jump": "跳转",
     "jumpNone": "无",
+    "key": "调号",
+    "keyMode": "调式",
+    "kitOf": "鼓组：{{name}}",
+    "major": "大调",
+    "makeGraceNote": "作为下一音符的装饰音",
     "measure": "小节",
     "measureClef": "从此处的谱号",
+    "minor": "小调",
     "mixChange": "更改混音",
     "mixed": "多个值",
     "mute": "静音",
     "name": "名称",
     "navigation": "反复导航",
     "noDynamic": "无",
+    "noScore": "没有乐谱",
     "note": "音符",
+    "notesSelected_one": "已选中 1 个音符",
+    "notesSelected_other": "已选中 {{count}} 个音符",
+    "octave": "八度",
+    "ornaments": "装饰音",
     "pan": "声像",
     "pickup": "弱起小节",
     "pitch": "音高",
     "renameTrack": "重命名音轨",
+    "replaceMeasures": "替换小节",
+    "replaceNotes": "替换音符",
+    "replaceTrack": "替换音轨",
     "score": "乐谱",
     "scoreTitle": "标题",
     "scoreTitleHint": "用于所有导出文件的命名，与文档名称无关。",
@@ -772,14 +868,20 @@
     "setInstrument": "更改乐器",
     "setMetadata": "更改乐谱信息",
     "solo": "独奏",
+    "spans": "跨音符记号",
     "tempoHere": "此处速度",
     "tempoHint": "此小节生效的速度。",
+    "tieStart": "延音线起点",
+    "tieStop": "延音线终点",
+    "timeSigDenominator": "拍号分母",
+    "timeSigNumerator": "拍号分子",
     "timeSignature": "拍号",
     "toCoda": "转尾声",
     "track": "音轨",
     "trackName": "音轨名称",
     "trackPan": "音轨声像",
     "trackVolume": "音轨音量",
+    "velocity": "力度",
     "voice": "声部",
     "volume": "音量"
   },
@@ -821,6 +923,7 @@
     "docs": "文档",
     "projects": "项目",
     "published": "已发布",
+    "resources": "资源",
     "settings": "设置",
     "signIn": "登录"
   },
@@ -831,8 +934,14 @@
     "trill": "颤音",
     "turn": "回音"
   },
+  "print": {
+    "wholeScore": "整份乐谱"
+  },
   "published": {
-    "by": "作者：{{name}}"
+    "by": "作者：{{name}}",
+    "noLongerShared": "该链接已不再分享。",
+    "notFound": "未找到",
+    "share": "分享"
   },
   "replace": {
     "action": "替换",
@@ -846,6 +955,84 @@
     "preserveRhythm": "保留节奏",
     "presetInstructions": "预设指令",
     "trackTitle": "替换音轨"
+  },
+  "resources": {
+    "title": "资源",
+    "intro": "可直接导入 {{appName}} 的免费音乐，按各类文件对应的导入方式分组。下载文件后，在项目页面使用「导入」。",
+    "group": {
+      "scores": {
+        "title": "乐谱",
+        "route": "「导入 → MusicXML」。音符、节奏、歌词、力度与排版都会完整保留。"
+      },
+      "midi": {
+        "title": "MIDI 文件",
+        "route": "「导入 → MIDI」。音符与时值可直接读取；小节线与调号为推断结果，可在向导中修正。"
+      },
+      "modules": {
+        "title": "Tracker 模块",
+        "route": "「导入 → 模块」。支持 MOD、S3M、XM、IT 与 MPTM，按文件内容而非扩展名识别。"
+      },
+      "audio": {
+        "title": "可转谱的录音",
+        "route": "「导入 → 音频」。一次只能识别一条旋律线，请选择独奏乐器或独唱。"
+      },
+      "datasets": {
+        "title": "大型合集",
+        "route": "「导入 → MIDI 或 MusicXML」。整套语料而非单曲——先下载压缩包，再打开其中一个文件。"
+      },
+      "sound": {
+        "title": "乐器与音色",
+        "route": "不可导入。这些是播放所用的采样与 SoundFont，适合在其他软件中播放乐谱时使用。"
+      },
+      "reference": {
+        "title": "格式与工具",
+        "route": "参考资料，并非乐曲文件。说明各格式实际保存了什么，以及还有哪些软件能打开它。"
+      }
+    },
+    "link": {
+      "musescore": "上百万份社区乐谱，其中公共领域作品可下载为 MusicXML。",
+      "openscore": "重新打谱的古典曲目，全部释出为公共领域。",
+      "imslp": "公共领域古典乐谱库，收录二十万首作品，许多在 PDF 之外还附有 MusicXML。",
+      "cpdl": "合唱乐谱维基，四万余份合唱与声乐乐谱，大量提供可编辑的源文件。",
+      "mutopia": "重新排版的公共领域乐谱，每首都附有 LilyPond 源文件与 MIDI。",
+      "musopenScores": "完全不受版权限制的乐谱，与 Musopen 的录音收录在一起。",
+      "openGoldberg": "巴赫《哥德堡变奏曲》，乐谱与演奏录音均可自由使用。",
+      "musicxmlDirectory": "该格式官方整理的 MusicXML 站点清单——看完本页后可继续往这里找。",
+      "bitmidi": "可搜索的大型 MIDI 合集，下载前能直接在浏览器里试听。",
+      "vgmusic": "手工制作的电子游戏音乐 MIDI，按主机与曲目分类。",
+      "kunstderfuge": "网上最大的古典 MIDI 档案库，数千个文件可免费取用。",
+      "midiworld": "古典、流行与游戏 MIDI 并列收录，另有鼓点节奏型。",
+      "mfiles": "制作精良的古典 MIDI，收录的大多是最常被寻找的曲目。",
+      "classicalArchives": "经过筛选的免费合集，可自由复制使用，无需事先申请许可。",
+      "theSession": "爱尔兰传统曲调，每个版本都可下载为 MIDI。",
+      "hymnary": "赞美诗曲调与歌词，多数附有完整和声的 MIDI。",
+      "midkar": "爵士、蓝调、雷格泰姆与经典标准曲，经三十年陆续制作。",
+      "modarchive": "数以万计的模块文件，涵盖 demoscene 时期至今，站内自带播放器。",
+      "modland": "最完整的档案库：涵盖各种 tracker 格式，按作者归档，可当作磁盘浏览。",
+      "amp": "Amiga 圈自建的曲库，由创作这些音乐的人亲手整理。",
+      "sceneOrg": "demoscene 的文件服务器，音乐目录收录了数十年来的聚会参赛作品。",
+      "woolyss": "长期维护的索引，汇总 tracker 音乐的来源与仍可播放它的软件。",
+      "archiveTrackers": "精选的数 GB 合集，MOD、XM、IT 与 S3M 一次打包下载。",
+      "musopenAudio": "录制后释出为公共领域的古典音乐演奏。",
+      "freeMusicArchive": "十万余首采用知识共享许可的曲目，可按许可类型筛选。",
+      "freesound": "单音、短乐句与实地录音，全部采用开放许可。",
+      "archiveAudio": "现场演出、78 转唱片转录与社区上传，均可免费下载。",
+      "pdmx": "二十五万份公共领域 MusicXML 乐谱，打包成一个数据集。",
+      "lakh": "为音乐研究收集的十七万六千个 MIDI 文件，可免费下载。",
+      "maestro": "两百小时的钢琴比赛演奏，MIDI 与录音精确对齐。",
+      "adlPiano": "按流派、子流派与艺人归档的钢琴 MIDI。",
+      "museTrainer": "公共领域钢琴 MusicXML 仓库——克隆下来即可打开其中任意文件。",
+      "womenComposers": "女性作曲家的作品乐谱，已完成编码并可自由使用。",
+      "freepats": "采用开放许可的乐器采样与音色集。",
+      "polyphone": "可免费下载的 SoundFont，并附有制作自用音色的编辑器。",
+      "generalUser": "经过调校的通用 MIDI 音色库，全部 128 种音色在同一混音中互不掩盖。",
+      "philharmonia": "由乐团亲自录制的管弦乐器逐音采样。",
+      "musicXmlSpec": "MusicXML 规范，逐个元素说明。",
+      "generalMidi": "每条音轨的乐器都从这 128 种通用 MIDI 音色中选取。",
+      "standardMidiFile": "MIDI 协会官方文档，说明 .mid 文件实际保存了什么。",
+      "openMpt": "当你还想取出模块中的采样时，用这款 tracker 打开它。",
+      "verovio": "在浏览器中把 Humdrum 编码的乐谱转换为 MusicXML。"
+    }
   },
   "settings": {
     "account": "账户",

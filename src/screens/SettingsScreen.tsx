@@ -113,6 +113,20 @@ export function SettingsScreen() {
         >
           {t('editor.keyboardShortcuts')}
         </Button>
+        {/*
+          Beside Docs rather than under Import: it answers "I have nothing to
+          open", which is a question about the app rather than a step in an
+          import.
+        */}
+        <Button
+          variant="outline"
+          onPress={() => navigation.navigate('Resources')}
+        >
+          {t('nav.resources')}
+        </Button>
+        <Button variant="outline" onPress={() => navigation.navigate('About')}>
+          {t('about.title')}
+        </Button>
         <Button
           variant="outline"
           onPress={() => navigation.navigate('Community')}

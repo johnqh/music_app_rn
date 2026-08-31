@@ -1,80 +1,219 @@
 /**
- * The selected note's properties — the web inspector's Note tab.
+ * The selected note's properties — the web inspector's Note tab, control for
+ * control.
  *
- * **It says note values and key names, never ticks or fifths.** `Duration 480`
- * states the storage format; the reader is looking at a quarter note. The
- * conversions are `music_editing`'s `music-vocabulary` — music theory, not
+ * **It says note values, bar numbers and pitch names, never ticks.**
+ * `Duration 480` states the storage format; the reader is looking at a quarter
+ * note. The conversions are music_types' `music-vocabulary` — music theory, not
  * panel code — and `durationNameForTicks` answers `null` for a length no single
  * notehead spells, which shows as Custom rather than being relabelled as the
  * nearest name.
  *
- * Voice is counted from 1, matching the toolbar; the stored index is 0-based.
+ * **Pitch is edited through the display lens, never round-tripped.** The step,
+ * accidental and octave a reader sees on a transposing instrument or inside an
+ * `8va` are not what is stored, so a patch is applied to what is *shown* and
+ * converted once by `setNotePitch`. Feeding the stored pitch back through the
+ * lens would move it by the transposition every time the panel was touched.
+ *
+ * **Every field answers for the whole selection.** Where the selected notes
+ * agree the value is shown; where they do not it reads "Mixed" and setting it
+ * applies to all of them — the same `commonValue` rule the web panel uses. A
+ * panel that showed only the first note's value would silently misreport what a
+ * change was about to do.
  */
+import { useCallback } from 'react';
 import { View } from 'react-native';
-import { DraftInput } from './DraftInput';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import { Select, Text } from '@sudobility/components-rn';
 import {
-  changeArticulation,
+  Button,
+  NumberInput,
+  Select,
+  Switch,
+  Text,
+} from '@sudobility/components-rn';
+import {
+  changeAccidental,
   changeDuration,
+  changeArticulation,
+  changeVelocity,
+  clearGraceNotes,
+  displayedPitchForNote,
   selectSelectedNotes,
   setChordSymbol,
   setDynamic,
   setFingering,
+  setNotePitch,
+  toGraceNote,
+  toggleGlissando,
+  toggleTie,
 } from '@sudobility/music_editing';
 import {
+  ACCIDENTAL_OPTIONS,
+  ARTICULATION_OPTIONS,
   DURATION_NAMES,
-  DYNAMICS,
+  DYNAMIC_OPTIONS,
+  NO_MARK,
+  PITCH_STEPS,
+  barBeatForTick,
+  commonValue,
   durationNameForTicks,
-  pitchToString,
+  findTrack,
+  voiceNumberOf,
 } from '@sudobility/music_types';
 import type {
+  Accidental,
   Articulation,
   Dynamic,
   DurationName,
+  NoteEvent,
+  Pitch,
+  PitchStep,
 } from '@sudobility/music_types';
+import { DraftInput } from './DraftInput';
 import { EmptyTab, Field } from './Field';
+import { ReplaceButton } from './ReplaceButton';
+import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
 
-const ARTICULATIONS: readonly (Articulation | 'none')[] = [
-  'none',
-  'staccato',
-  'accent',
-  'tenuto',
-  'marcato',
-];
-
-export function NoteTab({ document }: { document: MusicDocument }) {
+export function NoteTab({
+  document,
+  onReplace,
+}: {
+  document: MusicDocument;
+  onReplace?: (scope: ReplaceScope) => void;
+}) {
   const { t } = useTranslation();
   const store = document.store;
+  const score = useStore(store, s => s.score);
+  const pitchDisplay = useStore(store, s => s.pitchDisplay);
   const notes = useStore(store, selectSelectedNotes);
+  // Content is immutable while the transport plays; these write notes.
   const playing = useStore(store, s => s.state) === 'playing';
 
+  const shown = useCallback(
+    (note: NoteEvent): Pitch =>
+      score ? displayedPitchForNote(score, note, pitchDisplay) : note.pitch,
+    [score, pitchDisplay],
+  );
+
+  const applyPitchPatch = useCallback(
+    (patch: Partial<Pitch>): void => {
+      if (!score) return;
+      for (const note of notes) {
+        // The patch is against what the reader is *seeing*, so apply it there
+        // and convert once. Never a round trip: the stored pitch is replaced
+        // outright rather than fed back through the lens.
+        setNotePitch(
+          store,
+          note.id,
+          { ...shown(note), ...patch },
+          pitchDisplay,
+        );
+      }
+    },
+    [store, score, notes, shown, pitchDisplay],
+  );
+
+  if (!score) return <EmptyTab message={t('inspector.noScore')} />;
   if (notes.length === 0)
     return <EmptyTab message={t('inspector.selectNote')} />;
 
   const first = notes[0];
   if (!first) return <EmptyTab message={t('inspector.selectNote')} />;
-  const durationName = durationNameForTicks(
-    first.durationTicks,
-    store.getState().score?.ppq ?? 480,
+
+  const mixed = t('inspector.mixed');
+  const step = commonValue(notes.map(n => shown(n).step));
+  const accidental = commonValue(notes.map(n => String(shown(n).accidental)));
+  const octave = commonValue(notes.map(n => shown(n).octave));
+  const durationName = commonValue(
+    notes.map(n => durationNameForTicks(n.durationTicks, score.ppq)),
   );
+  const velocity = commonValue(notes.map(n => n.velocity));
+  const articulation = commonValue(notes.map(n => n.articulation ?? NO_MARK));
+  const dynamic = commonValue(notes.map(n => n.dynamic ?? NO_MARK));
+  const trackName = commonValue(
+    notes.map(n => findTrack(score, n.trackId)?.name ?? '?'),
+  );
+  const voice = commonValue(notes.map(n => voiceNumberOf(score, n)));
+  const tieStart = commonValue(notes.map(n => n.tieStart === true));
+  const tieStop = commonValue(notes.map(n => n.tieStop === true));
+  const at = barBeatForTick(score, first.startTick);
+  const graceCount = first.graceNotes?.length ?? 0;
 
   return (
     <View className="gap-3">
-      <Field label={t('inspector.pitch')}>
-        <Text className="text-foreground text-sm">
-          {notes.length > 1 ? t('inspector.mixed') : pitchToString(first.pitch)}
-        </Text>
-      </Field>
+      <Text className="text-foreground text-sm font-semibold">
+        {notes.length > 1
+          ? t('inspector.notesSelected', { count: notes.length })
+          : t('inspector.note')}
+      </Text>
+
+      {/* Step, accidental and octave on one row, as the web lays them out —
+          they are three halves of one answer to "which note is this". */}
+      <View className="flex-row gap-2">
+        <View className="flex-1">
+          <Field label={t('inspector.pitch')}>
+            <Select
+              value={step ?? ''}
+              accessibilityLabel={t('inspector.pitch')}
+              disabled={playing}
+              placeholder={mixed}
+              options={PITCH_STEPS.map((s: PitchStep) => ({
+                value: s,
+                label: s,
+              }))}
+              onValueChange={(value: string) =>
+                applyPitchPatch({ step: value as PitchStep })
+              }
+            />
+          </Field>
+        </View>
+        <View className="flex-1">
+          <Field label={t('editor.accidental')}>
+            <Select
+              value={accidental ?? ''}
+              accessibilityLabel={t('editor.accidental')}
+              disabled={playing}
+              placeholder={mixed}
+              options={ACCIDENTAL_OPTIONS.map(option => ({
+                value: String(option.value),
+                label: t(option.labelKey),
+              }))}
+              /*
+                Through `changeAccidental`, not `applyPitchPatch`: an accidental
+                is a respelling of the selection, and the command already knows
+                how to apply one to every selected note at once.
+              */
+              onValueChange={(value: string) =>
+                changeAccidental(store, Number(value) as Accidental)
+              }
+            />
+          </Field>
+        </View>
+        <View className="flex-1">
+          <Field label={t('inspector.octave')}>
+            {/* The name sits on a wrapper: `NumberInput` takes no
+                accessibility props of its own. */}
+            <View accessibilityLabel={t('inspector.octave')}>
+              <NumberInput
+                value={octave ?? 4}
+                min={-1}
+                max={9}
+                disabled={playing}
+                onChange={(value: number) => applyPitchPatch({ octave: value })}
+              />
+            </View>
+          </Field>
+        </View>
+      </View>
 
       <Field label={t('inspector.duration')}>
         <Select
           value={durationName ?? ''}
           accessibilityLabel={t('inspector.duration')}
           disabled={playing}
-          placeholder={t('inspector.custom')}
+          placeholder={durationName === null ? mixed : t('inspector.custom')}
           options={DURATION_NAMES.map((name: DurationName) => ({
             value: name,
             label: t(`duration.${name}`),
@@ -85,19 +224,39 @@ export function NoteTab({ document }: { document: MusicDocument }) {
         />
       </Field>
 
+      {/*
+        The note's own velocity, which a dynamic does not overwrite — it is the
+        *deviation* from the level in force, so an accent inside a quiet passage
+        stays an accent. Overwriting it outright, which most notation software
+        does, would make this field silently inert the moment a passage was
+        marked.
+      */}
+      <Field label={t('inspector.velocity')}>
+        <View accessibilityLabel={t('inspector.velocity')}>
+          <NumberInput
+            value={velocity ?? 0}
+            min={0}
+            max={127}
+            disabled={playing}
+            onChange={(value: number) => changeVelocity(store, value)}
+          />
+        </View>
+      </Field>
+
       <Field label={t('inspector.articulation')}>
         <Select
-          value={first.articulation ?? 'none'}
+          value={articulation ?? ''}
           accessibilityLabel={t('inspector.articulation')}
           disabled={playing}
-          options={ARTICULATIONS.map(value => ({
-            value,
-            label: t(`articulation.${value}`),
+          placeholder={mixed}
+          options={ARTICULATION_OPTIONS.map(option => ({
+            value: option.value,
+            label: t(option.labelKey),
           }))}
           onValueChange={(value: string) =>
             changeArticulation(
               store,
-              value === 'none' ? undefined : (value as Articulation),
+              value === NO_MARK ? undefined : (value as Articulation),
             )
           }
         />
@@ -110,18 +269,19 @@ export function NoteTab({ document }: { document: MusicDocument }) {
           nothing to apply to the notes between.
         */}
         <Select
-          value={first.dynamic ?? 'none'}
+          value={dynamic ?? ''}
           accessibilityLabel={t('inspector.dynamic')}
           disabled={playing}
-          options={[
-            { value: 'none', label: t('inspector.noDynamic') },
-            ...DYNAMICS.map((d: Dynamic) => ({ value: d, label: d })),
-          ]}
+          placeholder={mixed}
+          options={DYNAMIC_OPTIONS.map(option => ({
+            value: option.value,
+            label: option.value === NO_MARK ? t(option.labelKey) : option.value,
+          }))}
           onValueChange={(value: string) =>
             setDynamic(
               store,
               notes.map(n => n.id),
-              value === 'none' ? undefined : (value as Dynamic),
+              value === NO_MARK ? undefined : (value as Dynamic),
             )
           }
         />
@@ -154,12 +314,129 @@ export function NoteTab({ document }: { document: MusicDocument }) {
         />
       </Field>
 
-      <Field label={t('inspector.voice')}>
-        {/* Counted from 1, to match the toolbar's Voice 1 / Voice 2. */}
+      {/* Where this note is, in the numbers a player reads off the page —
+          `barBeatForTick` skips pickups, so this is the bar they would count. */}
+      <View className="flex-row gap-2">
+        <View className="flex-1">
+          <Field label={t('inspector.bar')}>
+            <Text className="text-foreground text-sm tabular-nums">
+              {at ? at.bar : '—'}
+            </Text>
+          </Field>
+        </View>
+        <View className="flex-1">
+          <Field label={t('inspector.beat')}>
+            <Text className="text-foreground text-sm tabular-nums">
+              {at ? Math.floor(at.beat) : '—'}
+            </Text>
+          </Field>
+        </View>
+      </View>
+
+      <View className="flex-row gap-2">
+        {/* Which part this note is in. Read-only: a note is moved between
+            tracks by dragging it, not by retyping the track's name here. */}
+        <View className="flex-1">
+          <Field label={t('inspector.track')}>
+            <Text className="text-foreground text-sm">
+              {trackName ?? mixed}
+            </Text>
+          </Field>
+        </View>
+        <View className="flex-1">
+          <Field label={t('inspector.voice')}>
+            {/* Counted from 1, to match the toolbar's Voice 1 / Voice 2. The
+                same note used to read "Voice 1" on the bar and 0 here — and
+                this panel used to print a literal 1 whatever the voice was. */}
+            <Text className="text-foreground text-sm tabular-nums">
+              {voice ?? mixed}
+            </Text>
+          </Field>
+        </View>
+      </View>
+
+      {/*
+        A tie joins two notes of the *same pitch* into one sounding note. Kept
+        apart from the slur beside it, which groups different pitches as one
+        phrase and joins nothing.
+      */}
+      <View className="flex-row items-center justify-between">
         <Text className="text-foreground text-sm">
-          {notes.length > 1 ? t('inspector.mixed') : 1}
+          {t('inspector.tieStart')}
         </Text>
+        <Switch
+          checked={tieStart === true}
+          disabled={playing}
+          onCheckedChange={() => toggleTie(store, 'tieStart')}
+          accessibilityLabel={t('inspector.tieStart')}
+        />
+      </View>
+      <View className="flex-row items-center justify-between">
+        <Text className="text-foreground text-sm">
+          {t('inspector.tieStop')}
+        </Text>
+        <Switch
+          checked={tieStop === true}
+          disabled={playing}
+          onCheckedChange={() => toggleTie(store, 'tieStop')}
+          accessibilityLabel={t('inspector.tieStop')}
+        />
+      </View>
+
+      {/*
+        Spans need two notes — a slide from a note to itself is nothing — so
+        this disables rather than doing nothing, the way the toolbar's slur and
+        hairpins do.
+      */}
+      <Field label={t('inspector.spans')}>
+        <Button
+          variant="secondary"
+          disabled={playing || notes.length < 2}
+          onPress={() => toggleGlissando(store)}
+          accessibilityLabel={t('inspector.glissando')}
+        >
+          {t('inspector.glissando')}
+        </Button>
       </Field>
+
+      {/*
+        A grace note hangs off the note it decorates and takes no time from the
+        bar. `toGraceNote` takes the note *out* of the voice and leaves a rest
+        of the same length, so the bar still adds up.
+      */}
+      <Field label={t('inspector.ornaments')}>
+        <View className="gap-2">
+          <Button
+            variant="secondary"
+            disabled={playing || notes.length !== 1}
+            onPress={() => toGraceNote(store, first.id)}
+            accessibilityLabel={t('inspector.makeGraceNote')}
+          >
+            {t('inspector.makeGraceNote')}
+          </Button>
+          {graceCount > 0 ? (
+            <Button
+              variant="ghost"
+              disabled={playing}
+              onPress={() => clearGraceNotes(store, [first.id])}
+              accessibilityLabel={t('inspector.clearGraceNotes', {
+                count: graceCount,
+              })}
+            >
+              {t('inspector.clearGraceNotes', { count: graceCount })}
+            </Button>
+          ) : null}
+        </View>
+      </Field>
+
+      {onReplace ? (
+        <ReplaceButton
+          scope="notes"
+          label={t('inspector.replaceNotes')}
+          disabled={playing}
+          onReplace={onReplace}
+        />
+      ) : null}
     </View>
   );
 }

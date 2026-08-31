@@ -22,7 +22,8 @@ const IMPORT_FOR: Partial<Record<MenuCommand, ImportFormat>> = {
 };
 
 export function MenuImportCommands() {
-  const { run, warnings, failure, setWarnings, setFailure } = useImport();
+  const importer = useImport();
+  const { run } = importer;
 
   useMenuCommand(
     useCallback(
@@ -37,12 +38,5 @@ export function MenuImportCommands() {
     ),
   );
 
-  return (
-    <ImportFeedback
-      warnings={warnings}
-      failure={failure}
-      onDismissWarnings={() => setWarnings(null)}
-      onDismissFailure={() => setFailure(null)}
-    />
-  );
+  return <ImportFeedback state={importer} />;
 }

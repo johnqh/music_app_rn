@@ -6,8 +6,9 @@
  * storage and the transport at once.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
@@ -34,6 +35,15 @@ import type { ReplaceScope } from '@sudobility/music_types';
 import { GenerationOverlay } from '@/features/generation/GenerationOverlay';
 import { SnapshotsSheet } from '@/features/snapshots/SnapshotsSheet';
 import { useDocumentGeneration } from '@/features/generation/useDocumentGeneration';
+import { CreditPaywallSheet } from '@/features/credits/CreditPaywallSheet';
+import { useCreditBalance } from '@/features/credits/useCreditBalance';
+import { ExportScopeSheet } from '@/features/documents/ExportScopeSheet';
+import {
+  exportScopeNeedsPrompt,
+  exportTargetScore,
+  hiddenTrackCount,
+} from '@sudobility/music_editing';
+import type { Score } from '@sudobility/music_types';
 import { renderEvents, renderSamples } from '@sudobility/music_player';
 import { reportError } from '@sudobility/music_lib';
 import { getAppServices } from '@/config/initialize';
@@ -111,7 +121,7 @@ export function EditorScreen() {
 function DocumentEditor({ document }: { document: MusicDocument }) {
   const { t } = useTranslation();
   const [saving, setSaving] = useState(false);
-  const { getToken } = useAuth();
+  const { user, getToken, siteAdmin } = useAuth();
   const score = useStore(document.store, s => s.score);
   const recordRecent = useRecentTracking(keyValue);
 
@@ -145,7 +155,14 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
   const projectId =
     document.origin.kind === 'project' ? document.origin.projectId : null;
 
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
   const generation = useDocumentGeneration(document, projectId, {
+    // A 402 is not a network failure and must not read like one: it is the one
+    // refusal with an obvious remedy, so it opens the store.
+    onInsufficientCredits: () => setPaywallOpen(true),
     // The job reads the *stored* score, so anything still unwritten has to go
     // first — otherwise it is invisible to the job and then overwritten by its
     // result.
@@ -165,8 +182,8 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
    * the file is a recording of what was heard. music_io then encodes the PCM —
    * which is what keeps the two platform packages independent of each other.
    */
-  const runExport = useCallback(
-    (format: ExportFormat) => {
+  const writeExport = useCallback(
+    (format: ExportFormat, target?: Score) => {
       void exportDocument(
         document,
         getAppServices().io,
@@ -176,9 +193,40 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
           const audio = await renderSamples(getAppServices().soundfont)(plan);
           return { samples: audio.samples, sampleRate: audio.sampleRate };
         },
+        target,
       ).catch(error => reportError(error, { context: 'export' }));
     },
     [document],
+  );
+
+  /**
+   * The format waiting on an answer about hidden tracks.
+   *
+   * Asked exactly when the two answers differ: a file that quietly omits parts
+   * is hard to notice until it matters, and silently exporting everything would
+   * equally surprise somebody who hid tracks precisely to extract a subset.
+   */
+  const [pendingScope, setPendingScope] = useState<ExportFormat | null>(null);
+
+  /*
+    A courtesy gate on Generate, decided here because this screen has the auth
+    context and the sheet must not import it.
+
+    A **site administrator is never gated**: `music_api` grants them free
+    generation — no quota, no balance check, no charge — so they sit at a
+    balance of zero forever, and this would refuse work the server would have
+    accepted. Unknown is not zero either, which is why the check is on a real
+    number rather than on a falsy one.
+  */
+  const { balance } = useCreditBalance(getToken, user !== null);
+  const outOfCredits = !siteAdmin && balance !== null && balance <= 0;
+
+  const runExport = useCallback(
+    (format: ExportFormat) => {
+      if (exportScopeNeedsPrompt(document.store)) setPendingScope(format);
+      else writeExport(format);
+    },
+    [document, writeExport],
   );
 
   const onExport = useCallback(() => setExportOpen(true), []);
@@ -268,6 +316,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
         <>
           <GenerateScoreSheet
             open={generateOpen}
+            outOfCredits={outOfCredits}
             onClose={() => setGenerateOpen(false)}
             onSubmit={request => {
               setGenerateOpen(false);
@@ -285,6 +334,23 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
               // server-side, and leaving the screen is safe.
               void generation.start('generate-track', request);
             }}
+          />
+          <ExportScopeSheet
+            open={pendingScope !== null}
+            hiddenCount={hiddenTrackCount(document.store)}
+            onCancel={() => setPendingScope(null)}
+            onChoose={scope => {
+              const format = pendingScope;
+              setPendingScope(null);
+              if (!format) return;
+              const target = exportTargetScore(document.store, scope);
+              writeExport(format, target ?? undefined);
+            }}
+          />
+          <CreditPaywallSheet
+            open={paywallOpen}
+            onClose={() => setPaywallOpen(false)}
+            onOpenCredits={() => navigation.navigate('Credits')}
           />
           <ReplaceMusicSheet
             open={replaceScope !== null}

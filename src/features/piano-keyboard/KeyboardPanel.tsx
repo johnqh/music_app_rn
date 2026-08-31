@@ -11,12 +11,14 @@
  * Keys pressed together are one group: a chord is keys that overlap in time, so
  * the group closes when the last finger lifts rather than the first.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { useStore } from 'zustand';
 import { selectActiveTrackId } from '@sudobility/music_editing';
 import { playKeyGroup } from '@sudobility/music_editing';
+import { trackKeyboardRange } from '@sudobility/music_types';
+import { FULL_RANGE, snapToWhiteKeys } from '@sudobility/music_drawing';
 import { getAppServices } from '@/config/initialize';
 import type { MusicDocument } from '@/documents/document';
 import { Text } from '@sudobility/components-rn';
@@ -67,6 +69,33 @@ export function KeyboardPanel({
     const track = s.score?.tracks.find(t => t.id === activeTrackId);
     return track?.clef === 'percussion';
   });
+  const clef = useStore(document.store, s => {
+    const track = s.score?.tracks.find(t => t.id === activeTrackId);
+    return track?.clef;
+  });
+
+  /**
+   * The keys this instrument can actually sound, not always all 88.
+   *
+   * A piccolo part should not present three octaves that will never sound, and
+   * the keyboard follows a track change and an instrument change alike since
+   * both move `midiProgram`. This panel used to pass no range at all, so
+   * `PianoKeyboard` fell back to `FULL_RANGE` and every track — piccolo, bass,
+   * drum kit — got the same 88 keys.
+   *
+   * Asked through `trackKeyboardRange`, never through `midiProgram` directly:
+   * on a percussion track that number is a **drum kit**, so reading it as an
+   * instrument shows a piano's compass for a kit — keys that cannot sound a
+   * drum, with the drums that do sound (35-81) partly off the end. That exact
+   * bug shipped on the web before the rule moved into the library.
+   *
+   * `snapToWhiteKeys` widens the result to whole keys, because a black key at
+   * either end has no white neighbour to hang off.
+   */
+  const range = useMemo(() => {
+    if (clef === undefined) return snapToWhiteKeys(FULL_RANGE);
+    return snapToWhiteKeys(trackKeyboardRange({ clef, midiProgram: program }));
+  }, [clef, program]);
 
   const onKeyDown = useCallback(
     (midi: number) => {
@@ -128,6 +157,7 @@ export function KeyboardPanel({
           <PianoKeyboard
             width={size.width}
             height={KEYBOARD_HEIGHT}
+            range={range}
             naming={isPercussion ? 'percussion' : 'pitch'}
             sounding={sounding}
             onKeyDown={onKeyDown}

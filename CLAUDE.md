@@ -228,6 +228,76 @@ maths here, it belongs somewhere else.
   store as well as its score. Whole numbers only, and a non-numeric draft is
   refused rather than committed — a score with a `NaN` tempo has no tempo at
   all.
+- **The property sheet is the web inspector's, tab for tab** — and the two
+  ways it had quietly drifted are both the kind that look fine on screen.
+  **A percussion track's `midiProgram` addresses a kit, not an instrument**, so
+  the Track tab offering `INSTRUMENT_OPTIONS` on every track named a drum part
+  after whatever instrument shared its number (Brush is kit 40; program 40 is
+  Violin). It asks `isPercussionTrack` and offers `KIT_OPTIONS` instead — the
+  same split the web makes, and the reason `setTrackInstrument` takes the
+  catalogue *value* rather than a number. And the Note tab **printed a literal
+  `1` for every note's voice**, which is right by coincidence on the default
+  track and wrong the moment anybody uses the second; it reads `voiceNumberOf`
+  now. Fields that were simply absent — octave, velocity, the tie toggles, the
+  slide span, the grace-note conversion, the bar/beat readout, the track
+  readout, the clef, the key and time signatures, Delete Track — are there too.
+- **Every inspector field answers for the whole selection, via `commonValue`.**
+  Where the selected notes agree it shows the value; where they do not it reads
+  "Mixed" and setting it applies to all of them. A panel that showed the *first*
+  note's value would say "Staccato" for a selection that is mostly not, and
+  setting it would look like a no-op on the notes that already agreed.
+- **Pitch is edited through the display lens and never round-tripped.** The
+  step, accidental and octave a reader sees on a transposing instrument or
+  inside an `8va` are not what is stored, so a patch is applied to what is
+  *shown* and converted once by `setNotePitch`. Feeding the stored pitch back
+  through the lens moves it by the transposition every time the panel is
+  touched — silently, since the note then draws exactly where it was.
+- **Replace lives on the property sheet's tabs, not on the toolbar.** The scope
+  *is* the tab: Replace Notes beside the note you selected, Replace Measures
+  beside the bars, Replace Track beside the part. On a toolbar all three are
+  equally far from the thing they act on and the reader has to work out which
+  region each one means from its name. It briefly sat in the toolbar's More
+  menu here; the web has always put it in the tabs.
+- **The piano keyboard's range is the active track's instrument, not always all
+  88.** `KeyboardPanel` passes no range at one point in its life and
+  `PianoKeyboard` fell back to `FULL_RANGE`, so a piccolo part offered three
+  octaves that could never sound and a drum kit offered a piano's compass. The
+  range comes from `trackKeyboardRange`, which takes a **`Track`** — asking
+  `midiProgram` directly is the drum-kit bug again, since the drums that do
+  sound (35-81) then sit partly off the end — widened by `snapToWhiteKeys`,
+  because a black key at either end has no white neighbour to hang off.
+- **MIDI asks before it imports; every other format does not.** A performance
+  has no bar lines, no clefs and no key, and every one of those is a guess — a
+  guess nobody was shown is a guess nobody can correct. `MidiImportSheet` opens
+  pre-filled from `defaultMidiImportOptions`, so somebody who does not want to
+  think about quantization presses Import and is done. A tracker module states
+  every note and instrument outright and MusicXML carries its own notation, so
+  both go straight in; asking there would be asking a question with one answer.
+- **A 402 is not a network failure.** `POST /jobs` answers it at a balance of
+  zero, and `useProjectGeneration`'s `onStartError` seam exists so that lands as
+  the paywall rather than as a string in the generation overlay. Returning true
+  marks it handled, which is what leaves the inline message empty — the sheet is
+  the report, and showing both says the same thing twice in two registers.
+  **Purchasing is deliberately not offered**: `consumables_pages` has no React
+  Native build, so the sheet explains and points at the Credits screen rather
+  than half-implementing a store. The *balance* needs none of that —
+  `ConsumablesApiClient` takes a base URL and a network client and nothing else,
+  which is why `useCreditBalance` can read it with no purchase SDK and no pods.
+- **A component that renders must not reach for auth.** `GenerateScoreSheet`
+  takes `outOfCredits` as a prop rather than looking it up, because looking it
+  up means importing `AuthContext`, which imports Firebase — and that is how a
+  form for choosing a key signature ends up unable to render in a test. The
+  screen has the auth context; the sheet renders. The same rule is why
+  `notation-ink.ts` is worth watching: anything it imports lands in every
+  toolbar.
+- **`@sudobility` packages need a `default` export condition, and two of them
+  did not have one.** `di_rn` and `di` published `exports` maps with `import`
+  and `types` only; jest resolves through CJS, falls through every condition and
+  reports the package as **missing** — which surfaces as "Cannot find module
+  '@sudobility/di_rn'" in a test that never mentions it. Both are fixed at the
+  source (`types` first, `default` last, recursing into nested conditions like
+  `react-native`). If a new `@sudobility` package ever reports itself missing
+  under jest, check its exports map before the transform allow-list.
 - **A horizontal `ScrollView` in a column needs `flexGrow: 0` and a height.**
   It has no intrinsic height and takes whatever it is offered, which puts an
   empty band above and below a toolbar.
@@ -326,10 +396,18 @@ compiler was told. Pod sources land read-only, so it `chmod`s first.
   `src/features/documents/`, `src/features/editor/` — UI.
 - `src/features/tracks/` — the mixer rows the property sheet's Track tab is
   built from, drawn the way the web draws them.
-- `src/components/controls/` — the two controls the shared libraries cannot
-  supply: `LevelSlider` (a slider painted like the web's, level and pan) and
+- `src/features/credits/` — the balance, and what happens when it runs out.
+- `src/screens/ResourcesScreen.tsx` / `AboutScreen.tsx` — the web's Resources
+  and Home pages, in the form a native app can use: the link list is shared from
+  music_editing, and the home page's *content* is reachable from Settings
+  without the landing-page shape an installed app has already answered.
+- `src/components/controls/` — the controls the shared libraries cannot
+  supply: `LevelSlider` (a slider painted like the web's, level and pan),
   `ToolbarSelect` (a picker whose trigger is a toolbar button rather than a
-  bordered text field).
+  bordered text field) and `ConfirmSheet` (a yes/no whose confirm can be
+  destructive, which `FormModal`'s `onSave` shorthand cannot express).
+- `src/features/inspector/` — the property sheet: four tabs in the web's order,
+  `Field`/`DraftInput`/`ReplaceButton` shared between them.
 - `src/components/icons/` — `NotationIcon`, which replays music_types'
   `NOTATION_ICONS`, and `notation-ink.ts`, which says what colour to draw one.
 

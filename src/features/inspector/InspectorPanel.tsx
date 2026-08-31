@@ -17,12 +17,30 @@ import { TrackTab } from './TrackTab';
 import { NoteTab } from './NoteTab';
 import { MeasureTab } from './MeasureTab';
 import { ScoreTab } from './ScoreTab';
+import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
 
 const TABS = ['track', 'note', 'measure', 'score'] as const;
 export type InspectorTab = (typeof TABS)[number];
 
-export function InspectorPanel({ document }: { document: MusicDocument }) {
+export type InspectorPanelProps = {
+  document: MusicDocument;
+  /**
+   * Asks the server to rewrite part of the score.
+   *
+   * Threaded to the tabs rather than sitting on the toolbar, because the scope
+   * *is* the tab: Replace Notes belongs beside the note you have selected,
+   * Replace Measures beside the bars, Replace Track beside the part. On the
+   * toolbar all three are equally far from the thing they act on, and a reader
+   * has to work out which region each one means.
+   *
+   * Absent when there is no project behind the document — a local file has no
+   * row for a job to write back to.
+   */
+  onReplace?: (scope: ReplaceScope) => void;
+};
+
+export function InspectorPanel({ document, onReplace }: InspectorPanelProps) {
   const { t } = useTranslation();
   const [tab, setTab] = useState<InspectorTab>('track');
 
@@ -44,9 +62,18 @@ export function InspectorPanel({ document }: { document: MusicDocument }) {
         </TabsList>
       </Tabs>
       <ScrollView className="flex-1" contentContainerClassName="p-3 gap-3">
-        {tab === 'track' ? <TrackTab document={document} /> : null}
-        {tab === 'note' ? <NoteTab document={document} /> : null}
-        {tab === 'measure' ? <MeasureTab document={document} /> : null}
+        {tab === 'track' ? (
+          <TrackTab document={document} {...(onReplace ? { onReplace } : {})} />
+        ) : null}
+        {tab === 'note' ? (
+          <NoteTab document={document} {...(onReplace ? { onReplace } : {})} />
+        ) : null}
+        {tab === 'measure' ? (
+          <MeasureTab
+            document={document}
+            {...(onReplace ? { onReplace } : {})}
+          />
+        ) : null}
         {tab === 'score' ? <ScoreTab document={document} /> : null}
       </ScrollView>
     </View>

@@ -51,6 +51,52 @@ describe('TrackTab', () => {
     expect(activeTrack(document).name).toBe('Cello');
   });
 
+  /*
+    On a percussion track `midiProgram` addresses a *kit*, not an instrument —
+    Brush is kit 40 and program 40 is Violin. This panel offered the melodic
+    catalogue on every track, so a drum part reported itself as whatever
+    instrument happened to share its number.
+  */
+  it('offers drum kits on a percussion track, not instruments', () => {
+    const { view, document } = setup();
+    const track = activeTrack(document);
+    act(() => {
+      document.store
+        .getState()
+        .setTrackClef(track.id, 'percussion', 'Change clef');
+    });
+    expect(view.getByLabelText(/drum kit/i)).toBeTruthy();
+  });
+
+  it('offers instruments on a pitched track', () => {
+    const { view } = setup();
+    expect(view.getByLabelText(/^instrument$/i)).toBeTruthy();
+    expect(view.queryByLabelText(/drum kit/i)).toBeNull();
+  });
+
+  it('sets the clef the part opens in', () => {
+    const { view, document } = setup();
+    expect(view.getByLabelText(/^clef$/i)).toBeTruthy();
+    expect(activeTrack(document).clef).toBeDefined();
+  });
+
+  it('refuses to delete the last track, because the store refuses', () => {
+    // `canDeleteTrack` is the store's own rule, asked rather than restated —
+    // a score with no tracks is not a score.
+    const { view } = setup();
+    expect(
+      view.getByLabelText(/delete track/i).props.accessibilityState.disabled,
+    ).toBe(true);
+  });
+
+  it('asks before deleting a track it can delete', () => {
+    const { view, document } = setup(2);
+    const before = document.store.getState().score!.tracks.length;
+    fireEvent.press(view.getByLabelText(/delete track/i));
+    // The confirm has not been given, so nothing is gone yet.
+    expect(document.store.getState().score!.tracks).toHaveLength(before);
+  });
+
   it('keeps mix controls live, because mixing is not editing', () => {
     /*
       Volume, pan, mute and solo are `kind: 'mix'` and reach the engine live —

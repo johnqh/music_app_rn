@@ -16,6 +16,7 @@ import type {
   GenerationClient,
   ProjectGeneration,
 } from '@sudobility/music_client';
+import { InsufficientCreditsError } from '@sudobility/music_client';
 import { getMusicClient } from '@/config/server';
 import { useAuth } from '@/auth/AuthContext';
 import type { MusicDocument } from '@/documents/document';
@@ -53,6 +54,16 @@ export type UseDocumentGenerationOptions = {
   flush?: () => Promise<unknown> | unknown;
   /** Tests inject a stub; production uses the configured client. */
   client?: GenerationClient;
+  /**
+   * Raises the paywall when a start is refused for want of credits.
+   *
+   * Handed in rather than decided here, because the *remedy* is a screen and
+   * this hook knows nothing about navigation. Returning true from
+   * `onStartError` marks the failure handled, which is what leaves the inline
+   * overlay message empty — the sheet is the report, and showing both would say
+   * the same thing twice in two registers.
+   */
+  onInsufficientCredits?: () => void;
 };
 
 /**
@@ -97,5 +108,20 @@ export function useDocumentGeneration(
     foreground: APP_FOREGROUND,
     ...(options.flush ? { flush: options.flush } : {}),
     ...(options.onApplied ? { onApplied: options.onApplied } : {}),
+    /*
+      A 402 is the one API refusal with an obvious remedy, so it raises the
+      paywall rather than reporting a failure — and returning true marks it
+      handled, which leaves the inline overlay message empty. The sheet is the
+      report; showing both would say the same thing twice in two registers.
+
+      `InsufficientCreditsError` is music_client's, used directly: a local
+      `isInsufficientCredits` wrapper around one `instanceof` was a duplicate of
+      the class itself.
+    */
+    onStartError: error => {
+      if (!(error instanceof InsufficientCreditsError)) return false;
+      options.onInsufficientCredits?.();
+      return true;
+    },
   });
 }

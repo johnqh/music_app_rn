@@ -23,6 +23,8 @@ import { PublishedScreen } from '@/screens/PublishedScreen';
 import { CreditsScreen } from '@/screens/CreditsScreen';
 import { SignInScreen } from '@/screens/SignInScreen';
 import { ShortcutsScreen } from '@/screens/ShortcutsScreen';
+import { ResourcesScreen } from '@/screens/ResourcesScreen';
+import { AboutScreen } from '@/screens/AboutScreen';
 
 export type RootStackParamList = {
   Dashboard: undefined;
@@ -34,6 +36,8 @@ export type RootStackParamList = {
   Credits: undefined;
   SignIn: undefined;
   Shortcuts: undefined;
+  Resources: undefined;
+  About: undefined;
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -92,6 +96,25 @@ export function Navigation() {
           name="Shortcuts"
           component={ShortcutsScreen}
           options={{ headerShown: true, title: t('editor.keyboardShortcuts') }}
+        />
+        {/*
+          Where to find music to open. More useful on a phone than on the web,
+          not less: a new install has no folder of scores already on the device.
+        */}
+        <Stack.Screen
+          name="Resources"
+          component={ResourcesScreen}
+          options={{ headerShown: true, title: t('nav.resources') }}
+        />
+        {/*
+          What the product is. The web says it on a landing page a visitor
+          arrives at; somebody who installed an app already chose it, so this is
+          reachable rather than in the way.
+        */}
+        <Stack.Screen
+          name="About"
+          component={AboutScreen}
+          options={{ headerShown: true, title: t('about.title') }}
         />
       </Stack.Navigator>
     </NavigationContainer>

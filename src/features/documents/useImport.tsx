@@ -14,6 +14,7 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
+import type { MidiImportOptions, MidiSummary } from '@sudobility/music_lib';
 import { IMPORT_EXTENSIONS, importDocument } from '@/documents/import';
 import type { ImportFormat } from '@/documents/import';
 import { createFilePicker } from '@/documents/file-picker';
@@ -21,12 +22,50 @@ import { createImportSource } from '@/documents/rn-storage';
 import { getAppServices } from '@/config/initialize';
 import { useDocumentList } from '@/documents/DocumentsContext';
 import { musicXmlWarningCopy } from '@/i18n/lib-copy';
+import { MidiImportSheet } from './MidiImportSheet';
 
 export function useImport() {
   const { t } = useTranslation();
   const list = useDocumentList();
   const [warnings, setWarnings] = useState<readonly string[] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+
+  /**
+   * A MIDI file that has been read and analysed but not yet imported.
+   *
+   * MIDI is the one format that cannot be imported without deciding things —
+   * bar lines, clefs and key are all guesses — so the file is analysed first
+   * and the wizard opened over the result. Every other format states its own
+   * content outright and goes straight in.
+   */
+  const [pendingMidi, setPendingMidi] = useState<{
+    uri: string;
+    summary: MidiSummary;
+  } | null>(null);
+
+  const finish = useCallback(
+    async (
+      format: ImportFormat,
+      uri: string,
+      midiOptions?: MidiImportOptions,
+    ): Promise<void> => {
+      try {
+        const result = await importDocument(
+          list,
+          createImportSource(),
+          getAppServices().io,
+          format,
+          uri,
+          musicXmlWarningCopy(),
+          midiOptions,
+        );
+        if (result.warnings.length > 0) setWarnings(result.warnings);
+      } catch (error) {
+        setFailure(error instanceof Error ? error.message : String(error));
+      }
+    },
+    [list],
+  );
 
   const run = useCallback(
     async (format: ImportFormat): Promise<void> => {
@@ -39,39 +78,81 @@ export function useImport() {
         const uri = await picker.pickFile(IMPORT_EXTENSIONS[format]);
         // Cancelling is an ordinary outcome, not a failure to report.
         if (!uri) return;
-        const result = await importDocument(
-          list,
-          createImportSource(),
-          getAppServices().io,
-          format,
-          uri,
-          musicXmlWarningCopy(),
-        );
-        if (result.warnings.length > 0) setWarnings(result.warnings);
+        if (format === 'midi') {
+          // Analysed here rather than inside the sheet: reading the file can
+          // fail, and a failure belongs in this hook's own report rather than
+          // inside a modal that has already opened.
+          const bytes = await createImportSource().readBytes(uri);
+          setPendingMidi({
+            uri,
+            summary: getAppServices().io.analyzeMidi(bytes),
+          });
+          return;
+        }
+        await finish(format, uri);
       } catch (error) {
         setFailure(error instanceof Error ? error.message : String(error));
       }
     },
-    [list, t],
+    [t, finish],
   );
 
-  return { run, warnings, failure, setWarnings, setFailure };
+  const confirmMidi = useCallback(
+    (options: MidiImportOptions): void => {
+      const pending = pendingMidi;
+      setPendingMidi(null);
+      if (pending) void finish('midi', pending.uri, options);
+    },
+    [pendingMidi, finish],
+  );
+
+  return {
+    run,
+    warnings,
+    failure,
+    setWarnings,
+    setFailure,
+    pendingMidi,
+    confirmMidi,
+    cancelMidi: () => setPendingMidi(null),
+  };
 }
 
-export function ImportFeedback({
-  warnings,
-  failure,
-  onDismissWarnings,
-  onDismissFailure,
-}: {
-  warnings: readonly string[] | null;
-  failure: string | null;
-  onDismissWarnings: () => void;
-  onDismissFailure: () => void;
-}) {
+export type ImportState = ReturnType<typeof useImport>;
+
+/**
+ * Everything the importer has to say, mounted by whoever ran it.
+ *
+ * Takes the hook's whole result rather than four hand-picked props: the MIDI
+ * wizard joined the warnings and the failure here, and a caller that has to
+ * remember to thread each new piece is a caller that will one day drop one —
+ * which for an importer means silently losing the warning it exists to give.
+ */
+export function ImportFeedback({ state }: { state: ImportState }) {
   const { t } = useTranslation();
+  const {
+    warnings,
+    failure,
+    setWarnings,
+    setFailure,
+    pendingMidi,
+    confirmMidi,
+    cancelMidi,
+  } = state;
+  const onDismissWarnings = (): void => setWarnings(null);
+  const onDismissFailure = (): void => setFailure(null);
   return (
     <>
+      {/*
+        MIDI asks before it imports: bar lines, clefs and key are all guesses,
+        and a guess nobody was shown is a guess nobody can correct.
+      */}
+      <MidiImportSheet
+        open={pendingMidi !== null}
+        summary={pendingMidi?.summary ?? null}
+        onCancel={cancelMidi}
+        onImport={confirmMidi}
+      />
       <FormModal
         visible={warnings !== null}
         title={t('import.warningsTitle')}

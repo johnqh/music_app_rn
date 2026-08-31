@@ -14,19 +14,46 @@ import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import { Input, SheetSelector, Switch, Text } from '@sudobility/components-rn';
+import {
+  Button,
+  Input,
+  Select,
+  SheetSelector,
+  Switch,
+  Text,
+} from '@sudobility/components-rn';
 import { PanSlider, VolumeSlider } from '@/features/tracks/MixerSliders';
 import { selectSelectedTrack } from '@sudobility/music_editing';
-import { INSTRUMENT_OPTIONS } from '@sudobility/music_types';
+import {
+  CLEFS,
+  INSTRUMENT_OPTIONS,
+  KIT_OPTIONS,
+  isPercussionTrack,
+  kitOptionValue,
+} from '@sudobility/music_types';
+import type { Clef } from '@sudobility/music_types';
+import { ConfirmSheet } from '@/components/controls/ConfirmSheet';
+import { InstrumentIcon } from '@/components/icons/InstrumentIcon';
+import { useNotationInk } from '@/components/icons/notation-ink';
 import { Field, EmptyTab } from './Field';
+import { ReplaceButton } from './ReplaceButton';
+import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
 
-export function TrackTab({ document }: { document: MusicDocument }) {
+export function TrackTab({
+  document,
+  onReplace,
+}: {
+  document: MusicDocument;
+  onReplace?: (scope: ReplaceScope) => void;
+}) {
   const { t } = useTranslation();
+  const ink = useNotationInk();
   const store = document.store;
   const track = useStore(store, selectSelectedTrack);
   const playing = useStore(store, s => s.state) === 'playing';
   const [draftName, setDraftName] = useState(track?.name ?? '');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => setDraftName(track?.name ?? ''), [track?.id, track?.name]);
 
@@ -75,24 +102,92 @@ export function TrackTab({ document }: { document: MusicDocument }) {
         />
       </Field>
 
-      <Field label={t('inspector.instrument')}>
+      <Field
+        label={
+          isPercussionTrack(track)
+            ? t('inspector.drumKit')
+            : t('inspector.instrument')
+        }
+      >
         {/*
-          The library's own option list: already grouped by family, and already
+          The library's own option lists: already grouped by family, and already
           carrying the catalogue *value* — kit prefix and all — that
-          `setTrackInstrument` wants. Rebuilding it from `GM_CATALOGUE` would be
-          a second list to keep in step, and would get the kit/melodic
-          distinction wrong the first time somebody picked a drum track.
+          `setTrackInstrument` wants. Rebuilding either from `GM_CATALOGUE`
+          would be a second list to keep in step.
+
+          **Two lists, not one.** On a percussion track `midiProgram` addresses
+          a *kit*, so the melodic catalogue names the wrong thing outright —
+          Brush is kit 40 and program 40 is Violin. This panel offered the
+          melodic list on every track, so a drum part reported itself as
+          whatever instrument shared its number. Which list is showing is the
+          only difference here; `setTrackInstrument` takes the value either one
+          produces and resolves it.
         */}
-        <SheetSelector
-          title={t('inspector.instrument')}
-          value={String(track.midiProgram)}
-          options={INSTRUMENT_OPTIONS}
-          onChange={value =>
+        {/*
+          The icon beside the picker, as the web has it: a row of instrument
+          names is a wall of text, and the shape is what a reader finds a part
+          by. The art is music_types', the same drawing the canvas gutter
+          strokes into the score.
+        */}
+        <View className="flex-row items-center gap-2">
+          <InstrumentIcon track={track} color={ink.foreground} />
+          <View className="flex-1">
+            {isPercussionTrack(track) ? (
+              <SheetSelector
+                title={t('inspector.drumKit')}
+                value={kitOptionValue(track.midiProgram)}
+                options={KIT_OPTIONS}
+                disabled={playing}
+                onChange={value =>
+                  store
+                    .getState()
+                    .setTrackInstrument(
+                      track.id,
+                      value,
+                      t('inspector.setInstrument'),
+                    )
+                }
+                accessibilityLabel={t('inspector.kitOf', { name: track.name })}
+              />
+            ) : (
+              <SheetSelector
+                title={t('inspector.instrument')}
+                value={String(track.midiProgram)}
+                options={INSTRUMENT_OPTIONS}
+                disabled={playing}
+                onChange={value =>
+                  store
+                    .getState()
+                    .setTrackInstrument(
+                      track.id,
+                      value,
+                      t('inspector.setInstrument'),
+                    )
+                }
+                accessibilityLabel={t('inspector.instrument')}
+              />
+            )}
+          </View>
+        </View>
+      </Field>
+
+      {/*
+        The clef the part *opens* in. Mid-score changes live on the measure, in
+        the Measure tab — this is `Track.clef`, and crossing into or out of
+        percussion re-resolves the program, since a kit and an instrument are
+        different things at the same number.
+      */}
+      <Field label={t('inspector.clef')}>
+        <Select
+          value={track.clef}
+          accessibilityLabel={t('inspector.clef')}
+          disabled={playing}
+          options={CLEFS.map((c: Clef) => ({ value: c, label: c }))}
+          onValueChange={(value: string) =>
             store
               .getState()
-              .setTrackInstrument(track.id, value, t('inspector.setInstrument'))
+              .setTrackClef(track.id, value as Clef, t('inspector.changeClef'))
           }
-          accessibilityLabel={t('inspector.instrument')}
         />
       </Field>
 
@@ -163,6 +258,41 @@ export function TrackTab({ document }: { document: MusicDocument }) {
           accessibilityLabel={t('inspector.solo')}
         />
       </View>
+
+      {/*
+        Deleting the part. `canDeleteTrack` is the store's own rule, asked
+        rather than restated here — a score with no tracks is not a score, and
+        the panel should not be the second place that knows it.
+      */}
+      <Button
+        variant="destructive"
+        disabled={!store.getState().canDeleteTrack() || playing}
+        onPress={() => setConfirmDelete(true)}
+        accessibilityLabel={t('inspector.deleteTrack')}
+      >
+        {t('inspector.deleteTrack')}
+      </Button>
+      <ConfirmSheet
+        open={confirmDelete}
+        title={t('inspector.deleteTrack')}
+        message={t('inspector.deleteTrackConfirm', { name: track.name })}
+        confirmLabel={t('inspector.deleteTrack')}
+        destructive
+        onConfirm={() => {
+          setConfirmDelete(false);
+          store.getState().removeTrack(track.id, t('inspector.deleteTrack'));
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
+
+      {onReplace ? (
+        <ReplaceButton
+          scope="track"
+          label={t('inspector.replaceTrack')}
+          disabled={playing}
+          onReplace={onReplace}
+        />
+      ) : null}
     </View>
   );
 }

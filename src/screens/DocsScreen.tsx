@@ -15,13 +15,19 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Text } from '@sudobility/components-rn';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Button, Text } from '@sudobility/components-rn';
+import type { RootStackParamList } from '@/app/Navigation';
 import { DOCS_TOPICS } from '@sudobility/music_editing';
 
 import { InstrumentReference } from '@/features/docs/InstrumentReference';
+import { FormatReference } from '@/features/docs/FormatReference';
 
 export function DocsScreen() {
   const { t } = useTranslation();
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [topicId, setTopicId] = useState<string>(DOCS_TOPICS[0]?.id ?? '');
   const topic = DOCS_TOPICS.find(d => d.id === topicId);
 
@@ -68,10 +74,26 @@ export function DocsScreen() {
               shortcuts from the bindings — neither can go stale.
             */}
             {topic.widget === 'instruments' ? <InstrumentReference /> : null}
+            {/*
+              The format tables. This branch was missing entirely, so the topic
+              that carries `widget: 'formats'` rendered a heading with nothing
+              under it — the one place the docs promised a table and showed
+              none.
+            */}
+            {topic.widget === 'formats' ? <FormatReference /> : null}
+            {/*
+              The shortcut table has a screen of its own, so this points at it
+              rather than printing it twice — but it points *actionably*. It
+              used to be a sentence naming a screen with no way to reach it,
+              which is a dead end dressed as a cross-reference.
+            */}
             {topic.widget === 'shortcuts' ? (
-              <Text className="text-muted-foreground text-sm">
+              <Button
+                variant="outline"
+                onPress={() => navigation.navigate('Shortcuts')}
+              >
                 {t('docs.seeShortcutsScreen')}
-              </Text>
+              </Button>
             ) : null}
           </>
         ) : null}

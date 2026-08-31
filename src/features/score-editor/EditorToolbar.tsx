@@ -70,8 +70,10 @@ import {
   QUANTIZE_GRID_SHORT,
 } from '@sudobility/music_editing';
 import {
-  ARTICULATIONS,
-  ORNAMENTS,
+  ACCIDENTAL_OPTIONS,
+  ARTICULATION_OPTIONS,
+  NO_MARK,
+  ORNAMENT_OPTIONS,
   durationDisplay,
   durationParts,
   ticksFor,
@@ -87,7 +89,6 @@ import type {
 } from '@sudobility/music_types';
 import type { EditMode, QuantizeGrid } from '@sudobility/music_editing';
 import type { LayoutMode } from '@sudobility/music_drawing';
-import type { ReplaceScope } from '@sudobility/music_types';
 import {
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
@@ -150,15 +151,6 @@ const EDIT_MODES: readonly { value: EditMode; icon: NotationIconName }[] = [
   { value: 'stack', icon: 'ChordIcon' },
 ];
 
-/**
- * "None" travels under a sentinel.
- *
- * A picker's value is a string, and an empty one is indistinguishable from
- * "nothing chosen" — the same problem Radix hands the web bar, solved the same
- * way so the two read alike.
- */
-const NONE = 'none';
-
 export type EditorToolbarProps = {
   document: MusicDocument;
   layoutMode: LayoutMode;
@@ -168,14 +160,6 @@ export type EditorToolbarProps = {
   /** Shows or hides the property sheet. */
   onToggleInspector: () => void;
   inspectorVisible: boolean;
-  /**
-   * Asks the server to rewrite part of the score.
-   *
-   * Absent when there is no project behind the document — a local file has no
-   * row for a job to write back to. The three scopes differ only in the region
-   * they overwrite, which `prepareReplacement` works out from the selection.
-   */
-  onReplace?: (scope: ReplaceScope) => void;
   /**
    * Asks the server for one more track.
    *
@@ -192,7 +176,6 @@ export function EditorToolbar({
   onEnterLyrics,
   onToggleInspector,
   inspectorVisible,
-  onReplace,
   onGenerateTrack,
 }: EditorToolbarProps) {
   const { t } = useTranslation();
@@ -274,34 +257,35 @@ export function EditorToolbar({
     icon: d.icon,
   }));
 
-  const accidentalOptions: ToolbarOption[] = ACCIDENTALS.map(a => ({
-    value: String(a.value),
-    label: t(`accidental.${a.value}`),
-    icon: a.icon,
-  }));
+  /*
+    The values and their copy keys come from music_types, so a sixth accidental
+    reaches this bar without anybody editing it; only the *glyph* is the app's,
+    since a drawing is not something a vocabulary can carry.
+  */
+  const accidentalOptions: ToolbarOption[] = ACCIDENTAL_OPTIONS.map(option => {
+    const glyph = ACCIDENTALS.find(a => a.value === option.value);
+    return {
+      value: String(option.value),
+      label: t(option.labelKey),
+      ...(glyph ? { icon: glyph.icon } : {}),
+    };
+  });
 
-  const articulationOptions: ToolbarOption[] = [
-    { value: NONE, label: t('articulation.none') },
-    ...ARTICULATIONS.map(value => ({
-      value,
-      label: t(`articulation.${value}`),
-    })),
-  ];
+  const articulationOptions: ToolbarOption[] = ARTICULATION_OPTIONS.map(
+    option => ({ value: option.value, label: t(option.labelKey) }),
+  );
 
   /*
     `ORNAMENT_CODE` in the renderer crosses `mordent`/`inverted-mordent` over,
     because VexFlow's two codes are the reverse of the words a musician uses.
-    Nothing about that belongs here — this offers the words.
+    Nothing about that belongs here — this offers the words, and even the
+    kebab-to-camel spelling of the key is the library's, so this bar and the
+    property sheet cannot spell it differently.
   */
-  const ornamentOptions: ToolbarOption[] = [
-    { value: NONE, label: t('ornament.none') },
-    ...ORNAMENTS.map(value => ({
-      value,
-      label: t(
-        `ornament.${value === 'inverted-mordent' ? 'invertedMordent' : value}`,
-      ),
-    })),
-  ];
+  const ornamentOptions: ToolbarOption[] = ORNAMENT_OPTIONS.map(option => ({
+    value: option.value,
+    label: t(option.labelKey),
+  }));
 
   const quantizeOptions: ToolbarOption[] = QUANTIZE_GRIDS.map(grid => ({
     value: grid,
@@ -328,25 +312,6 @@ export function EditorToolbar({
       label: t('editor.glissando'),
       disabled: !canEdit || selectedCount < 2,
     },
-    ...(onReplace
-      ? ([
-          {
-            value: 'replace-notes',
-            label: t('replace.notesTitle'),
-            disabled: !canEdit,
-          },
-          {
-            value: 'replace-measures',
-            label: t('replace.measuresTitle'),
-            disabled: !canEdit,
-          },
-          {
-            value: 'replace-track',
-            label: t('replace.trackTitle'),
-            disabled: !canEdit,
-          },
-        ] satisfies ToolbarOption[])
-      : []),
   ];
 
   const handleMoreAction = (value: string): void => {
@@ -357,9 +322,6 @@ export function EditorToolbar({
     else if (value === 'go-to-bar') setGoToBarOpen(true);
     else if (value === 'enter-lyrics') act(onEnterLyrics)();
     else if (value === 'glissando') act(() => toggleGlissando(store))();
-    else if (value === 'replace-notes') act(() => onReplace?.('notes'))();
-    else if (value === 'replace-measures') act(() => onReplace?.('measures'))();
-    else if (value === 'replace-track') act(() => onReplace?.('track'))();
   };
 
   return (
@@ -494,7 +456,7 @@ export function EditorToolbar({
           onChange={value =>
             changeArticulation(
               store,
-              value === NONE ? undefined : (value as Articulation),
+              value === NO_MARK ? undefined : (value as Articulation),
             )
           }
         >
@@ -509,7 +471,7 @@ export function EditorToolbar({
           onChange={value =>
             changeOrnament(
               store,
-              value === NONE ? undefined : (value as Ornament),
+              value === NO_MARK ? undefined : (value as Ornament),
             )
           }
         >

@@ -10,7 +10,7 @@
  * changes only while a finger is moving, and each change genuinely does need a
  * repaint, because it changes which systems are on screen.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type {
   GestureResponderEvent,
@@ -44,9 +44,31 @@ export type ScrollingScoreProps = {
   pitchDisplay?: PitchDisplay;
   /** A tap on the music, already resolved to a bar. */
   onMeasureTap?: (hit: MeasureHit) => void;
+  /**
+   * A press held in place — where the web reads a right-click.
+   *
+   * Distinguished from a tap by *time and travel*, not by a gesture library:
+   * the touch surface is a plain spacer inside a `ScrollView`, and anything
+   * that claims the responder here would take the scroll with it. A press that
+   * wandered more than a thumb's width was a scroll that happened to end where
+   * it started, and must not open a menu.
+   */
+  onMeasureLongPress?: (hit: MeasureHit) => void;
 };
 
 /** How often a scroll reports back. 16ms is one frame; more is wasted repaint. */
+/**
+ * How long a press must be held to read as a long press, and how far it may
+ * wander while doing so.
+ *
+ * 500ms is the platform's own long-press threshold on both iOS and Android, so
+ * this agrees with every other long press the reader has ever made. The slop is
+ * about a thumb's width: a press that travelled further was a scroll that
+ * happened to end where it started.
+ */
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP = 12;
+
 const SCROLL_EVENT_THROTTLE = 16;
 
 export function ScrollingScore({
@@ -57,6 +79,7 @@ export function ScrollingScore({
   activeTrackId = null,
   pitchDisplay = 'concert',
   onMeasureTap,
+  onMeasureLongPress,
 }: ScrollingScoreProps) {
   const { size, onLayout, measured } = useContainerSize();
   const { width, height } = size;
@@ -104,17 +127,42 @@ export function ScrollingScore({
    * canvas is pinned to the viewport and never moves, so the touch's y is a
    * viewport y and the music's is not.
    */
+  /**
+   * Where and when the current press began.
+   *
+   * A ref, not state: it changes on every touch and nothing renders from it,
+   * so putting it in state would re-render the score on each press.
+   */
+  const pressStart = useRef<{ x: number; y: number; at: number } | null>(null);
+
+  const onTouchStart = useCallback((e: GestureResponderEvent) => {
+    const { locationX, locationY } = e.nativeEvent;
+    pressStart.current = { x: locationX, y: locationY, at: Date.now() };
+  }, []);
+
   const onTouchEnd = useCallback(
     (e: GestureResponderEvent) => {
-      if (!onMeasureTap) return;
       const { locationX, locationY } = e.nativeEvent;
+      const start = pressStart.current;
+      pressStart.current = null;
+
       const hit = measureAt(plan, {
         x: locationX + scrollLeft,
         y: locationY + scrollTop,
       });
-      if (hit) onMeasureTap(hit);
+      if (!hit) return;
+
+      const travelled =
+        start === null
+          ? 0
+          : Math.hypot(locationX - start.x, locationY - start.y);
+      const held = start === null ? 0 : Date.now() - start.at;
+      const isLongPress = held >= LONG_PRESS_MS && travelled <= LONG_PRESS_SLOP;
+
+      if (isLongPress && onMeasureLongPress) onMeasureLongPress(hit);
+      else if (!isLongPress) onMeasureTap?.(hit);
     },
-    [onMeasureTap, plan, scrollTop, scrollLeft],
+    [onMeasureTap, onMeasureLongPress, plan, scrollTop, scrollLeft],
   );
 
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -180,11 +228,16 @@ export function ScrollingScore({
           >
             <View
               style={{ height: contentHeight, width: plan.totalWidth }}
+              onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
             />
           </ScrollView>
         ) : (
-          <View style={{ height: contentHeight }} onTouchEnd={onTouchEnd} />
+          <View
+            style={{ height: contentHeight }}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          />
         )}
       </ScrollView>
     </View>

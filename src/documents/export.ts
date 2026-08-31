@@ -89,8 +89,16 @@ export async function exportDocument(
   exporter: ScoreExporter,
   format: ExportFormat,
   renderAudio?: AudioRenderer,
+  /**
+   * The score to write, when it is not the whole document's.
+   *
+   * Passed in rather than resolved here: whether hidden tracks travel is a
+   * question the *reader* answers, and only the screen can ask it. Absent means
+   * the whole score, which is what an export with nothing hidden means.
+   */
+  target?: Score,
 ): Promise<string> {
-  const score = document.store.getState().score;
+  const score = target ?? document.store.getState().score;
   if (!score) throw new Error('Cannot export a document with no score.');
   const filename = exportFilename(score, format);
 

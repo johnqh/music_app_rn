@@ -11,11 +11,16 @@ import { fireEvent } from '@testing-library/react-native';
 import { renderWithApp } from '@/test/render';
 import { GenerateScoreSheet } from './GenerateScoreSheet';
 
-function setup() {
+function setup(overrides: { outOfCredits?: boolean } = {}) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
   const view = renderWithApp(
-    <GenerateScoreSheet open onClose={onClose} onSubmit={onSubmit} />,
+    <GenerateScoreSheet
+      open
+      onClose={onClose}
+      onSubmit={onSubmit}
+      {...overrides}
+    />,
   );
   return { view, onSubmit, onClose };
 }
@@ -69,5 +74,41 @@ describe('GenerateScoreSheet', () => {
     fireEvent.changeText(view.getByLabelText(/measures/i), '0');
     fireEvent.press(view.getByRole('button', { name: 'Generate' }));
     expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+/*
+  The credit gate is a *courtesy*: `POST /jobs` answers 402 at a balance of
+  zero, and reaching that as a network-looking error is worse than being told
+  beforehand. It is deliberately not a balance-versus-estimate check — a job may
+  overdraw once by design, and a stricter rule here would refuse work the server
+  would have accepted.
+*/
+describe('GenerateScoreSheet credit gate', () => {
+  it('submits a complete draft when there are credits', () => {
+    const { view, onSubmit } = setup();
+    fireEvent.changeText(view.getByLabelText('Prompt'), 'a calm piano melody');
+    fireEvent.press(view.getByRole('button', { name: 'Generate' }));
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+  });
+
+  it('refuses the same draft, and says why, when the balance is spent', () => {
+    // Same complete draft as above: the only difference is the balance, so a
+    // refusal here cannot be the form being incomplete.
+    const { view, onSubmit } = setup({ outOfCredits: true });
+    fireEvent.changeText(view.getByLabelText('Prompt'), 'a calm piano melody');
+    fireEvent.press(view.getByRole('button', { name: 'Generate' }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(view.getByText(/out of credits/i)).toBeTruthy();
+  });
+
+  it('takes the verdict from its caller, never from auth', () => {
+    /*
+      Reading the balance here would mean importing the auth provider, which
+      imports Firebase — which is how a form for choosing a key signature ends
+      up unable to render in a test. The screen has the auth context; the sheet
+      renders. This test passing at all is the proof.
+    */
+    expect(() => setup()).not.toThrow();
   });
 });

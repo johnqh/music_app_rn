@@ -1,18 +1,22 @@
 /**
  * Importing a file.
  *
- * Two rules matter and neither is visible to types. **Cancelling is not a
+ * Three rules matter and none is visible to types. **Cancelling is not a
  * failure** — a picker dismissed without a choice must produce no document and
- * no error dialog, or changing your mind reads as something going wrong. And
- * **warnings are shown rather than swallowed**: a MusicXML file can carry
+ * no error dialog, or changing your mind reads as something going wrong.
+ * **Warnings are shown rather than swallowed**: a MusicXML file can carry
  * things this model does not hold, and a silent import that quietly drops a
- * third of the markings is worse than one that says what it left behind.
+ * third of the markings is worse than one that says what it left behind. And
+ * **MIDI asks before it imports** — bar lines, clefs and key are all guesses
+ * there, so the file is analysed and the wizard opened rather than a set of
+ * assumptions applied silently.
  */
 import { jest } from '@jest/globals';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import { DocumentList } from '@/documents/document-list';
 import { DocumentsProvider } from '@/documents/DocumentsContext';
 import { renderWithApp } from '@/test/render';
+import { installTestAppServices } from '@/config/initialize';
 
 /*
   Prefixed `mock`, which jest requires: a factory may not close over an
@@ -33,6 +37,17 @@ jest.mock('@/documents/file-picker', () => ({
 jest.mock('@/documents/import', () => ({
   IMPORT_EXTENSIONS: { midi: ['mid'], musicxml: ['xml'], tracker: ['xm'] },
   importDocument: () => mockImportDocument(),
+}));
+/*
+  The bytes a MIDI import reads before it can be analysed. Mocked because the
+  real one goes through `react-native-fs`, which has no filesystem here — and
+  the point of the MIDI test below is the *asking*, not the reading.
+*/
+jest.mock('@/documents/rn-storage', () => ({
+  createImportSource: () => ({
+    readText: async () => '',
+    readBytes: async () => new ArrayBuffer(0),
+  }),
 }));
 /*
   No mock for `@/config/initialize`: `renderWithApp` installs stand-in
@@ -79,11 +94,13 @@ describe('ImportButtons', () => {
   });
 
   it('shows the decoder warnings rather than swallowing them', async () => {
-    mockPickFile.mockResolvedValue('/tmp/a.mid');
+    // Through MusicXML, which goes straight in: MIDI stops at the wizard now,
+    // and the warning plumbing is the same for every format.
+    mockPickFile.mockResolvedValue('/tmp/a.xml');
     mockImportDocument.mockResolvedValue({ warnings: ['a track was empty'] });
     const { view } = setup();
     await act(async () => {
-      fireEvent.press(view.getByText('Import MIDI'));
+      fireEvent.press(view.getByText('Import MusicXML'));
     });
     await waitFor(() =>
       expect(view.getByText('a track was empty')).toBeTruthy(),
@@ -92,22 +109,70 @@ describe('ImportButtons', () => {
 
   it('says nothing at all when there was nothing to report', async () => {
     // A dialog that always appears is one people dismiss without reading.
-    mockPickFile.mockResolvedValue('/tmp/a.mid');
+    mockPickFile.mockResolvedValue('/tmp/a.xml');
     mockImportDocument.mockResolvedValue({ warnings: [] });
     const { view } = setup();
     await act(async () => {
-      fireEvent.press(view.getByText('Import MIDI'));
+      fireEvent.press(view.getByText('Import MusicXML'));
     });
     expect(view.queryByText('Imported, with notes')).toBeNull();
   });
 
   it('reports a failure as a failure', async () => {
+    mockPickFile.mockResolvedValue('/tmp/a.xml');
+    mockImportDocument.mockRejectedValue(new Error('not a MusicXML file'));
+    const { view } = setup();
+    await act(async () => {
+      fireEvent.press(view.getByText('Import MusicXML'));
+    });
+    await waitFor(() =>
+      expect(view.getByText('not a MusicXML file')).toBeTruthy(),
+    );
+  });
+
+  /*
+    MIDI is the one format that cannot be imported without deciding things — a
+    performance has no bar lines, no clefs and no key. Importing it blind
+    applied a set of guesses nobody was shown and nobody could correct, which
+    is what this stops.
+  */
+  it('asks before importing a MIDI file rather than guessing silently', async () => {
     mockPickFile.mockResolvedValue('/tmp/a.mid');
-    mockImportDocument.mockRejectedValue(new Error('not a MIDI file'));
+    // One track, so the wizard has something to list. The summary is the whole
+    // input to the wizard, which is why a stub of it is enough.
+    installTestAppServices({
+      io: {
+        analyzeMidi: () => ({
+          ppq: 480,
+          durationSeconds: 12,
+          tracks: [
+            {
+              index: 0,
+              name: 'Piano',
+              channel: 0,
+              program: 0,
+              instrumentName: 'Acoustic Grand Piano',
+              noteCount: 42,
+              durationSeconds: 12,
+              isPercussion: false,
+              averageMidi: 60,
+            },
+          ],
+          tempoEvents: [],
+          timeSignatures: [],
+          detectedGrid: { grid: 'sixteenth', confident: true },
+        }),
+      } as never,
+    });
     const { view } = setup();
     await act(async () => {
       fireEvent.press(view.getByText('Import MIDI'));
     });
-    await waitFor(() => expect(view.getByText('not a MIDI file')).toBeTruthy());
+    // Analysed and offered, not imported: the wizard is open and the importer
+    // has not been called.
+    expect(mockImportDocument).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(view.getByText(/choose which tracks/i)).toBeTruthy(),
+    );
   });
 });
