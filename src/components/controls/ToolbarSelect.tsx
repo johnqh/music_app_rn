@@ -21,7 +21,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { FormModal, Text } from '@sudobility/components-rn';
+import { FormModal, MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
 import { useTranslation } from 'react-i18next';
 import { NotationIcon } from '@/components/icons/NotationIcon';
 import type { NotationIconName } from '@sudobility/music_types';
@@ -100,16 +100,19 @@ export function ToolbarSelect({
                 onChange(option.value);
               }}
               className="border-border flex-row items-center gap-3 border-b px-1 py-3"
-              style={option.disabled ? { opacity: 0.4 } : undefined}
+              style={[
+                { minHeight: MIN_TOUCH_TARGET },
+                option.disabled ? { opacity: 0.4 } : null,
+              ]}
             >
               {option.icon ? (
                 <NotationIcon name={option.icon} color={ink.foreground} />
               ) : null}
-              <Text className="text-foreground flex-1 text-sm">
+              <Text className="text-foreground flex-1 text-base">
                 {option.label}
               </Text>
               {value !== undefined && option.value === value ? (
-                <Text className="text-primary text-sm">✓</Text>
+                <Text className="text-primary text-base">✓</Text>
               ) : null}
             </Pressable>
           ))}

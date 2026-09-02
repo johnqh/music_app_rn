@@ -10,7 +10,13 @@ import { FlatList, Pressable, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { Button, SearchInput, Spinner, Text } from '@sudobility/components-rn';
+import {
+  Button,
+  MIN_TOUCH_TARGET,
+  SearchInput,
+  Spinner,
+  Text,
+} from '@sudobility/components-rn';
 import { filterCommunity } from '@sudobility/music_types';
 import { getMusicClient } from '@/config/server';
 import type { RootStackParamList } from '@/app/Navigation';
@@ -81,7 +87,7 @@ export function CommunityScreen() {
       keyExtractor={(item: CommunityItem) => item.publicId}
       ListHeaderComponent={
         <View className="gap-2 pb-2">
-          <Text className="text-muted-foreground text-sm">
+          <Text className="text-muted-foreground text-base">
             {t('community.intro')}
           </Text>
           <SearchInput
@@ -124,6 +130,7 @@ export function CommunityScreen() {
             navigation.navigate('Published', { publicId: item.publicId })
           }
           className="border-border bg-card rounded-lg border p-3"
+          style={{ minHeight: MIN_TOUCH_TARGET }}
         >
           <Text className="text-foreground font-medium">
             {item.publicName || item.name}
@@ -131,7 +138,7 @@ export function CommunityScreen() {
           {item.publisherName ? (
             // "Shared by X", not a bare name: on its own a name under a title
             // reads as a composer, which is a different person.
-            <Text className="text-muted-foreground text-xs">
+            <Text className="text-muted-foreground text-sm">
               {t('community.sharedBy', { name: item.publisherName })}
             </Text>
           ) : null}

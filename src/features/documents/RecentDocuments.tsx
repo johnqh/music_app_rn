@@ -8,6 +8,7 @@
  */
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { MIN_TOUCH_TARGET } from '@sudobility/components-rn';
 import { openDocument } from '@/documents/document-storage';
 import type { DocumentStorage } from '@/documents/document-storage';
 import { forgetRecent, loadRecent } from '@/documents/recent-documents';
@@ -50,7 +51,10 @@ export function RecentDocuments({
           accessibilityRole="button"
           accessibilityLabel={entry.title}
           onPress={() => void open(entry)}
-          style={styles.row}
+          style={[
+            styles.row,
+            { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+          ]}
         >
           <Text style={styles.title}>{entry.title}</Text>
         </Pressable>

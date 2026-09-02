@@ -16,6 +16,20 @@
  *   rather than adding to it, and the entry would vanish from autolinking
  *   entirely — which is exactly what happened.
  *
+ * `@react-native-community/slider` and
+ * `@react-native-segmented-control/segmented-control` need **no entry**, and
+ * that is worth stating because adding one looks obviously right and is not.
+ * Neither has a macOS implementation — both podspecs are `:ios, :visionos` —
+ * so autolinking already leaves them out of the macOS Pods, exactly as it does
+ * `react-native-screens`; each has a `.macos` variant in `src/` that a Mac
+ * build resolves instead. Excluding the slider *here* actively broke Android:
+ * this map **replaces** a package's own rather than merging into it, so the
+ * entry took `sourceDir` with it and the `cmakeListsPath` the package declares
+ * arrived at CMake as a bare relative path — `add_subdirectory given source
+ * "src/main/jni/" which is not an existing directory`, and then
+ * `react_codegen_RNCSlider ... is not built by this project`. A package that
+ * declares its own platforms is one to leave alone.
+ *
  * `react-native-screens` needs no entry: it publishes no macOS implementation,
  * so autolinking already leaves it out of the macOS Pods. What that *does* mean
  * is that the navigator has to be JS-backed on the Mac — see `Navigation.tsx`.

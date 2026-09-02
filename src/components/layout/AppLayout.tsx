@@ -12,8 +12,10 @@
  * landscape has no room for a 280pt panel beside a system of music.
  */
 import { View } from 'react-native';
+import { soundingPitchForDrawn } from '@sudobility/music_lib';
+import type { Pitch } from '@sudobility/music_types';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import {
   getMusicPosition,
@@ -23,7 +25,10 @@ import {
 import {
   deleteSelected,
   selectAll,
+  selectMeasureRange,
+  selectNotes,
   useClipboardPrompts,
+  writeNoteAtPoint,
 } from '@sudobility/music_editing';
 import { ClipboardPromptSheets } from '@/features/score-editor/ClipboardPromptSheets';
 import type { LayoutMode } from '@sudobility/music_drawing';
@@ -36,12 +41,13 @@ import { InspectorPanel } from '@/features/inspector/InspectorPanel';
 import { ScoreActionsSheet } from '@/features/score-editor/ScoreActionsSheet';
 import type { ScoreAction } from '@/features/score-editor/ScoreActionsSheet';
 import { DocumentTabs } from '@/features/documents/DocumentTabs';
+import { useNoteColors } from '@/features/score/useNoteColors';
 import { EditorToolbar } from '@/features/score-editor/EditorToolbar';
 import { LyricEntryBar } from '@/features/score-editor/LyricEntryBar';
 import { TitleBar } from './TitleBar';
 import { StatusBar } from './StatusBar';
 import { useContainerSize } from '@/features/layout/useContainerSize';
-import type { MeasureHit } from '@/features/score/hit-test';
+import type { MeasureHit } from '@sudobility/music_drawing';
 import type { ReactNode } from 'react';
 import type { MusicDocument } from '@/documents/document';
 
@@ -58,7 +64,7 @@ export type AppLayoutProps = {
   document: MusicDocument;
   onSave: () => void;
   onExport: () => void;
-  onMeasureTap: (hit: MeasureHit) => void;
+  onMeasureTap: (hit: MeasureHit, tick: number) => void;
   saving?: boolean;
   /**
    * The export sheet, mounted here rather than built here.
@@ -137,6 +143,13 @@ export function AppLayout({
   const activeTrackId = useStore(document.store, s => s.activeTrackId ?? null);
   const zoom = useStore(document.store, s => s.zoom);
   const pitchDisplay = useStore(document.store, s => s.pitchDisplay);
+  /*
+    Note input is a mode: with it on a tap on a stave writes a note there, and
+    with it off the tap aims the caret. Clicking to place a note and clicking to
+    aim are both needed, and the caret is what selection, insertion and "play
+    from here" are aimed with, so it stays the default.
+  */
+  const noteInput = useStore(document.store, s => s.noteInput);
   const transport = useTransport(score ?? null);
 
   /**
@@ -168,6 +181,14 @@ export function AppLayout({
     a touch into a place in the music.
   */
   const [actionsOpen, setActionsOpen] = useState(false);
+  const { noteColors, selectedMeasureIds } = useNoteColors(document);
+  /*
+    The bar a measure-range selection extends from.
+
+    A ref, not state: it is read inside the tap handler and must never cause a
+    render — the same reason the web app keeps it in one.
+  */
+  const measureAnchor = useRef<number | null>(null);
   const hasSelection = useStore(
     document.store,
     s => s.selection.eventIds.length > 0 || s.selection.measureIds.length > 0,
@@ -232,14 +253,75 @@ export function AppLayout({
             <ScrollingScore
               score={score}
               activeTrackId={activeTrackId}
+              noteColors={noteColors}
+              selectedMeasureIds={selectedMeasureIds}
+              /*
+                Tapping a note selects it — the whole chord — and aims the caret
+                at it. `selectNotes` is music_editing's, so this and the web app
+                agree about what tapping a note means rather than each deciding.
+              */
+              onNoteTap={ids => selectNotes(document.store, ids)}
+              /*
+                A tap on a track's name makes it active — not a position in
+                time, so the caret stays where it is. `selectTrack` alongside,
+                because the property sheet follows the selection.
+              */
+              onTrackTap={trackId => {
+                document.store.getState().setActiveTrack(trackId);
+                document.store.getState().selectTrack(trackId);
+              }}
+              /*
+                A tap on the measure-number band selects that bar — the gesture
+                Replace Measures and regeneration are aimed with, and the one
+                thing that still selects measures now that a tap on the stave
+                moves the caret. `selectMeasureRange` is the shared rule; the
+                anchor lives in a ref because extending must not re-render.
+              */
+              /*
+                Note input on: a tap writes a note rather than aiming the caret.
+                The pitch arrives as drawn, so the display lenses come off here
+                — `soundingPitchForDrawn` — before it is stored; `pitchDisplay`
+                is the reader's own written/concert setting.
+              */
+              {...(noteInput
+                ? {
+                    onWriteNote: (at: {
+                      tick: number;
+                      trackId: string;
+                      drawnPitch: Pitch;
+                    }) => {
+                      const current = document.store.getState().score;
+                      if (!current) return;
+                      writeNoteAtPoint(document.store, {
+                        tick: at.tick,
+                        trackId: at.trackId,
+                        pitch: soundingPitchForDrawn(
+                          current,
+                          at.trackId,
+                          at.tick,
+                          at.drawnPitch,
+                          pitchDisplay,
+                        ),
+                      });
+                    },
+                  }
+                : {})}
+              onMeasureSelect={index => {
+                measureAnchor.current = selectMeasureRange(document.store, {
+                  index,
+                  anchor: measureAnchor.current,
+                  extend: false,
+                  allTracks: false,
+                });
+              }}
               zoom={zoom}
               layoutMode={layoutMode}
               pitchDisplay={pitchDisplay}
               onMeasureTap={onMeasureTap}
-              onMeasureLongPress={hit => {
+              onMeasureLongPress={(hit, tick) => {
                 // The press aims the caret first, so the menu acts where the
                 // reader pressed rather than wherever the caret happened to be.
-                onMeasureTap(hit);
+                onMeasureTap(hit, tick);
                 setActionsOpen(true);
               }}
             />
@@ -248,7 +330,17 @@ export function AppLayout({
             <View
               className={
                 sideBySide
-                  ? 'border-border w-72 border-l'
+                  ? /*
+                    `w-80` (320px), not `w-72` (288). The tab strip is a real
+                    `UISegmentedControl` on iPad, which divides its width
+                    equally and elides a label that does not fit — at 288 the
+                    four tabs left ~66px each and "Measure" rendered as
+                    "Measu…", which reads as a bug rather than as a long word.
+                    320 is also the ordinary width of a property sheet, and the
+                    score area beside it has the room. Side-by-side only: on a
+                    phone this panel is a full-width sheet along the bottom.
+                  */
+                    'border-border w-80 border-l'
                   : 'border-border border-t'
               }
             >

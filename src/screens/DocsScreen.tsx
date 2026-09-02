@@ -17,7 +17,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Button, Text } from '@sudobility/components-rn';
+import { Button, MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
 import type { RootStackParamList } from '@/app/Navigation';
 import { DOCS_TOPICS } from '@sudobility/music_editing';
 
@@ -41,8 +41,9 @@ export function DocsScreen() {
             accessibilityState={{ selected: d.id === topicId }}
             onPress={() => setTopicId(d.id)}
             className={d.id === topicId ? 'bg-muted px-3 py-2' : 'px-3 py-2'}
+            style={{ minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' }}
           >
-            <Text className="text-foreground text-sm">{t(d.title)}</Text>
+            <Text className="text-foreground text-base">{t(d.title)}</Text>
           </Pressable>
         ))}
       </ScrollView>
@@ -53,7 +54,7 @@ export function DocsScreen() {
             <Text className="text-foreground text-lg font-semibold">
               {t(topic.title)}
             </Text>
-            <Text className="text-muted-foreground text-sm">
+            <Text className="text-muted-foreground text-base">
               {t(topic.summary)}
             </Text>
             {topic.sections.map(section => (
@@ -62,7 +63,7 @@ export function DocsScreen() {
                   {t(section.heading)}
                 </Text>
                 {section.body.map(key => (
-                  <Text key={key} className="text-foreground text-sm">
+                  <Text key={key} className="text-foreground text-base">
                     {t(key)}
                   </Text>
                 ))}

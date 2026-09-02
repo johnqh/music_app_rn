@@ -21,10 +21,10 @@ export function Field({
 }) {
   return (
     <View className="gap-1">
-      <Text className="text-muted-foreground text-xs">{label}</Text>
+      <Text className="text-muted-foreground text-sm">{label}</Text>
       {children}
       {hint ? (
-        <Text className="text-muted-foreground text-xs">{hint}</Text>
+        <Text className="text-muted-foreground text-sm">{hint}</Text>
       ) : null}
     </View>
   );
@@ -34,7 +34,7 @@ export function Field({
 export function EmptyTab({ message }: { message: string }) {
   return (
     <View className="items-center py-6">
-      <Text className="text-muted-foreground text-sm">{message}</Text>
+      <Text className="text-muted-foreground text-base">{message}</Text>
     </View>
   );
 }

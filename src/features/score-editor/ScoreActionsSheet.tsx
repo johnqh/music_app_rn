@@ -91,7 +91,7 @@ export function ScoreActionsSheet({
             {item.label}
           </Button>
         ))}
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-muted-foreground text-sm">
           {t('editor.scoreActionsHint')}
         </Text>
       </View>

@@ -46,7 +46,7 @@ export function SyncToServerButton() {
       >
         {t('dashboard.syncToServer')}
       </Button>
-      {error ? <Text className="text-destructive text-xs">{error}</Text> : null}
+      {error ? <Text className="text-destructive text-sm">{error}</Text> : null}
     </View>
   );
 }

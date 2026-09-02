@@ -22,6 +22,8 @@ import {
   GENERATE_SCORE_KEY_FIFTHS_OPTIONS,
   GENERATE_SCORE_MOOD_OPTIONS,
   GENERATE_SCORE_STYLE_OPTIONS,
+  GENERATE_SCORE_STYLE_PRESETS,
+  styleInstrumentsWithGuest,
   GENERATE_SCORE_TIME_SIGNATURE_OPTIONS,
   FAMILY_GROUPS,
   KIT_OPTIONS,
@@ -103,6 +105,41 @@ export function GenerateScoreSheet({
   const [instruments, setInstruments] = useState<readonly string[]>([
     INSTRUMENT_OPTIONS[0]?.value ?? '',
   ]);
+
+  /*
+    Choosing a style fills the form with the ordinary shape of that genre.
+
+    Reggae is an electric guitar, an organ, a bass and a kit at 78bpm; picking
+    the word and then being handed a lone piano at 120 is the generator asking
+    the reader to already know the answer. The shape lives in music_lib's
+    `GENERATE_SCORE_STYLE_PRESETS`, which the web dialog fills from too — so a
+    genre means the same ensemble here as it does there.
+
+    It **overwrites**, deliberately: a preset that skipped fields the reader had
+    touched would leave a half-country, half-whatever-was-there ensemble that
+    matches no genre and that nobody chose. Everything stays editable.
+
+    Clearing back to "No style" leaves the form alone — that is the reader
+    saying they want no genre, not that they want the defaults back.
+  */
+  const applyStyle = (next: string) => {
+    setStyle(next);
+    const preset =
+      next === NONE ? undefined : GENERATE_SCORE_STYLE_PRESETS[next];
+    if (!preset) return;
+    /*
+      Through `styleInstrumentsWithGuest`, shared with the web dialog: the
+      roster plus one common instrument the genre would not have asked for, so
+      two goes at the same style are not the same five instruments twice. It is
+      appended last and this list is editable, so it is visible before anything
+      is generated and removable by somebody who wanted the plain lineup.
+    */
+    setInstruments([...styleInstrumentsWithGuest(next)]);
+    setTempoText(String(preset.tempo));
+    setMeasuresText(String(preset.measures));
+    setTimeSignature(preset.timeSignature);
+    if (preset.mode) setMode(preset.mode);
+  };
 
   const durationMeasures = Number(measuresText);
   const draft = {
@@ -191,12 +228,15 @@ export function GenerateScoreSheet({
             accessibilityLabel={t('generateScore.style')}
             options={[
               { value: NONE, label: t('generateScore.noStyle') },
+              // Translated, not the raw token: the list showed `heavyMetal`
+              // and `bossaNova` to every reader, and a Chinese one has names
+              // for these genres too.
               ...GENERATE_SCORE_STYLE_OPTIONS.map(value => ({
                 value,
-                label: value,
+                label: t(`generateScore.styleName.${value}`),
               })),
             ]}
-            onValueChange={setStyle}
+            onValueChange={applyStyle}
           />
         </Field>
 
@@ -287,7 +327,7 @@ export function GenerateScoreSheet({
           </View>
         </Field>
 
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-muted-foreground text-sm">
           {t('generate.estimate', { count: credits })}
         </Text>
         {/*
@@ -298,7 +338,7 @@ export function GenerateScoreSheet({
           somebody whose credits ran out in another session reaches it.
         */}
         {outOfCredits ? (
-          <Text className="text-destructive text-xs">
+          <Text className="text-destructive text-sm">
             {t('credits.outOfCreditsTitle')}
           </Text>
         ) : null}
@@ -310,7 +350,7 @@ export function GenerateScoreSheet({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View className="gap-1 pb-3">
-      <Text className="text-muted-foreground text-xs">{label}</Text>
+      <Text className="text-muted-foreground text-sm">{label}</Text>
       {children}
     </View>
   );

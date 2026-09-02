@@ -15,7 +15,12 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/Navigation';
 import { useTranslation } from 'react-i18next';
-import { Button, Spinner, Text } from '@sudobility/components-rn';
+import {
+  Button,
+  MIN_TOUCH_TARGET,
+  Spinner,
+  Text,
+} from '@sudobility/components-rn';
 import { useProjects } from '@sudobility/music_client';
 import type { ProjectSummary } from '@sudobility/music_types';
 import { useAuth } from '@/auth/AuthContext';
@@ -150,9 +155,10 @@ function ProjectList({
             accessibilityLabel={item.name}
             onPress={() => onOpen(item.id)}
             className="border-border bg-card rounded-lg border p-3"
+            style={{ minHeight: MIN_TOUCH_TARGET }}
           >
             <Text className="text-foreground font-medium">{item.name}</Text>
-            <Text className="text-muted-foreground text-xs">
+            <Text className="text-muted-foreground text-sm">
               {new Date(item.updatedAt).toLocaleString()}
             </Text>
           </Pressable>

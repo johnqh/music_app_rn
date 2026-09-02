@@ -68,7 +68,7 @@ function CreditsBody() {
         work the server would have accepted.
       */}
       <View className="gap-1">
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-muted-foreground text-sm">
           {t('credits.balance')}
         </Text>
         <Text className="text-foreground text-2xl tabular-nums">
@@ -76,7 +76,7 @@ function CreditsBody() {
         </Text>
       </View>
       <Text className="text-foreground">{t('credits.rate')}</Text>
-      <Text className="text-muted-foreground text-sm">
+      <Text className="text-muted-foreground text-base">
         {t('credits.purchaseElsewhere')}
       </Text>
     </ScreenScaffold>

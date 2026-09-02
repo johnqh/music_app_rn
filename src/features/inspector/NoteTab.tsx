@@ -22,6 +22,7 @@
  * change was about to do.
  */
 import { useCallback } from 'react';
+import { OTTAVAS } from '@sudobility/music_types';
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
@@ -34,8 +35,8 @@ import {
 } from '@sudobility/components-rn';
 import {
   changeAccidental,
-  changeDuration,
   changeArticulation,
+  changeDuration,
   changeVelocity,
   clearGraceNotes,
   displayedPitchForNote,
@@ -44,8 +45,10 @@ import {
   setDynamic,
   setFingering,
   setNotePitch,
+  setVoice,
   toGraceNote,
   toggleGlissando,
+  toggleOttava,
   toggleTie,
 } from '@sudobility/music_editing';
 import {
@@ -143,7 +146,7 @@ export function NoteTab({
 
   return (
     <View className="gap-3">
-      <Text className="text-foreground text-sm font-semibold">
+      <Text className="text-foreground text-base font-semibold">
         {notes.length > 1
           ? t('inspector.notesSelected', { count: notes.length })
           : t('inspector.note')}
@@ -319,14 +322,14 @@ export function NoteTab({
       <View className="flex-row gap-2">
         <View className="flex-1">
           <Field label={t('inspector.bar')}>
-            <Text className="text-foreground text-sm tabular-nums">
+            <Text className="text-foreground text-base tabular-nums">
               {at ? at.bar : '—'}
             </Text>
           </Field>
         </View>
         <View className="flex-1">
           <Field label={t('inspector.beat')}>
-            <Text className="text-foreground text-sm tabular-nums">
+            <Text className="text-foreground text-base tabular-nums">
               {at ? Math.floor(at.beat) : '—'}
             </Text>
           </Field>
@@ -338,19 +341,35 @@ export function NoteTab({
             tracks by dragging it, not by retyping the track's name here. */}
         <View className="flex-1">
           <Field label={t('inspector.track')}>
-            <Text className="text-foreground text-sm">
+            <Text className="text-foreground text-base">
               {trackName ?? mixed}
             </Text>
           </Field>
         </View>
         <View className="flex-1">
           <Field label={t('inspector.voice')}>
-            {/* Counted from 1, to match the toolbar's Voice 1 / Voice 2. The
-                same note used to read "Voice 1" on the bar and 0 here — and
-                this panel used to print a literal 1 whatever the voice was. */}
-            <Text className="text-foreground text-sm tabular-nums">
-              {voice ?? mixed}
-            </Text>
+            {/*
+              Counted from 1, to match the toolbar's Voice 1 / Voice 2. The
+              same note used to read "Voice 1" on the bar and 0 here.
+
+              Editable, as the web's is: moving a note between voices is how a
+              second line on one stave is built, and this panel could only
+              report which voice a note was in.
+            */}
+            <View accessibilityLabel={t('inspector.voice')}>
+              <NumberInput
+                value={voice ?? 1}
+                min={1}
+                disabled={playing}
+                onChange={(value: number) =>
+                  setVoice(
+                    store,
+                    notes.map(n => n.id),
+                    Math.round(value) - 1,
+                  )
+                }
+              />
+            </View>
           </Field>
         </View>
       </View>
@@ -361,7 +380,7 @@ export function NoteTab({
         phrase and joins nothing.
       */}
       <View className="flex-row items-center justify-between">
-        <Text className="text-foreground text-sm">
+        <Text className="text-foreground text-base">
           {t('inspector.tieStart')}
         </Text>
         <Switch
@@ -372,7 +391,7 @@ export function NoteTab({
         />
       </View>
       <View className="flex-row items-center justify-between">
-        <Text className="text-foreground text-sm">
+        <Text className="text-foreground text-base">
           {t('inspector.tieStop')}
         </Text>
         <Switch
@@ -389,14 +408,36 @@ export function NoteTab({
         hairpins do.
       */}
       <Field label={t('inspector.spans')}>
-        <Button
-          variant="secondary"
-          disabled={playing || notes.length < 2}
-          onPress={() => toggleGlissando(store)}
-          accessibilityLabel={t('inspector.glissando')}
-        >
-          {t('inspector.glissando')}
-        </Button>
+        <View className="flex-row flex-wrap gap-2">
+          <Button
+            variant="secondary"
+            disabled={playing || notes.length < 2}
+            onPress={() => toggleGlissando(store)}
+            accessibilityLabel={t('inspector.glissando')}
+          >
+            {t('inspector.glissando')}
+          </Button>
+          {/*
+            The octave brackets, which this panel had no way to apply at all.
+
+            A display lens rather than a transposition: the model stores
+            *sounding* pitch, and `8va` means "these were written an octave
+            lower to keep them on the stave" — `ottavaScore` shifts the
+            noteheads the opposite way from the bracket. Two notes minimum, like
+            every other span here.
+          */}
+          {OTTAVAS.map(kind => (
+            <Button
+              key={kind}
+              variant="secondary"
+              disabled={playing || notes.length < 2}
+              onPress={() => toggleOttava(store, kind)}
+              accessibilityLabel={kind}
+            >
+              {kind}
+            </Button>
+          ))}
+        </View>
       </Field>
 
       {/*

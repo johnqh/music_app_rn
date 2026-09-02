@@ -56,8 +56,7 @@ import {
 } from '@/documents/DocumentsContext';
 import { openProjectDocument } from '@/documents/project-sync';
 import type { RootStackParamList } from '@/app/Navigation';
-import { tickAt } from '@/features/score/hit-test';
-import type { MeasureHit } from '@/features/score/hit-test';
+import type { MeasureHit } from '@sudobility/music_drawing';
 import type { MusicDocument } from '@/documents/document';
 
 const storage = createFileStorage();
@@ -169,6 +168,20 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     flush: () => saveDocument(document, storage, recordRecent),
     onApplied: async () => {
       const client = getMusicClient();
+      /*
+        Stop first, then adopt — the invariant the web app keeps too.
+
+        A score arriving from outside does not go through `dispatchCommand`,
+        so the edit lock never sees it and the player would treat the swap as
+        a mix change and go on playing the old score out of its queue.
+        Stopping is also what puts the playhead back to the beginning:
+        loading a score deliberately *keeps* the playhead where it is, since
+        an edit reloads the player on every note written and resetting there
+        sent the caret back to bar 1 each time somebody wrote a note. `stop()`
+        is what distinguishes "the same piece, edited" from "a different
+        piece".
+      */
+      getAppServices().player.stop();
       if (client) await reloadProjectDocument(document, client, getToken);
     },
   });
@@ -281,12 +294,8 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
    * right, which reads as "the caret jumped but the track did not".
    */
   const onMeasureTap = useCallback(
-    (hit: MeasureHit) => {
+    (hit: MeasureHit, tick: number) => {
       if (!score) return;
-      const track = score.tracks.find(x => x.id === hit.trackId);
-      const measure = track?.measures[hit.measureIndex];
-      if (!measure) return;
-      const tick = tickAt(hit, measure.startTick, measure.durationTicks);
       placeCaret(document.store, { tick, trackId: hit.trackId });
     },
     [document, score],

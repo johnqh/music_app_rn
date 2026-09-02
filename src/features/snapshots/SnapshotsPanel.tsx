@@ -139,7 +139,7 @@ export function SnapshotsPanel({
       */}
       {published.length > 0 ? (
         <View className="gap-1 pt-2">
-          <Text className="text-muted-foreground text-xs">
+          <Text className="text-muted-foreground text-sm">
             {t('snapshot.managePublishedTitle')}
           </Text>
           {published.map(snapshot => (
@@ -198,7 +198,7 @@ export function SnapshotsPanel({
       ) : null}
 
       {snapshots === null ? <Spinner /> : null}
-      {error ? <Text className="text-destructive text-xs">{error}</Text> : null}
+      {error ? <Text className="text-destructive text-sm">{error}</Text> : null}
 
       <CreateSnapshotSheet
         open={createOpen}

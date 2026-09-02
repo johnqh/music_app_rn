@@ -32,7 +32,7 @@ export function AboutScreen() {
         <Text className="text-foreground text-lg font-semibold">
           {t('about.tagline')}
         </Text>
-        <Text className="text-muted-foreground text-sm">
+        <Text className="text-muted-foreground text-base">
           {t('about.body', { appName: t('app.name') })}
         </Text>
       </View>
@@ -43,10 +43,10 @@ export function AboutScreen() {
             key={feature.key}
             className="border-border gap-1 rounded border p-3"
           >
-            <Text className="text-foreground text-sm font-medium">
+            <Text className="text-foreground text-base font-medium">
               {t(feature.title)}
             </Text>
-            <Text className="text-muted-foreground text-xs">
+            <Text className="text-muted-foreground text-sm">
               {t(feature.body)}
             </Text>
           </View>

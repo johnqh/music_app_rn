@@ -51,7 +51,7 @@ export function ConfirmSheet({
       closeAriaLabel={t('common.closeDialog')}
     >
       <View className="p-1">
-        <Text className="text-foreground text-sm">{message}</Text>
+        <Text className="text-foreground text-base">{message}</Text>
       </View>
     </FormModal>
   );

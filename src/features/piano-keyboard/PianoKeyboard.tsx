@@ -38,6 +38,16 @@ export type PianoKeyboardProps = {
   naming?: KeyNaming;
   /** Pitches currently sounding, lit while they play. */
   sounding?: ReadonlySet<number>;
+  /**
+   * Pitches of the one selected chord, marked so they can be toggled.
+   *
+   * The keyboard's second job: with exactly one chord selected, pressing a key
+   * adds or removes that pitch from it instead of writing a new note —
+   * `playKeyGroup` decides which of the two a press means. Showing which
+   * pitches are already in the chord is what makes that legible, and the web
+   * keyboard has always marked them.
+   */
+  selected?: ReadonlySet<number>;
   onKeyDown?: (midi: number) => void;
   /** Held milliseconds, so the caller can turn a tap into a note value. */
   onKeyUp?: (midi: number, heldMs: number) => void;
@@ -51,6 +61,7 @@ export function PianoKeyboard({
   range = FULL_RANGE,
   naming = 'pitch',
   sounding,
+  selected,
   onKeyDown,
   onKeyUp,
 }: PianoKeyboardProps) {
@@ -88,6 +99,7 @@ export function PianoKeyboard({
           pianoKey={key}
           height={height}
           lit={sounding?.has(key.midi) ?? false}
+          selected={selected?.has(key.midi) ?? false}
           onDown={down}
           onUp={up}
         />
@@ -100,12 +112,14 @@ const Key = memo(function Key({
   pianoKey,
   height,
   lit,
+  selected,
   onDown,
   onUp,
 }: {
   pianoKey: PianoKey;
   height: number;
   lit: boolean;
+  selected: boolean;
   onDown: (midi: number) => void;
   onUp: (midi: number) => void;
 }) {
@@ -124,6 +138,11 @@ const Key = memo(function Key({
           width: pianoKey.width,
           height: black ? height * BLACK_KEY_HEIGHT_RATIO : height,
         },
+        /*
+          Sounding wins over selected: a note you are hearing right now is the
+          more urgent fact, and the two rarely coincide.
+        */
+        selected && (black ? styles.blackSelected : styles.whiteSelected),
         lit && (black ? styles.blackLit : styles.whiteLit),
       ]}
     >
@@ -155,6 +174,10 @@ const styles = StyleSheet.create({
   black: { backgroundColor: '#27272a' },
   whiteLit: { backgroundColor: '#93c5fd' },
   blackLit: { backgroundColor: '#2563eb' },
+  // Amber, as the web marks a selected key — distinct from the blue of
+  // sounding, because they mean different things and can overlap.
+  whiteSelected: { backgroundColor: '#fcd34d' },
+  blackSelected: { backgroundColor: '#b45309' },
   label: { fontSize: 9, color: '#52525b', paddingBottom: 3 },
   labelOnBlack: { color: '#e4e4e7' },
 });

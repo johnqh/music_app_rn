@@ -10,6 +10,7 @@
  */
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
+import { getAppServices } from '@/config/initialize';
 import { getMusicClient } from '@/config/server';
 import {
   saveProjectDocument,
@@ -48,10 +49,15 @@ export function SnapshotsSheet({
           gateway={client}
           getToken={getToken}
           flush={() => saveProjectDocument(document, client, getToken)}
-          reload={() => reloadProjectDocument(document, client, getToken)}
+          reload={() => {
+            // Opening a snapshot is a different piece arriving; see
+            // `EditorScreen`'s `onApplied` for why the stop is what says so.
+            getAppServices().player.stop();
+            return reloadProjectDocument(document, client, getToken);
+          }}
         />
       ) : (
-        <Text className="text-muted-foreground text-sm">
+        <Text className="text-muted-foreground text-base">
           {t('library.serverUnavailable')}
         </Text>
       )}

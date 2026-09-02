@@ -12,11 +12,19 @@
  * the group closes when the last finger lifts rather than the first.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { chordSelection, pitchToMidi } from '@sudobility/music_types';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
 import { useStore } from 'zustand';
 import { selectActiveTrackId } from '@sudobility/music_editing';
-import { playKeyGroup } from '@sudobility/music_editing';
+import {
+  EMPTY_GROUP,
+  playKeyGroup,
+  playingPitchesForTrack,
+  pressKey,
+  releaseKey,
+  selectSelectedNotes,
+} from '@sudobility/music_editing';
 import { trackKeyboardRange } from '@sudobility/music_types';
 import { FULL_RANGE, snapToWhiteKeys } from '@sudobility/music_drawing';
 import { getAppServices } from '@/config/initialize';
@@ -24,8 +32,8 @@ import type { MusicDocument } from '@/documents/document';
 import { Text } from '@sudobility/components-rn';
 import { PianoKeyboard } from './PianoKeyboard';
 import { useContainerSize } from '@/features/layout/useContainerSize';
-import { EMPTY_GROUP, pressKey, releaseKey } from './key-group';
-import type { KeyGroup } from './key-group';
+
+import type { KeyGroup } from '@sudobility/music_editing';
 
 /** The keyboard's own height; the container states it so it can be measured. */
 const KEYBOARD_HEIGHT = 120;
@@ -56,10 +64,34 @@ export function KeyboardPanel({
 
   useEffect(() => {
     const player = getAppServices().player;
+    /*
+      The active track's sounding notes, not every track's.
+
+      This lit whatever was sounding anywhere, so on a multi-track score the
+      keys flickered with parts the reader cannot see — the keyboard shows one
+      track. Same rule and same reasoning as the notation's playing colour, and
+      `playingPitchesForTrack` is where it lives so the two agree.
+    */
     return player.onSounding(notes => {
-      setSounding(new Set(notes.map(n => n.midi)));
+      setSounding(playingPitchesForTrack(notes, activeTrackId));
     });
-  }, []);
+  }, [activeTrackId]);
+
+  /*
+    The pitches of the one selected chord, so the keys can show what is in it.
+
+    `chordSelection` is the same rule `playKeyGroup` applies when deciding
+    whether a press adds to a chord or writes a new note — asked here so the
+    keyboard shows the state that rule is about, rather than the reader having
+    to press a key to find out.
+  */
+  const selectedNotes = useStore(document.store, selectSelectedNotes);
+  const selectedMidis = useMemo(() => {
+    const chord = chordSelection(selectedNotes);
+    return new Set<number>(
+      (chord?.notes ?? []).map(note => pitchToMidi(note.pitch)),
+    );
+  }, [selectedNotes]);
 
   const program = useStore(document.store, s => {
     const track = s.score?.tracks.find(t => t.id === activeTrackId);
@@ -130,9 +162,9 @@ export function KeyboardPanel({
         accessibilityLabel={t('editor.showKeyboard')}
         accessibilityState={{ expanded: false }}
         onPress={onToggle}
-        className="border-border bg-card items-center border-t py-1"
+        className="border-border bg-card items-center border-t py-3"
       >
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-muted-foreground text-sm">
           {t('editor.showKeyboard')}
         </Text>
       </Pressable>
@@ -146,9 +178,9 @@ export function KeyboardPanel({
         accessibilityLabel={t('editor.hideKeyboard')}
         accessibilityState={{ expanded: true }}
         onPress={onToggle}
-        className="border-border bg-card items-center border-t py-0.5"
+        className="border-border bg-card items-center border-t py-3"
       >
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-muted-foreground text-sm">
           {t('editor.hideKeyboard')}
         </Text>
       </Pressable>
@@ -160,6 +192,7 @@ export function KeyboardPanel({
             range={range}
             naming={isPercussion ? 'percussion' : 'pitch'}
             sounding={sounding}
+            selected={selectedMidis}
             onKeyDown={onKeyDown}
             onKeyUp={onKeyUp}
           />

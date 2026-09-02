@@ -28,7 +28,7 @@
  */
 import { Linking, Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Text } from '@sudobility/components-rn';
+import { MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
 import {
   RESOURCE_GROUPS,
   hostOf,
@@ -45,7 +45,7 @@ export function ResourcesScreen() {
       {/* No scroller of its own: `ScreenScaffold` is already one, and a
           ScrollView inside a ScrollView is a scroll that stops halfway. */}
       <View className="gap-6 pb-8">
-        <Text className="text-muted-foreground text-sm">
+        <Text className="text-muted-foreground text-base">
           {t('resources.intro', { appName: t('app.name') })}
         </Text>
 
@@ -55,7 +55,7 @@ export function ResourcesScreen() {
               {t(`resources.group.${group.key}.title`)}
             </Text>
             {/* The route, once per section — the thing a reader navigates by. */}
-            <Text className="text-muted-foreground text-xs">
+            <Text className="text-muted-foreground text-sm">
               {t(`resources.group.${group.key}.route`)}
             </Text>
             <View className="gap-2">
@@ -82,6 +82,7 @@ function ResourceRow({ link }: { link: Resource }) {
       // half-rendered other people's page.
       onPress={() => void Linking.openURL(link.url)}
       className="border-border flex-row items-center gap-3 rounded border p-3"
+      style={{ minHeight: MIN_TOUCH_TARGET }}
     >
       {/*
         A monogram, not a fetched favicon. One letter rather than an
@@ -89,16 +90,16 @@ function ResourceRow({ link }: { link: Resource }) {
         single initial reads as what it is — a placeholder.
       */}
       <View className="bg-muted h-8 w-8 items-center justify-center rounded">
-        <Text className="text-muted-foreground text-sm font-semibold">
+        <Text className="text-muted-foreground text-base font-semibold">
           {monogramFor(link.name)}
         </Text>
       </View>
       <View className="flex-1">
-        <Text className="text-foreground text-sm">{link.name}</Text>
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-foreground text-base">{link.name}</Text>
+        <Text className="text-muted-foreground text-sm">
           {hostOf(link.url)}
         </Text>
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-muted-foreground text-sm">
           {t(`resources.link.${link.key}`)}
         </Text>
       </View>

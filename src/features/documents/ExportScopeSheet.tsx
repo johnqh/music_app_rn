@@ -52,7 +52,7 @@ export function ExportScopeSheet({
       closeAriaLabel={t('common.closeDialog')}
     >
       <View className="p-1">
-        <Text className="text-foreground text-sm">
+        <Text className="text-foreground text-base">
           {t('exportScope.hiddenCount', { count: hiddenCount })}
         </Text>
       </View>

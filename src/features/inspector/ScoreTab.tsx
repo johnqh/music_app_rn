@@ -15,8 +15,6 @@ import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@sudobility/components-rn';
-import { dispatchTracked } from '@sudobility/music_editing';
-import { changeMetadataCommand } from '@sudobility/music_types';
 import { Field } from './Field';
 import type { MusicDocument } from '@/documents/document';
 
@@ -32,12 +30,18 @@ export function ScoreTab({ document }: { document: MusicDocument }) {
     setComposer(metadata?.composer ?? '');
   }, [metadata?.title, metadata?.composer]);
 
+  /*
+    Through the store's own action, not by dispatching the command.
+
+    `setScoreMetadata` trims each field and **refuses an empty title** — a
+    score with no name exports as one — and dispatching `changeMetadataCommand`
+    straight past it skipped both. The web tab has always gone through the
+    action; this one did not, which is two answers to "what happens when you
+    clear the title and tab away".
+  */
   const commit = useCallback(
     (patch: { title?: string; composer?: string }) => () => {
-      dispatchTracked(
-        store,
-        changeMetadataCommand(patch, t('inspector.setMetadata')),
-      );
+      store.getState().setScoreMetadata(patch, t('inspector.setMetadata'));
     },
     [store, t],
   );

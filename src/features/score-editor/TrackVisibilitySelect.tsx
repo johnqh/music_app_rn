@@ -41,7 +41,15 @@ export function TrackVisibilitySelect({
 
   return (
     <CheckableSelect
-      className="min-w-32"
+      /*
+        A floor *and* a ceiling. The trigger sizes to its label, and the label
+        is a track name — so adding a track called "New track" (or picking one
+        called "Acoustic Grand Piano") grew this control until it filled the
+        bar and pushed every other tool off the right edge. The trigger's own
+        text already carries `numberOfLines={1}` and `flex: 1`, so bounding it
+        is all that was needed: the name ellipsizes instead.
+      */
+      className="min-w-32 max-w-44"
       title={t('editor.tracks')}
       options={tracks.map(track => ({ value: track.id, label: track.name }))}
       value={activeTrackId ?? ''}

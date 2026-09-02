@@ -118,7 +118,7 @@ export function LyricEntryBar({
       accessibilityRole="toolbar"
       accessibilityLabel={t('editor.lyricEntry')}
     >
-      <Text className="text-muted-foreground shrink-0 text-xs">
+      <Text className="text-muted-foreground shrink-0 text-sm">
         {t('editor.lyricNoteOf', {
           current: index + 1,
           total: notes.length,
@@ -138,7 +138,7 @@ export function LyricEntryBar({
           commit(draft, false);
           onClose();
         }}
-        className="h-8 flex-1 px-2 text-sm"
+        className="h-8 flex-1 px-2 text-base"
       />
       <Button
         variant="ghost"

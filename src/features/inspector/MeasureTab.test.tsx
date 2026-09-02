@@ -37,7 +37,7 @@ describe('MeasureTab', () => {
     // They are separate places on purpose: the bar you leave from is not the
     // bar the coda begins at, and a bar can carry both.
     const { view, document } = setup();
-    fireEvent.press(view.getByLabelText(/segno/i));
+    fireEvent(view.getByLabelText(/segno/i), 'valueChange', true);
     expect(measureAt(document, 1).segno).toBe(true);
     expect(measureAt(document, 1).coda).toBeUndefined();
   });
@@ -46,7 +46,7 @@ describe('MeasureTab', () => {
     // Not a span: a `:|` with no matching `|:` repeats from the start of the
     // piece, which is a real marking rather than an error to prevent.
     const { view, document } = setup();
-    fireEvent.press(view.getByLabelText(/repeat ends/i));
+    fireEvent(view.getByLabelText(/repeat ends/i), 'valueChange', true);
     expect(measureAt(document, 1).repeatEnd).toBe(true);
     expect(measureAt(document, 1).repeatStart).toBeUndefined();
   });

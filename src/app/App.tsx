@@ -11,6 +11,7 @@
  * thing you already have on disk.
  */
 import '../../global.css';
+import { newProjectScore } from '@sudobility/music_lib';
 // Side-effect: activates the Swiss design theme before anything renders.
 import '@/config/designTheme';
 
@@ -19,7 +20,6 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
 import * as RNLocalize from 'react-native-localize';
-import { createEmptyScore } from '@sudobility/music_types';
 import { initializeApp } from '@/config/initialize';
 import { initializeI18n } from '@/i18n';
 import { DocumentList } from '@/documents/document-list';
@@ -74,9 +74,13 @@ export default function App() {
       createDocument({
         id: 'scratch',
         title: 'Untitled',
-        // Eight bars, not one: a new score should have somewhere to write
-        // before the first bar has to be added by hand.
-        score: createEmptyScore({ title: 'Untitled', measures: 8 }),
+        /*
+          The same score a "New Project" makes, from the same place: a piano
+          track and eight bars to write in. What a new project starts as is
+          music_lib's decision, so the two apps and the two ways in cannot
+          disagree — and so a blank page always has a track on it.
+        */
+        score: newProjectScore('Untitled'),
         onChanged: d => autosaver.notify(d),
       }),
     );

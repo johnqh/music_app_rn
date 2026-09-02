@@ -153,7 +153,7 @@ function SaveState({ dirty, saving }: { dirty: boolean; saving: boolean }) {
     : 'bg-success/20 text-success';
   return (
     <View className={`rounded-full px-2 py-0.5 ${tone}`}>
-      <Text className="text-xs font-medium">{label}</Text>
+      <Text className="text-sm font-medium">{label}</Text>
     </View>
   );
 }

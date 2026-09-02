@@ -162,11 +162,11 @@ export function ImportFeedback({ state }: { state: ImportState }) {
         closeAriaLabel={t('common.closeDialog')}
       >
         <View className="gap-2">
-          <Text className="text-muted-foreground text-sm">
+          <Text className="text-muted-foreground text-base">
             {t('import.warningsExplain')}
           </Text>
           {(warnings ?? []).map(warning => (
-            <Text key={warning} className="text-foreground text-sm">
+            <Text key={warning} className="text-foreground text-base">
               {warning}
             </Text>
           ))}
@@ -181,7 +181,7 @@ export function ImportFeedback({ state }: { state: ImportState }) {
         saveLabel={t('common.ok')}
         closeAriaLabel={t('common.closeDialog')}
       >
-        <Text className="text-foreground text-sm">{failure}</Text>
+        <Text className="text-foreground text-base">{failure}</Text>
       </FormModal>
     </>
   );

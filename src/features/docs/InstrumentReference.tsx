@@ -17,8 +17,8 @@ export function InstrumentReference() {
           key={option.value}
           className="border-border/50 flex-row justify-between border-b py-1"
         >
-          <Text className="text-foreground flex-1 text-xs">{option.label}</Text>
-          <Text className="text-muted-foreground text-xs">{option.group}</Text>
+          <Text className="text-foreground flex-1 text-sm">{option.label}</Text>
+          <Text className="text-muted-foreground text-sm">{option.group}</Text>
         </View>
       ))}
     </View>

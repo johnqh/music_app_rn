@@ -30,11 +30,11 @@ export function GenerationOverlay({
     <View className="bg-background/90 absolute inset-0 items-center justify-center gap-3 p-6">
       <Spinner />
       <Text className="text-foreground text-base">{t('generate.working')}</Text>
-      <Text className="text-muted-foreground text-center text-xs">
+      <Text className="text-muted-foreground text-center text-sm">
         {t('generate.workingExplain')}
       </Text>
       {error ? (
-        <Text className="text-destructive text-center text-sm">{error}</Text>
+        <Text className="text-destructive text-center text-base">{error}</Text>
       ) : null}
       <Button variant="secondary" onPress={onCancel}>
         {t('common.cancel')}

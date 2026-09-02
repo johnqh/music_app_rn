@@ -1,12 +1,21 @@
 /**
  * The red playhead line, over the score.
  *
- * **It interpolates; it is not driven straight off the position reports.** The
+ * **It reads the shared playhead, and does no smoothing of its own.** The
  * engine samples position through a scheduling loop, so its ~30Hz reports
- * arrive in clumps — driving a caret off them leaves it stalled on most frames
- * and jumping when it does move. This dead-reckons forward from the last report
- * using elapsed real time and the score's `TempoMap`, repainting every frame.
- * That is the same reasoning, and the same fix, as the web app's `PlaybackCaret`.
+ * arrive in clumps and something has to project between them — but that
+ * projection lives in `MusicPosition` in music_types, which every reader of
+ * the playhead shares, and this repaints from it every frame.
+ *
+ * It used to dead-reckon here instead, off `player.onPosition` and
+ * `Date.now()`, which is the design music_types replaced and which was wrong
+ * in two visible ways. Anchoring on **receipt** folds in however long the
+ * event loop took to deliver the report, so under load the caret ran behind
+ * the notes it was pointing at. And `moveTo` — what note entry calls to step
+ * the caret past what was just written — reaches the position source's
+ * subscribers, not the engine's report stream, so a note written by the
+ * keyboard left the caret sitting at the beginning of the score even though
+ * the note itself landed in the right bar.
  *
  * The position is written to `Animated.Value`s rather than React state, so a
  * frame costs a transform and not a render of the notation underneath it.
@@ -16,17 +25,16 @@
  * `height` — are layout properties the native driver could not take anyway.
  * Adding Reanimated here would buy nothing and cost a native dependency.
  *
- * The tempo map is the score's own, so a fermata slows the caret with the
- * music: reading a flat BPM would send it gliding past the hold and snapping
- * back, which is the exact stall-and-jump the interpolation exists to prevent.
+ * A fermata still slows the caret with the music, because the shared playhead
+ * is projected against the score's own tempo map by the one place that owns
+ * it — rather than by each reader keeping a `TempoMap` of its own.
  */
 import { useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet } from 'react-native';
 import { caretPositionForTick } from '@sudobility/music_drawing';
-import type { LayoutPlan } from '@sudobility/music_drawing';
-import { TempoMap } from '@sudobility/music_types';
+import type { LayoutPlan, NotePositions } from '@sudobility/music_drawing';
+import { getMusicPosition } from '@sudobility/music_types';
 import type { Score } from '@sudobility/music_types';
-import { getAppServices } from '@/config/initialize';
 
 export type PlaybackCaretProps = {
   score: Score;
@@ -42,6 +50,17 @@ export type PlaybackCaretProps = {
    * right to far off the screen.
    */
   scrollLeft?: number;
+  /**
+   * Where each note of the drawn measures was placed, read fresh each frame.
+   *
+   * The caret interpolates between the noteheads themselves, so it draws
+   * exactly on the note it points at — see music_drawing's `playhead.ts`. A
+   * getter rather than a value, because the renderer reports this on every draw
+   * and this reads it inside a frame loop: taking it as a value would restart
+   * the loop at that rate. Absent until something has been drawn, which the
+   * playhead handles by falling back to the stave box.
+   */
+  notePositions?: () => NotePositions | undefined;
 };
 
 /** Matches the web app's caret. */
@@ -53,6 +72,7 @@ export function PlaybackCaret({
   plan,
   scrollTop,
   scrollLeft = 0,
+  notePositions,
 }: PlaybackCaretProps) {
   // Refs, so the values survive renders and the frame loop writes to the same
   // ones the style reads.
@@ -61,57 +81,22 @@ export function PlaybackCaret({
   const height = useRef(new Animated.Value(0)).current;
   const shown = useRef(new Animated.Value(0)).current;
 
-  /** Rebuilt only when the score's own tempo events change. */
-  const tempo = useMemo(
-    () => new TempoMap([...score.tempoMap], score.ppq),
-    [score],
-  );
-
   /*
-    The last report, and when it arrived. A ref because the frame loop reads it
-    and nothing renders from it.
-
-    Seeded at tick 0 rather than left null, because the engine only reports a
-    position while playing or after a seek — so on a freshly opened score
-    nothing had ever reported, and the caret stayed *invisible* until the first
-    tap on a stave happened to seek. The caret is the score position, and a
-    score that has not been played is at the beginning, not nowhere.
+    The one playhead. `getMusicPosition` is the read side of the singleton the
+    player writes to, so the caret, the note colouring and the piano keyboard
+    are all reading the same number at the same instant.
   */
-  const report = useRef<{ tick: number; atMs: number }>({
-    tick: 0,
-    atMs: Date.now(),
-  });
-  const playing = useRef(false);
-
-  useEffect(() => {
-    const player = getAppServices().player;
-    const offPosition = player.onPosition(tick => {
-      report.current = { tick, atMs: Date.now() };
-    });
-    const offTransport = player.onTransport(state => {
-      playing.current = state === 'playing';
-      // Stop returns to the beginning; it does not remove the caret, for the
-      // same reason opening a score does not.
-      if (state === 'stopped') report.current = { tick: 0, atMs: Date.now() };
-    });
-    return () => {
-      offPosition();
-      offTransport();
-    };
-  }, []);
+  const position = useMemo(() => getMusicPosition(), []);
 
   useEffect(() => {
     let frame = 0;
     const tick = () => {
       frame = requestAnimationFrame(tick);
-      const last = report.current;
-      // Dead reckoning: where the music has got to since the last report.
-      const elapsed = playing.current ? (Date.now() - last.atMs) / 1000 : 0;
-      const seconds = tempo.ticksToSeconds(last.tick) + elapsed;
       const at = caretPositionForTick(
         plan,
         score,
-        tempo.secondsToTicks(seconds),
+        position.tick,
+        notePositions?.(),
       );
       if (!at) {
         shown.setValue(0);
@@ -124,7 +109,18 @@ export function PlaybackCaret({
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [plan, score, scrollTop, scrollLeft, tempo, x, y, height, shown]);
+  }, [
+    plan,
+    score,
+    scrollTop,
+    scrollLeft,
+    position,
+    notePositions,
+    x,
+    y,
+    height,
+    shown,
+  ]);
 
   return (
     <Animated.View

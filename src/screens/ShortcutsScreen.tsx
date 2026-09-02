@@ -33,16 +33,16 @@ export function ShortcutsScreen() {
         `${row.actionKey}-${index}`
       }
       renderSectionHeader={({ section }: { section: { title: string } }) => (
-        <Text className="text-muted-foreground bg-background pt-4 pb-1 text-xs font-semibold uppercase">
+        <Text className="text-muted-foreground bg-background pt-4 pb-1 text-sm font-semibold uppercase">
           {section.title}
         </Text>
       )}
       renderItem={({ item }: { item: ShortcutRow }) => (
         <View className="border-border/50 flex-row items-center justify-between border-b py-2">
-          <Text className="text-foreground flex-1 text-sm">
+          <Text className="text-foreground flex-1 text-base">
             {t(item.actionKey)}
           </Text>
-          <Text className="text-muted-foreground text-sm">
+          <Text className="text-muted-foreground text-base">
             {/* Either literal keys, or a translated description of a gesture
                 that is not a chord — a drag, say. */}
             {item.keys ?? (item.keysKey ? t(item.keysKey) : '')}

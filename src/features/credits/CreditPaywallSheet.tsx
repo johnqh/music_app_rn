@@ -62,10 +62,10 @@ export function CreditPaywallSheet({
       closeAriaLabel={t('common.closeDialog')}
     >
       <View className="gap-2 p-1">
-        <Text className="text-foreground text-sm">
+        <Text className="text-foreground text-base">
           {t('credits.outOfCreditsBody')}
         </Text>
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-muted-foreground text-sm">
           {t('credits.rate')}
         </Text>
       </View>

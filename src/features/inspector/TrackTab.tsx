@@ -227,7 +227,7 @@ export function TrackTab({
         listening is how an arrangement gets listened to.
       */}
       <View className="flex-row items-center justify-between">
-        <Text className="text-foreground text-sm">{t('inspector.mute')}</Text>
+        <Text className="text-foreground text-base">{t('inspector.mute')}</Text>
         <Switch
           checked={track.muted === true}
           onCheckedChange={(checked: boolean) =>
@@ -243,7 +243,7 @@ export function TrackTab({
         />
       </View>
       <View className="flex-row items-center justify-between">
-        <Text className="text-foreground text-sm">{t('inspector.solo')}</Text>
+        <Text className="text-foreground text-base">{t('inspector.solo')}</Text>
         <Switch
           checked={track.solo === true}
           onCheckedChange={(checked: boolean) =>

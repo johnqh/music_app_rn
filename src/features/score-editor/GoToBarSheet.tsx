@@ -62,7 +62,7 @@ export function GoToBarSheet({
       closeAriaLabel={t('common.closeDialog')}
     >
       <View className="gap-1">
-        <Text className="text-muted-foreground text-xs">
+        <Text className="text-muted-foreground text-sm">
           {t('editor.barNumberOf', { count: barCount })}
         </Text>
         <Input
@@ -84,7 +84,7 @@ export function GoToBarSheet({
         />
         {/* Says what is wrong and what would be right, rather than just refusing. */}
         {error ? (
-          <Text className="text-destructive text-xs">
+          <Text className="text-destructive text-sm">
             {t('editor.noSuchBar', { count: barCount })}
           </Text>
         ) : null}

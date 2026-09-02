@@ -94,7 +94,7 @@ function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
           <Text className="text-foreground font-medium">
             {snapshot.publicName || snapshot.name}
           </Text>
-          <Text className="text-muted-foreground text-xs">
+          <Text className="text-muted-foreground text-sm">
             {t('community.sharedBy', { name: snapshot.publisherName })}
           </Text>
         </View>

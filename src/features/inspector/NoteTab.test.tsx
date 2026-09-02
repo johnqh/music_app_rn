@@ -91,7 +91,25 @@ describe('NoteTab', () => {
       document.store.getState().score!.tracks[0].measures[0].voices[1];
     if (!second) return; // the store declined a second voice; nothing to pin
     const view = renderWithApp(<NoteTab document={document} />);
-    expect(view.getByText('2')).toBeTruthy();
+    /*
+      By the field's value, not by loose text: voice is an input now — the
+      panel could only *report* which voice a note was in, and moving a note
+      between voices is how a second line on one stave is built.
+    */
+    const field = view.getByLabelText('Voice');
+    expect(field).toBeTruthy();
+    expect(view.getByDisplayValue('2')).toBeTruthy();
+  });
+
+  it('moves the note to another voice', () => {
+    // The web panel has always been able to; this one could not.
+    const document = withSelectedNote();
+    const view = renderWithApp(<NoteTab document={document} />);
+    const before = document.store.getState().score;
+
+    fireEvent.changeText(view.getByDisplayValue('1'), '2');
+
+    expect(document.store.getState().score).not.toBe(before);
   });
 
   it('offers velocity, which a dynamic does not overwrite', () => {
@@ -107,7 +125,7 @@ describe('NoteTab', () => {
   it('offers the tie toggles', () => {
     const document = withSelectedNote();
     const view = renderWithApp(<NoteTab document={document} />);
-    fireEvent(view.getByLabelText(/tie start/i), 'checkedChange', true);
+    fireEvent(view.getByLabelText(/tie start/i), 'valueChange', true);
     expect(selectedNote(document).tieStart).toBe(true);
   });
 

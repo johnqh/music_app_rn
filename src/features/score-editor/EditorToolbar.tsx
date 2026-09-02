@@ -390,7 +390,7 @@ export function EditorToolbar({
           {durationShown.kind === 'mixed' ? (
             // Not the first note's icon and not the armed one: either would
             // claim the selection is something it is not.
-            <Text className="text-foreground text-sm">…</Text>
+            <Text className="text-foreground text-base">…</Text>
           ) : (
             <NotationIcon
               name={
@@ -680,7 +680,7 @@ export function EditorToolbar({
         >
           {/* The short form: the trigger is read at a glance, and the full
               words made this the widest control on the web bar. */}
-          <Text className="text-foreground text-xs">
+          <Text className="text-foreground text-sm">
             {QUANTIZE_GRID_SHORT[quantizeGrid]}
           </Text>
         </ToolbarSelect>
@@ -754,8 +754,8 @@ export function EditorToolbar({
           The name sits on a wrapper: this package's `Text` styles text and
           takes no accessibility props of its own.
         */}
-        <View accessibilityLabel={t('editor.currentZoom')} className="w-12">
-          <Text className="text-foreground text-center text-xs">
+        <View accessibilityLabel={t('editor.currentZoom')} className="w-16">
+          <Text className="text-foreground text-center text-sm">
             {zoomLabel}
           </Text>
         </View>
@@ -823,11 +823,12 @@ export function EditorToolbar({
           selected={inspectorVisible}
           onPress={onToggleInspector}
         >
+          {/*
+            Tinted when the sheet is open, because the grey chip that used to
+            say so is gone — selection is the accent colour throughout.
+          */}
           {inspectorVisible ? (
-            <ChevronDoubleRightIcon
-              size={ICON_SIZE}
-              className="text-foreground"
-            />
+            <ChevronDoubleRightIcon size={ICON_SIZE} className="text-primary" />
           ) : (
             <ChevronDoubleLeftIcon
               size={ICON_SIZE}
@@ -984,8 +985,8 @@ function TextChip({
         <Text
           className={
             selected
-              ? 'text-primary-foreground text-xs'
-              : 'text-foreground text-xs'
+              ? 'text-primary-foreground text-sm'
+              : 'text-foreground text-sm'
           }
         >
           {label}

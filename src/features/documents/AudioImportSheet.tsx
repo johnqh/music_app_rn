@@ -104,11 +104,11 @@ export function AudioImportSheet({
       <View className="gap-2 p-1">
         {available ? (
           <>
-            <Text className="text-foreground text-sm">
+            <Text className="text-foreground text-base">
               {t('importAudio.description')}
             </Text>
             {picked ? (
-              <Text className="text-muted-foreground text-xs">
+              <Text className="text-muted-foreground text-sm">
                 {picked.name}
               </Text>
             ) : null}
@@ -116,12 +116,12 @@ export function AudioImportSheet({
               A warning rather than a choice: trimming would mean decoding the
               audio here, which is the very work that was moved to the server.
             */}
-            <Text className="text-muted-foreground text-xs">
+            <Text className="text-muted-foreground text-sm">
               {t('importAudio.longRecording')}
             </Text>
           </>
         ) : (
-          <Text className="text-foreground text-sm">
+          <Text className="text-foreground text-base">
             {t('importAudio.unavailable')}
           </Text>
         )}

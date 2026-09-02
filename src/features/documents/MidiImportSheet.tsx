@@ -102,10 +102,10 @@ export function MidiImportSheet({
     >
       <ScrollView>
         <View className="gap-4 p-1">
-          <Text className="text-muted-foreground text-sm">
+          <Text className="text-muted-foreground text-base">
             {t('importMidi.description')}
           </Text>
-          <Text className="text-muted-foreground text-xs">
+          <Text className="text-muted-foreground text-sm">
             {t('importMidi.summaryLine', {
               count: summary.tracks.length,
               seconds: Math.round(summary.durationSeconds),
@@ -131,7 +131,7 @@ export function MidiImportSheet({
                   <View className="flex-row items-center justify-between gap-2">
                     <View className="flex-1">
                       <Text
-                        className="text-foreground text-sm"
+                        className="text-foreground text-base"
                         numberOfLines={1}
                       >
                         {track.name || track.instrumentName}
@@ -139,7 +139,7 @@ export function MidiImportSheet({
                       {/* Channel, program and note count as one secondary
                           line: they inform the decision without each needing a
                           column of its own on a phone. */}
-                      <Text className="text-muted-foreground text-xs">
+                      <Text className="text-muted-foreground text-sm">
                         {`${t('importMidi.colChannel')} ${
                           track.channel + 1
                         } · ${t('importMidi.colProgram')} ${track.program} · ${
@@ -178,7 +178,7 @@ export function MidiImportSheet({
           </View>
 
           <View className="gap-1">
-            <Text className="text-muted-foreground text-xs">
+            <Text className="text-muted-foreground text-sm">
               {t('importMidi.quantizeGrid')}
             </Text>
             <Select
@@ -204,7 +204,7 @@ export function MidiImportSheet({
           />
 
           <View className="gap-1">
-            <Text className="text-muted-foreground text-xs">
+            <Text className="text-muted-foreground text-sm">
               {t('importMidi.minDurationShort')}
             </Text>
             <View accessibilityLabel={t('importMidi.minDuration')}>
@@ -226,7 +226,7 @@ export function MidiImportSheet({
           />
 
           <View className="gap-1">
-            <Text className="text-muted-foreground text-xs">
+            <Text className="text-muted-foreground text-sm">
               {t('importMidi.sustain')}
             </Text>
             <Select
@@ -251,7 +251,7 @@ export function MidiImportSheet({
               than sitting inert underneath. */}
           {options.pianoStaffSplit ? (
             <View className="gap-1">
-              <Text className="text-muted-foreground text-xs">
+              <Text className="text-muted-foreground text-sm">
                 {t('importMidi.splitPoint')}
               </Text>
               <View accessibilityLabel={t('importMidi.splitPointLabel')}>
@@ -289,7 +289,7 @@ function Toggle({
 }) {
   return (
     <View className="flex-row items-center justify-between gap-2">
-      <Text className="text-foreground flex-1 text-sm">{label}</Text>
+      <Text className="text-foreground flex-1 text-base">{label}</Text>
       <Switch
         checked={checked}
         onCheckedChange={onChange}

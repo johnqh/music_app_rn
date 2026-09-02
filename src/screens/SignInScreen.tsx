@@ -8,7 +8,12 @@
 import { useCallback, useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button, Input, Text } from '@sudobility/components-rn';
+import {
+  Button,
+  Input,
+  MIN_TOUCH_TARGET,
+  Text,
+} from '@sudobility/components-rn';
 import { useAuth } from '@/auth/AuthContext';
 import { ScreenScaffold } from './ScreenScaffold';
 
@@ -64,7 +69,7 @@ export function SignInScreen() {
           accessibilityLabel={t('auth.password')}
         />
         {error ? (
-          <Text className="text-destructive text-sm">{error}</Text>
+          <Text className="text-destructive text-base">{error}</Text>
         ) : null}
         <Button onPress={() => void submit()} disabled={busy}>
           {creating ? t('auth.createAccount') : t('nav.signIn')}
@@ -72,8 +77,9 @@ export function SignInScreen() {
         <Pressable
           accessibilityRole="button"
           onPress={() => setCreating(value => !value)}
+          style={{ minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' }}
         >
-          <Text className="text-primary text-center text-sm">
+          <Text className="text-primary text-center text-base">
             {creating ? t('auth.haveAccount') : t('auth.needAccount')}
           </Text>
         </Pressable>

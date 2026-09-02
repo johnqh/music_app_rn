@@ -69,7 +69,7 @@ export function DeveloperSettingsSheet({
             key={key}
             className="flex-row items-center justify-between py-1"
           >
-            <Text className="text-foreground flex-1 text-sm">
+            <Text className="text-foreground flex-1 text-base">
               {t(labelKey)}
             </Text>
             <Switch

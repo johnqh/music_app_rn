@@ -89,7 +89,7 @@ export function SettingsScreen() {
       <Row label={t('settings.account')}>
         {user ? (
           <View className="items-end gap-2">
-            <Text className="text-foreground text-sm">
+            <Text className="text-foreground text-base">
               {user.email ?? user.uid}
             </Text>
             <Button size="sm" onPress={() => void signOut()}>

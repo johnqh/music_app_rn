@@ -15,7 +15,8 @@ import {
   View,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { createEmptyScore } from '@sudobility/music_types';
+import { MIN_TOUCH_TARGET } from '@sudobility/components-rn';
+import { newProjectScore } from '@sudobility/music_lib';
 import { newDocument, saveDocument } from '@/documents/document-storage';
 import { EXPORT_FORMATS, exportDocument } from '@/documents/export';
 import { getAppServices } from '@/config/initialize';
@@ -66,7 +67,7 @@ export function DocumentActions({
         style={styles.button}
         onPress={() => {
           const title = t('document.untitled');
-          newDocument(list, createEmptyScore({ title }), title);
+          newDocument(list, newProjectScore(title), title);
         }}
       >
         <Text style={styles.label}>{t('document.new')}</Text>
@@ -115,7 +116,12 @@ const styles = StyleSheet.create({
   },
   button: {
     paddingHorizontal: 14,
+    // Sized to the minimum touch target rather than to the text: 8pt of
+    // padding around a 16px label is 32pt tall, which is under both
+    // platforms' figure.
     paddingVertical: 8,
+    minHeight: MIN_TOUCH_TARGET,
+    justifyContent: 'center',
     borderRadius: 8,
     backgroundColor: '#e4e4e7',
   },

@@ -8,11 +8,16 @@
  *
  * Reflects and invokes only. Every edit is a `music_editing` action, because
  * the rules those enforce are rules about a score.
+ *
+ * The tab strip is `SegmentedTabs`, which is a real `UISegmentedControl` on
+ * iOS and iPadOS and a tab row everywhere else — a four-way section picker at
+ * the top of a panel is what that control is for, and the drawn strip it
+ * replaced read as a web page's rather than as part of the app.
  */
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Tabs, TabsList, TabsTrigger, Text } from '@sudobility/components-rn';
+import { SegmentedTabs } from '@/components/controls/SegmentedTabs';
 import { TrackTab } from './TrackTab';
 import { NoteTab } from './NoteTab';
 import { MeasureTab } from './MeasureTab';
@@ -46,21 +51,16 @@ export function InspectorPanel({ document, onReplace }: InspectorPanelProps) {
 
   return (
     <View className="flex-1" accessibilityLabel={t('editor.inspector')}>
-      <Tabs value={tab} onValueChange={value => setTab(value as InspectorTab)}>
-        <TabsList>
-          {TABS.map(value => (
-            <TabsTrigger key={value} value={value}>
-              <Text
-                className={
-                  tab === value ? 'text-foreground' : 'text-muted-foreground'
-                }
-              >
-                {t(`inspector.${value}`)}
-              </Text>
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
+      <SegmentedTabs
+        label={t('editor.inspector')}
+        options={TABS.map(value => ({
+          value,
+          label: t(`inspector.${value}`),
+        }))}
+        value={tab}
+        onChange={value => setTab(value as InspectorTab)}
+        testID="inspector-tabs"
+      />
       <ScrollView className="flex-1" contentContainerClassName="p-3 gap-3">
         {tab === 'track' ? (
           <TrackTab document={document} {...(onReplace ? { onReplace } : {})} />

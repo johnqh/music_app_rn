@@ -58,7 +58,7 @@ export function IssuesSheet({
     >
       <View className="gap-2">
         {issues.length === 0 ? (
-          <Text className="text-muted-foreground text-sm">
+          <Text className="text-muted-foreground text-base">
             {t('editor.noIssues')}
           </Text>
         ) : (
@@ -67,8 +67,8 @@ export function IssuesSheet({
               key={`${issue.code}-${index}`}
               className={
                 issue.severity === 'error'
-                  ? 'text-destructive text-sm'
-                  : 'text-foreground text-sm'
+                  ? 'text-destructive text-base'
+                  : 'text-foreground text-base'
               }
             >
               {issue.message}

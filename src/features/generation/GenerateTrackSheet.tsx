@@ -83,12 +83,12 @@ export function GenerateTrackSheet({
       ]}
     >
       <ScrollView keyboardShouldPersistTaps="handled">
-        <Text className="text-muted-foreground pb-3 text-sm">
+        <Text className="text-muted-foreground pb-3 text-base">
           {t('generateTrack.intro')}
         </Text>
 
         <View className="gap-1 pb-3">
-          <Text className="text-muted-foreground text-xs">
+          <Text className="text-muted-foreground text-sm">
             {t('generateTrack.promptLabel')}
           </Text>
           <Input
@@ -102,7 +102,7 @@ export function GenerateTrackSheet({
         </View>
 
         <View className="gap-1">
-          <Text className="text-muted-foreground text-xs">
+          <Text className="text-muted-foreground text-sm">
             {t('generate.instrument')}
           </Text>
           <Select

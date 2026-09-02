@@ -13,7 +13,7 @@
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import { Text } from '@sudobility/components-rn';
+import { Text, touchSlop } from '@sudobility/components-rn';
 import { selectSelectedTrack } from '@sudobility/music_editing';
 import { Pressable } from 'react-native';
 import { useState } from 'react';
@@ -34,10 +34,10 @@ export function StatusBar({ document }: { document: MusicDocument }) {
 
   return (
     <View className="border-border bg-card flex-row items-center gap-3 border-t px-3 py-1">
-      <Text className="text-muted-foreground text-xs" numberOfLines={1}>
+      <Text className="text-muted-foreground text-sm" numberOfLines={1}>
         {track ? track.name : t('editor.noTrack')}
       </Text>
-      <Text className="text-muted-foreground text-xs">
+      <Text className="text-muted-foreground text-sm">
         {t('editor.barsAndTracks', {
           bars: measureCount,
           tracks: trackCount,
@@ -49,12 +49,15 @@ export function StatusBar({ document }: { document: MusicDocument }) {
           accessibilityRole="button"
           accessibilityLabel={t('editor.validationIssues')}
           onPress={() => setIssuesOpen(true)}
+          // A bare run of text, so the drawn size is the text's — the slop is
+          // the whole touch target here rather than a top-up.
+          hitSlop={touchSlop(0, 0)}
         >
           <Text
             className={
               errors > 0
-                ? 'text-destructive text-xs'
-                : 'text-muted-foreground text-xs'
+                ? 'text-destructive text-sm'
+                : 'text-muted-foreground text-sm'
             }
           >
             {t('editor.issues', { count: issues.length })}

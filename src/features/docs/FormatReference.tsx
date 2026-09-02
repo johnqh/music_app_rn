@@ -27,18 +27,18 @@ function FormatList({
   const { t } = useTranslation();
   return (
     <View className="gap-2">
-      <Text className="text-foreground text-sm font-semibold">
+      <Text className="text-foreground text-base font-semibold">
         {t(titleKey)}
       </Text>
       {entries.map(entry => (
         <View key={entry.id} className="border-border gap-0.5 border-b pb-2">
-          <Text className="text-foreground text-sm font-medium">
+          <Text className="text-foreground text-base font-medium">
             {t(`docs.formats.name.${entry.id}`)}
           </Text>
-          <Text className="text-muted-foreground text-xs">
+          <Text className="text-muted-foreground text-sm">
             {entry.extensions}
           </Text>
-          <Text className="text-muted-foreground text-xs">
+          <Text className="text-muted-foreground text-sm">
             {t(entry.noteKey)}
           </Text>
         </View>

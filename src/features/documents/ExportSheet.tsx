@@ -83,7 +83,7 @@ export function ExportSheet({
           variant: 'secondary' as const,
         }))}
       >
-        <Text className="text-muted-foreground text-sm">
+        <Text className="text-muted-foreground text-base">
           {t('export.explain')}
         </Text>
       </FormModal>
@@ -117,7 +117,7 @@ export function ExportSheet({
           */}
           {pendingFit
             ? trackerFitLosses(pendingFit).map(({ kind, count }) => (
-                <Text key={kind} className="text-foreground text-sm">
+                <Text key={kind} className="text-foreground text-base">
                   {t(`trackerFit.${kind}`, { count, format: 'XM' })}
                 </Text>
               ))

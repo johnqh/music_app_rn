@@ -15,7 +15,13 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FormModal, Input, Switch, Text } from '@sudobility/components-rn';
+import {
+  FormModal,
+  Input,
+  MIN_TOUCH_TARGET,
+  Switch,
+  Text,
+} from '@sudobility/components-rn';
 import { Pressable, View } from 'react-native';
 import { LIVE_NODE_ID } from '@sudobility/music_types';
 import type { TreeNode } from '@sudobility/music_types';
@@ -133,7 +139,7 @@ export function CreateSnapshotSheet({
               shown before the tick rather than after it — and Create stays
               disabled until it is ticked.
             */}
-            <Text className="text-sm text-amber-700">
+            <Text className="text-base text-amber-700">
               {t('snapshot.copyrightWarning')}
             </Text>
             <Toggle
@@ -195,7 +201,7 @@ export function OpenSnapshotSheet({
       ]}
     >
       <View className="gap-1">
-        <Text className="text-muted-foreground pb-2 text-sm">
+        <Text className="text-muted-foreground pb-2 text-base">
           {t('snapshot.openWarning')}
         </Text>
         {nodes.map(node => (
@@ -205,12 +211,16 @@ export function OpenSnapshotSheet({
             accessibilityLabel={node.name}
             accessibilityState={{ selected: selected === node.id }}
             onPress={() => setSelected(node.id)}
-            style={{ marginLeft: node.depth * DEPTH_INDENT }}
+            style={{
+              marginLeft: node.depth * DEPTH_INDENT,
+              minHeight: MIN_TOUCH_TARGET,
+              justifyContent: 'center',
+            }}
             className={
               selected === node.id ? 'bg-accent rounded p-2' : 'rounded p-2'
             }
           >
-            <Text className="text-foreground text-sm">
+            <Text className="text-foreground text-base">
               {/* The live project is in the tree so the branch point is
                   visible, and it says so rather than showing a name. */}
               {node.isLive ? t('snapshot.currentWork') : node.name}
@@ -233,10 +243,10 @@ function Field({
 }) {
   return (
     <View className="gap-1">
-      <Text className="text-muted-foreground text-xs">{label}</Text>
+      <Text className="text-muted-foreground text-sm">{label}</Text>
       {children}
       {hint ? (
-        <Text className="text-muted-foreground text-xs">{hint}</Text>
+        <Text className="text-muted-foreground text-sm">{hint}</Text>
       ) : null}
     </View>
   );
@@ -256,9 +266,9 @@ function Toggle({
   return (
     <View className="flex-row items-center justify-between gap-3">
       <View className="flex-1">
-        <Text className="text-foreground text-sm">{label}</Text>
+        <Text className="text-foreground text-base">{label}</Text>
         {hint ? (
-          <Text className="text-muted-foreground text-xs">{hint}</Text>
+          <Text className="text-muted-foreground text-sm">{hint}</Text>
         ) : null}
       </View>
       <Switch

@@ -43,7 +43,7 @@ export function SynthLoadIndicator() {
       // The role sits on the wrapper: this package's `Text` styles text and
       // takes no accessibility props of its own.
       <View accessibilityRole="alert" className="shrink">
-        <Text className="text-destructive text-xs" numberOfLines={1}>
+        <Text className="text-destructive text-sm" numberOfLines={1}>
           {t('transport.loadFailed')}
         </Text>
       </View>
@@ -62,7 +62,7 @@ export function SynthLoadIndicator() {
       accessibilityLabel={label}
       className="shrink flex-row items-center gap-2"
     >
-      <Text className="text-muted-foreground shrink text-xs" numberOfLines={1}>
+      <Text className="text-muted-foreground shrink text-sm" numberOfLines={1}>
         {label}
       </Text>
       {/*

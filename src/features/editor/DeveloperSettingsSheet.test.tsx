@@ -37,7 +37,7 @@ describe('DeveloperSettingsSheet', () => {
     */
     const { view, document } = setup();
     const before = document.store.getState().devSettings;
-    fireEvent.press(view.getByLabelText('Show score IDs'));
+    fireEvent(view.getByLabelText('Show score IDs'), 'valueChange', true);
     const after = document.store.getState().devSettings;
     expect(after.showIds).toBe(true);
     // Everything else exactly as it was, defaults and all.

@@ -48,7 +48,7 @@ describe('CreateSnapshotSheet', () => {
       who published by mistake cannot take back who saw it.
     */
     const { view, onCreate } = setup();
-    fireEvent.press(view.getByLabelText('Publish'));
+    fireEvent(view.getByLabelText('Publish'), 'valueChange', true);
     fireEvent.changeText(view.getByLabelText('Publisher name'), 'A Composer');
     fireEvent.press(view.getByRole('button', { name: 'Create snapshot' }));
     expect(onCreate).not.toHaveBeenCalled();
@@ -56,17 +56,17 @@ describe('CreateSnapshotSheet', () => {
 
   it('will not publish anonymously', () => {
     const { view, onCreate } = setup();
-    fireEvent.press(view.getByLabelText('Publish'));
-    fireEvent.press(view.getByLabelText(/full copyright/i));
+    fireEvent(view.getByLabelText('Publish'), 'valueChange', true);
+    fireEvent(view.getByLabelText(/full copyright/i), 'valueChange', true);
     fireEvent.press(view.getByRole('button', { name: 'Create snapshot' }));
     expect(onCreate).not.toHaveBeenCalled();
   });
 
   it('passes the publisher and the public title once both are given', () => {
     const { view, onCreate } = setup();
-    fireEvent.press(view.getByLabelText('Publish'));
+    fireEvent(view.getByLabelText('Publish'), 'valueChange', true);
     fireEvent.changeText(view.getByLabelText('Publisher name'), 'A Composer');
-    fireEvent.press(view.getByLabelText(/full copyright/i));
+    fireEvent(view.getByLabelText(/full copyright/i), 'valueChange', true);
     fireEvent.press(view.getByRole('button', { name: 'Create snapshot' }));
     expect(onCreate).toHaveBeenCalledWith(
       'Version 3',

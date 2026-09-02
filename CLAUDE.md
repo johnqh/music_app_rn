@@ -46,6 +46,22 @@ maths here, it belongs somewhere else.
   halves: the same keys in both files, and every zh string actually containing
   CJK — key parity alone passes happily when English was copied across.
 
+## Package boundaries
+
+**Canvas geometry belongs to `music_drawing`; app layout geometry stays here.**
+The line is the canvas edge. Anything that reasons about the *drawn score* —
+where a note went, which measure or track a point lands in, what pitch a stave
+position means, where the playing measure sits, the colours VexFlow draws with
+— is `music_drawing`'s, because the canvas is what that package owns and
+because two apps draw the same score. Anything that reasons about the app
+*around* the canvas is this app's: a scroll container, a panel, a sheet.
+
+That boundary is why tapping a note works here at all. It used to resolve only
+to a *measure*, because the hit-testing lived in music_app and nothing on this
+side could ask which note was under a finger — and because `ScoreView` built a
+new renderer for every frame, throwing away the bounding boxes with it. One
+renderer per view, and `hit-test` in the library, is what fixed it.
+
 ## Gotchas
 
 - **Two test runners, split by extension.** `*.test.ts` is vitest's and runs

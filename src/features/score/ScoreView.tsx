@@ -15,9 +15,14 @@
  * windowing *is* the virtualization, and it is why a 200-bar score costs the
  * same as a 64-bar one.
  */
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Canvas, Picture, createPicture } from '@shopify/react-native-skia';
+import {
+  Canvas,
+  Picture,
+  createPicture,
+  useCanvasSize,
+} from '@shopify/react-native-skia';
 import * as skia from '@shopify/react-native-skia';
 import {
   CanvasScoreRenderer,
@@ -26,7 +31,9 @@ import {
 } from '@sudobility/music_drawing';
 import type {
   CanvasRenderOptions,
+  CanvasRenderResult,
   RenderOptions,
+  NoteColorRole,
   RenderTheme,
 } from '@sudobility/music_drawing';
 import { createSkiaContext2D } from '@sudobility/music_drawing/skia';
@@ -53,6 +60,25 @@ export type ScoreViewProps = {
   /** The view's real size, measured — never the display's. */
   width: number;
   height: number;
+  /**
+   * Which notes are lit, and why.
+   *
+   * Optional because the published-score view has no selection and no
+   * transport — a read-only page draws every note `normal`, which is what an
+   * absent map already means to the renderer.
+   */
+  noteColors?: ReadonlyMap<string, NoteColorRole>;
+  selectedMeasureIds?: ReadonlySet<string>;
+  /**
+   * What the frame just drawn knows about where things are.
+   *
+   * Reported out rather than returned, because the things that need it are
+   * siblings: the caret interpolates between the noteheads themselves (so it
+   * draws exactly on the note it points at, not somewhere across the stave
+   * box), and a tap has to ask which note is under it. Nothing else can know
+   * either — VexFlow decides them while formatting.
+   */
+  onRender?: (result: CanvasRenderResult) => void;
 };
 
 export function ScoreView({
@@ -65,8 +91,46 @@ export function ScoreView({
   scrollLeft = 0,
   width,
   height,
+  noteColors,
+  selectedMeasureIds,
+  onRender,
 }: ScoreViewProps) {
   const viewHeight = height;
+
+  /*
+    One renderer for the life of the view, not one per frame.
+
+    It caches the built measure columns — the VexFlow objects for a measure,
+    which are what cost the time — and drops them when the layout that
+    positioned them changes. Constructing a new one per picture threw that
+    cache away on every scroll and every colour change, and threw away the
+    bbox maps with it, which is why nothing here could answer which note was
+    under a tap.
+  */
+  const renderer = useMemo(() => new CanvasScoreRenderer(), []);
+
+  /*
+    The canvas's own measured size — the one signal that says it exists.
+
+    A `Picture` is recorded during render and handed to a surface that may not
+    have been created yet. When it has not, the picture is never painted, and
+    because nothing re-renders on its own the score stayed blank until
+    something else changed the picture's identity — which is why tapping it
+    worked, and why a deferred `redraw()` fixed it only when the app happened
+    to start fast enough.
+
+    `useCanvasSize` calls the native view's `measure()` in a layout effect and
+    puts the result in state, so it can only report a real size once that view
+    is there. Keying the picture off it re-records at exactly that moment
+    rather than at a guessed one. The extra `redraw()` costs nothing and covers
+    the case where the picture was fine and simply never painted.
+  */
+  const { ref: canvasRef, size: canvasSize } = useCanvasSize();
+  useEffect(() => {
+    if (canvasSize.width > 0 && canvasSize.height > 0) {
+      canvasRef.current?.redraw();
+    }
+  }, [canvasRef, canvasSize.width, canvasSize.height]);
 
   const options: CanvasRenderOptions = useMemo(
     () => ({
@@ -75,6 +139,8 @@ export function ScoreView({
       width,
       theme,
       activeTrackId,
+      ...(noteColors ? { noteColors } : {}),
+      ...(selectedMeasureIds ? { selectedMeasureIds } : {}),
       viewport: {
         top: scrollTop,
         bottom: scrollTop + viewHeight,
@@ -88,6 +154,8 @@ export function ScoreView({
       width,
       theme,
       activeTrackId,
+      noteColors,
+      selectedMeasureIds,
       scrollTop,
       scrollLeft,
       viewHeight,
@@ -103,14 +171,25 @@ export function ScoreView({
           width,
           height: viewHeight,
         });
-        new CanvasScoreRenderer().render(score, ctx, options);
+        const result = renderer.render(score, ctx, options);
+        onRender?.(result);
       }),
-    [score, options, width, viewHeight],
+    [
+      score,
+      options,
+      width,
+      viewHeight,
+      onRender,
+      renderer,
+      // Re-record once the canvas reports a real size: see `useCanvasSize`.
+      canvasSize.width,
+      canvasSize.height,
+    ],
   );
 
   return (
     <View style={[styles.fill, { height: viewHeight }]}>
-      <Canvas style={styles.fill}>
+      <Canvas ref={canvasRef} style={styles.fill}>
         <Picture picture={picture} />
       </Canvas>
     </View>

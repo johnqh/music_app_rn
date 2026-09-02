@@ -36,7 +36,11 @@ import {
   PlayIcon,
   StopIcon,
 } from 'react-native-heroicons/solid';
-import { barBeatForTick, TempoMap } from '@sudobility/music_types';
+import {
+  barBeatForTick,
+  formatBarBeat,
+  TempoMap,
+} from '@sudobility/music_types';
 import { setOpeningTempo } from '@sudobility/music_editing';
 import type { EditingStoreApi } from '@sudobility/music_editing';
 import type { Score } from '@sudobility/music_types';
@@ -209,9 +213,13 @@ export function TransportBar({ score, transport, store }: TransportBarProps) {
           getAppServices().player.setMetronome(next);
         }}
       >
+        {/*
+          The accent when it is on, not `onPrimary` — that was white, and it
+          was legible only against the grey chip this control no longer has.
+        */}
         <NotationIcon
           name="MetronomeIcon"
-          color={metronome ? ink.onPrimary : ink.foreground}
+          color={metronome ? ink.primary : ink.foreground}
         />
       </IconButton>
 
@@ -243,7 +251,7 @@ export function TransportBar({ score, transport, store }: TransportBarProps) {
             setEditingTempo(true);
           }}
         >
-          <Text className="text-foreground text-xs tabular-nums">
+          <Text className="text-foreground text-sm tabular-nums">
             {`${currentBpm} BPM`}
           </Text>
         </IconButton>
@@ -263,11 +271,17 @@ export function TransportBar({ score, transport, store }: TransportBarProps) {
           getAppServices().player.setTempoMultiplier(next);
         }}
       >
-        <Text className="text-foreground text-xs">{`${speed}x`}</Text>
+        <Text className="text-foreground text-sm">{`${speed}x`}</Text>
       </ToolbarSelect>
 
-      <View className="w-24 flex-row items-center gap-1">
-        <Text className="text-foreground text-xs">{t('transport.volume')}</Text>
+      {/*
+        `w-32`, not `w-24`. This width was picked for a 20px-tall drawn slider
+        whose thumb was 12px across; a `UISlider`'s is 28px with a shadow, so
+        at the old width the knob very nearly filled its own track and the
+        control read as a button rather than as a fader.
+      */}
+      <View className="w-32 flex-row items-center gap-1">
+        <Text className="text-foreground text-sm">{t('transport.volume')}</Text>
         <LevelSlider
           className="flex-1"
           label={t('transport.masterVolume')}
@@ -353,9 +367,12 @@ export const MeasureBeatReadout = memo(function MeasureBeatReadout({
   return (
     // The name sits on a wrapper: this package's `Text` styles text and takes
     // no accessibility props of its own.
-    <View accessibilityLabel={t('transport.measureBeat')} className="w-14">
-      <Text className="text-foreground text-center text-sm tabular-nums">
-        {at ? `${at.bar}.${Math.floor(at.beat)}` : '-.-'}
+    <View accessibilityLabel={t('transport.measureBeat')} className="w-20">
+      <Text className="text-foreground text-center text-base tabular-nums">
+        {/* Shared with the web transport: this app floored the beat inline
+            and the web one did not, so the same position rendered "1.1" here
+            and "1.1.3333333333333333" there. */}
+        {formatBarBeat(at)}
       </Text>
     </View>
   );
@@ -378,8 +395,8 @@ const Timecode = memo(function Timecode({
   useEffect(() => transport.onPosition(setTick), [transport]);
   const seconds = tempoMap.ticksToSeconds(Math.min(tick, maxTick));
   return (
-    <View accessibilityLabel={t('transport.time')} className="w-24">
-      <Text className="text-foreground text-right text-xs tabular-nums">
+    <View accessibilityLabel={t('transport.time')} className="w-32">
+      <Text className="text-foreground text-right text-sm tabular-nums">
         {`${formatTimecode(seconds)} / ${formatTimecode(totalSeconds)}`}
       </Text>
     </View>

@@ -8,7 +8,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Heading, Text } from '@sudobility/components-rn';
+import { Heading, Text, touchSlop } from '@sudobility/components-rn';
 
 export function ScreenScaffold({
   title,
@@ -54,7 +54,11 @@ export function SignInRequired({ onSignIn }: { onSignIn: () => void }) {
       <Text className="text-muted-foreground text-center">
         {t('library.authRequired')}
       </Text>
-      <Pressable accessibilityRole="button" onPress={onSignIn}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onSignIn}
+        hitSlop={touchSlop(0, 0)}
+      >
         <Text className="text-primary">{t('nav.signIn')}</Text>
       </Pressable>
     </View>

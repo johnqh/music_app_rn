@@ -227,7 +227,7 @@ export function ReplaceMusicSheet({
         />
 
         {!canSubmit ? (
-          <Text className="text-muted-foreground pt-2 text-xs">
+          <Text className="text-muted-foreground pt-2 text-sm">
             {t('replace.nothingSelected')}
           </Text>
         ) : null}
@@ -239,7 +239,7 @@ export function ReplaceMusicSheet({
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <View className="gap-1 pb-3">
-      <Text className="text-muted-foreground text-xs">{label}</Text>
+      <Text className="text-muted-foreground text-sm">{label}</Text>
       {children}
     </View>
   );
@@ -256,7 +256,7 @@ function Toggle({
 }) {
   return (
     <View className="flex-row items-center justify-between py-1">
-      <Text className="text-foreground flex-1 text-sm">{label}</Text>
+      <Text className="text-foreground flex-1 text-base">{label}</Text>
       <Switch
         checked={checked}
         onCheckedChange={onChange}

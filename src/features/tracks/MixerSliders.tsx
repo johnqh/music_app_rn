@@ -24,14 +24,8 @@
  * text.
  */
 import { Pressable, View } from 'react-native';
-import { Text } from '@sudobility/components-rn';
-import {
-  LevelSlider,
-  PAN_THUMB_HEIGHT,
-  PAN_THUMB_WIDTH,
-  SliderShell,
-  TRACK_HEIGHT,
-} from '@/components/controls/LevelSlider';
+import { MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
+import { LevelSlider, PositionSlider } from '@/components/controls/LevelSlider';
 /*
   `panReadout` is music_types', not this app's — it sits with the other "say a
   stored value the way a musician says it" conversions in
@@ -43,9 +37,9 @@ import { panReadout } from '@sudobility/music_types';
 
 /** The row shape both controls use, stated once so the two cannot drift. */
 const ROW_CLASS = 'flex-row items-center gap-2';
-const ROW_LABEL_CLASS = 'text-muted-foreground w-12 shrink-0 text-xs';
+const ROW_LABEL_CLASS = 'text-muted-foreground w-16 shrink-0 text-sm';
 const ROW_READOUT_CLASS =
-  'text-muted-foreground w-9 shrink-0 text-right text-[10px] tabular-nums';
+  'text-muted-foreground w-12 shrink-0 text-right text-sm tabular-nums';
 
 /**
  * The trailing action column.
@@ -54,7 +48,8 @@ const ROW_READOUT_CLASS =
  * pan groove would be a button's width shorter than the volume groove directly
  * above it, which is the misalignment this row shape exists to prevent.
  */
-const ROW_ACTION_WIDTH = 20;
+/** The trailing action column, at the platform minimum. */
+const ROW_ACTION_WIDTH = MIN_TOUCH_TARGET;
 
 export type MixerSliderProps = {
   /** The accessible name — what property of what this controls. */
@@ -104,13 +99,13 @@ export type PanSliderProps = MixerSliderProps & {
 };
 
 /**
- * -1 to 1, filled from the centre outwards.
+ * -1 to 1, as a position rather than a level.
  *
- * Square ends and a darker bed, because pan is not a level and the point of
- * drawing it differently is that the two rows sit directly above one another —
- * same size, same place, opposite meanings. The knob is a tall narrow rectangle
- * rather than a dot for the same reason: a round thumb reads as a bead sliding
- * along a wire, which is right for an amount and wrong for a position.
+ * `PositionSlider` is what carries that distinction — an unfilled track on the
+ * platforms whose native slider has one track colour either side of the thumb,
+ * a bar growing out of the centre on macOS, where the control is drawn and can
+ * say so. Either way the readout beside it states the value exactly, which is
+ * the reading that actually matters: which side of centre, and how far.
  */
 export function PanSlider({
   label,
@@ -123,15 +118,12 @@ export function PanSlider({
   resetLabel,
 }: PanSliderProps) {
   const clamped = Math.min(1, Math.max(-1, value));
-  // Half-widths either side of centre, so the fill grows out of the middle.
-  const magnitude = Math.abs(clamped) / 2;
-  const offset = clamped < 0 ? 0.5 - magnitude : 0.5;
   const canReset = !disabled && clamped !== 0;
 
   return (
     <View className={ROW_CLASS}>
       <Text className={ROW_LABEL_CLASS}>{rowLabel}</Text>
-      <SliderShell
+      <PositionSlider
         className="flex-1"
         label={label}
         value={clamped}
@@ -140,32 +132,7 @@ export function PanSlider({
         {...(disabled === undefined ? {} : { disabled })}
         onChange={onChange}
         {...(onCommit ? { onSlidingComplete: onCommit } : {})}
-        thumbWidth={PAN_THUMB_WIDTH}
-        thumbHeight={PAN_THUMB_HEIGHT}
-        thumbClassName="bg-primary border-background border"
-      >
-        {width => (
-          <>
-            <View
-              className="bg-muted-foreground/45"
-              style={{ height: TRACK_HEIGHT, width: '100%' }}
-            />
-            {/* The centre detent, so "no pan" is findable by eye as well as by feel. */}
-            <View
-              className="bg-muted-foreground/70 absolute"
-              style={{ width: 1, height: 10, left: width / 2 }}
-            />
-            <View
-              className="bg-primary absolute"
-              style={{
-                height: TRACK_HEIGHT,
-                left: offset * width,
-                width: magnitude * width,
-              }}
-            />
-          </>
-        )}
-      </SliderShell>
+      />
       <Text className={ROW_READOUT_CLASS}>{panReadout(clamped)}</Text>
       {onReset ? (
         <Pressable
@@ -184,7 +151,7 @@ export function PanSlider({
         >
           {/* A reset arrow: ⌖ was the obvious "centre" mark and was
               illegible at this size. */}
-          <Text className="text-muted-foreground text-sm">↺</Text>
+          <Text className="text-muted-foreground text-base">↺</Text>
         </Pressable>
       ) : (
         <View style={{ width: ROW_ACTION_WIDTH }} />

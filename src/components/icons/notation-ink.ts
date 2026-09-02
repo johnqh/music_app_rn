@@ -24,6 +24,23 @@ export type NotationInk = {
   onPrimary: string;
   /** A glyph that is present but not the subject — a readout, a hint. */
   muted: string;
+  /**
+   * A glyph whose control is *on*.
+   *
+   * Selection is the accent colour throughout this app. It used to be a grey
+   * chip behind the glyph, which is why the metronome was drawn in
+   * `onPrimary` — white, legible only against that chip. With the chip gone,
+   * white-on-white is invisible, so a selected drawn glyph takes this instead.
+   */
+  primary: string;
+  /**
+   * The unfilled part of a track — a groove, a rule.
+   *
+   * `muted` is the wrong token for it: a groove is not text, and at
+   * `mutedForeground` the empty half of a slider reads as loud as the filled
+   * half. This is what the web app's `bg-border` groove resolves to.
+   */
+  border: string;
 };
 
 /** `"0 0% 45%"` — the shape every `@sudobility/design` colour token has. */
@@ -63,6 +80,8 @@ export function useNotationInk(): NotationInk {
       foreground: hslTripleToHex(tokens.foreground),
       onPrimary: hslTripleToHex(tokens.primaryForeground),
       muted: hslTripleToHex(tokens.mutedForeground),
+      primary: hslTripleToHex(tokens.primary),
+      border: hslTripleToHex(tokens.border),
     };
   }, [resolved]);
 }

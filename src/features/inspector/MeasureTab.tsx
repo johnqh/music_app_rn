@@ -128,7 +128,7 @@ export function MeasureTab({
   return (
     <View className="gap-3">
       <Field label={t('inspector.bar')}>
-        <Text className="text-foreground text-sm">
+        <Text className="text-foreground text-base">
           {/* Null for a pickup: it has no number, and 0 would be a lie. */}
           {number ?? t('inspector.pickup')}
         </Text>
@@ -158,7 +158,7 @@ export function MeasureTab({
               }
             />
           </View>
-          <Text className="text-muted-foreground text-sm">/</Text>
+          <Text className="text-muted-foreground text-base">/</Text>
           <View
             className="flex-1"
             accessibilityLabel={t('inspector.timeSigDenominator')}
@@ -255,7 +255,7 @@ export function MeasureTab({
             the middle of a score is an irregular bar, which is a different
             thing that keeps its number.
           */}
-          <Text className="text-foreground text-sm">
+          <Text className="text-foreground text-base">
             {t('inspector.pickup')}
           </Text>
           <Switch
@@ -306,7 +306,7 @@ export function MeasureTab({
         repeats from the start of the piece, which is a real marking rather
         than an error to prevent.
       */}
-      <Text className="text-muted-foreground text-xs">
+      <Text className="text-muted-foreground text-sm">
         {t('editor.repeats')}
       </Text>
       <Toggle
@@ -343,7 +343,7 @@ export function MeasureTab({
           }}
         />
       </Field>
-      <Text className="text-muted-foreground text-xs">
+      <Text className="text-muted-foreground text-sm">
         {t('editor.repeatsPlaybackNote')}
       </Text>
 
@@ -352,7 +352,7 @@ export function MeasureTab({
         are separate on purpose: the bar you *leave* from is not the bar the
         coda begins at, and a bar can carry the coda sign and a `Fine` at once.
       */}
-      <Text className="text-muted-foreground text-xs">
+      <Text className="text-muted-foreground text-sm">
         {t('inspector.navigation')}
       </Text>
       <Toggle
@@ -454,7 +454,7 @@ function Toggle({
 }) {
   return (
     <View className="flex-row items-center justify-between">
-      <Text className="text-foreground text-sm">{label}</Text>
+      <Text className="text-foreground text-base">{label}</Text>
       <Switch
         checked={checked}
         disabled={disabled ?? false}
