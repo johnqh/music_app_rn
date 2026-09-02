@@ -44,12 +44,20 @@ describe('DeveloperSettingsSheet', () => {
     expect({ ...after, showIds: before.showIds }).toEqual(before);
   });
 
-  it('offers a toggle for every setting the store keeps', () => {
-    // A field added to `DevSettings` with no toggle here is a setting nobody
-    // can reach; the Record-shaped list is what makes that a compile error,
-    // and this is what makes it a test failure if the list is loosened.
+  it('offers a toggle for every BOOLEAN setting the store keeps', () => {
+    // A boolean field added to `DevSettings` with no toggle here is a setting
+    // nobody can reach; the Record-shaped list is what makes that a compile
+    // error, and this is what makes it a test failure if the list is loosened.
+    //
+    // Counted over the booleans specifically, because not every setting is a
+    // toggle any more: `generationVariant` is a string and needs a picker of
+    // its own. Counting all keys made this fail the moment one was added —
+    // correctly, in that it noticed, but for the wrong reason.
     const { view, document } = setup();
-    const count = Object.keys(document.store.getState().devSettings).length;
+    const settings = document.store.getState().devSettings;
+    const count = Object.values(settings).filter(
+      v => typeof v === 'boolean',
+    ).length;
     expect(view.getAllByRole('switch')).toHaveLength(count);
   });
 });
