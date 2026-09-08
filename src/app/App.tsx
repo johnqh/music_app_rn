@@ -24,11 +24,13 @@ import { initializeApp } from '@/config/initialize';
 import { initializeI18n } from '@/i18n';
 import { DocumentList } from '@/documents/document-list';
 import { createDocument } from '@/documents/document';
+import type { MusicDocument } from '@/documents/document';
 import { createAutosaver } from '@/documents/autosave';
 import { saveDocument } from '@/documents/document-storage';
 import { createFileStorage } from '@/documents/rn-storage';
 import { DocumentsProvider } from '@/documents/DocumentsContext';
 import { MenuImportCommands } from '@/features/documents/MenuImportCommands';
+import { MenuFileCommands } from '@/features/documents/MenuFileCommands';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PortalHost } from '@sudobility/components-rn';
 import { ThemeVarsProvider } from '@/components/ThemeVarsProvider';
@@ -53,7 +55,15 @@ const queryClient = new QueryClient({
 });
 
 export default function App() {
-  const list = useMemo(() => {
+  /*
+    The autosaver travels with the list.
+
+    It is built here, so nothing below could reach it — and a document created
+    from the File menu would then register no change callback and never save
+    itself. Handing `notifyChanged` to the provider is what lets any screen
+    create a document that behaves like the scratch one.
+  */
+  const { list, notifyChanged } = useMemo(() => {
     initializeApp({ dev: __DEV__ });
     initializeI18n(RNLocalize.getLocales().map(l => l.languageTag));
 
@@ -84,7 +94,10 @@ export default function App() {
         onChanged: d => autosaver.notify(d),
       }),
     );
-    return documents;
+    return {
+      list: documents,
+      notifyChanged: (d: MusicDocument) => autosaver.notify(d),
+    };
   }, []);
 
   return (
@@ -108,13 +121,17 @@ export default function App() {
                 ask whether there is an account.
               */}
                 <AuthProvider>
-                  <DocumentsProvider list={list}>
+                  <DocumentsProvider
+                    list={list}
+                    onDocumentChanged={notifyChanged}
+                  >
                     {/*
                       Inside the documents provider and above the navigator: a
                       File-menu import makes a new document from whatever screen
                       is in front, so it can belong to none of them.
                     */}
                     <MenuImportCommands />
+                    <MenuFileCommands />
                     <Navigation />
                   </DocumentsProvider>
                 </AuthProvider>

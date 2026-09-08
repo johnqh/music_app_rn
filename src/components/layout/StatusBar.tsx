@@ -4,6 +4,14 @@
  * Same content and same order: what is selected on the left, and the
  * validation issues on the right.
  *
+ * The left half used to say the active track's name and a bar/track count,
+ * which is not what this comment claimed and not what the web app shows. Both
+ * were also answers you already had: the track's name is painted into the
+ * canvas gutter beside every system, by the renderer both apps share. What was
+ * missing is the one thing a status strip is for — what you have selected —
+ * and `selectionSummaryLabel` is music_types', so the two apps read a
+ * selection with the same function and differ only in the words.
+ *
  * The issue count is the one control here that does anything, and it is the
  * right place for it: an issue is something the score *has*, so it belongs
  * beside the other things the strip reports rather than among the tools. It
@@ -14,7 +22,8 @@ import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { Text, touchSlop } from '@sudobility/components-rn';
-import { selectSelectedTrack } from '@sudobility/music_editing';
+import { selectionSummaryLabel } from '@sudobility/music_types';
+import { selectionSummaryCopy } from '@/i18n/lib-copy';
 import { Pressable } from 'react-native';
 import { useState } from 'react';
 import { IssuesSheet } from '@/features/score-editor/IssuesSheet';
@@ -22,12 +31,8 @@ import type { MusicDocument } from '@/documents/document';
 
 export function StatusBar({ document }: { document: MusicDocument }) {
   const { t } = useTranslation();
-  const track = useStore(document.store, selectSelectedTrack);
-  const measureCount = useStore(
-    document.store,
-    s => s.score?.tracks[0]?.measures.length ?? 0,
-  );
-  const trackCount = useStore(document.store, s => s.score?.tracks.length ?? 0);
+  const selection = useStore(document.store, s => s.selection);
+  const regenerated = useStore(document.store, s => s.selectionRegenerated);
   const issues = useStore(document.store, s => s.validationIssues);
   const errors = issues.filter(i => i.severity === 'error').length;
   const [issuesOpen, setIssuesOpen] = useState(false);
@@ -35,13 +40,7 @@ export function StatusBar({ document }: { document: MusicDocument }) {
   return (
     <View className="border-border bg-card flex-row items-center gap-3 border-t px-3 py-1">
       <Text className="text-muted-foreground text-sm" numberOfLines={1}>
-        {track ? track.name : t('editor.noTrack')}
-      </Text>
-      <Text className="text-muted-foreground text-sm">
-        {t('editor.barsAndTracks', {
-          bars: measureCount,
-          tracks: trackCount,
-        })}
+        {selectionSummaryLabel(selection, selectionSummaryCopy(), regenerated)}
       </Text>
       <View className="flex-1" />
       {issues.length > 0 ? (

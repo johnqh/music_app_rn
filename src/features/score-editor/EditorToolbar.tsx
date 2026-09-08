@@ -50,7 +50,6 @@ import {
   chooseEditMode,
   defaultInsertPitch,
   deleteMeasureAtCaret,
-  deleteSelected,
   insertNoteAtCaret,
   insertRestAtSelection,
   quantizeSelection,
@@ -92,15 +91,11 @@ import type { LayoutMode } from '@sudobility/music_drawing';
 import {
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
-  ClipboardIcon,
-  DocumentDuplicateIcon,
   EllipsisHorizontalIcon,
   MagnifyingGlassMinusIcon,
   MagnifyingGlassPlusIcon,
   PencilIcon,
   PlusIcon,
-  ScissorsIcon,
-  TrashIcon,
 } from 'react-native-heroicons/solid';
 import { NotationIcon } from '@/components/icons/NotationIcon';
 import { useNotationInk } from '@/components/icons/notation-ink';
@@ -201,7 +196,6 @@ export function EditorToolbar({
     used to stay live whether or not anything had been copied, so it was the one
     control on the bar that could look ready and do nothing.
   */
-  const hasClipboard = useStore(store, s => s.clipboard !== null);
   const clipboard = useClipboardPrompts(store);
 
   const [quantizeGrid, setQuantizeGrid] = useState<QuantizeGrid>('sixteenth');
@@ -622,52 +616,16 @@ export function EditorToolbar({
           onPress={() => insertRestAtSelection(store)}
         />
 
-        <Group label={t('editor.clipboard')}>
-          {/*
-            Copy is `copySelection`, not `duplicateSelected`. The two are
-            different operations that read alike: one fills the clipboard and
-            changes nothing, the other writes a second copy into the score
-            straight away. It stays live while the transport plays, because it
-            only reads.
-          */}
-          <IconButton
-            label={t('editor.copy')}
-            hint={t('editor.copyHint')}
-            disabled={!hasScore || !hasSelection}
-            onPress={() => store.getState().copySelection()}
-          >
-            <DocumentDuplicateIcon
-              size={ICON_SIZE}
-              className="text-foreground"
-            />
-          </IconButton>
-          <IconButton
-            label={t('editor.cut')}
-            hint={t('editor.cutHint')}
-            disabled={!canEdit || !hasSelection}
-            onPress={act(clipboard.requestCut)}
-          >
-            <ScissorsIcon size={ICON_SIZE} className="text-foreground" />
-          </IconButton>
-          <IconButton
-            label={t('editor.paste')}
-            hint={t('editor.pasteHint')}
-            disabled={!canEdit || !hasClipboard}
-            onPress={act(clipboard.requestPaste)}
-          >
-            <ClipboardIcon size={ICON_SIZE} className="text-foreground" />
-          </IconButton>
-        </Group>
+        {/*
+          Copy, Cut, Paste and Delete used to sit here.
 
-        <IconButton
-          label={t('editor.deleteSelection')}
-          hint={t('editor.deleteHint')}
-          disabled={!canEdit || !hasSelection}
-          onPress={act(() => deleteSelected(store))}
-        >
-          <TrashIcon size={ICON_SIZE} className="text-foreground" />
-        </IconButton>
-
+          They moved to the score's own long-press menu, on both platforms,
+          because all four act on something already selected and none of them
+          could say *what*. Delete means three different edits depending on
+          whether a track, a span of bars or a run of notes is selected, and a
+          button on a bar cannot name its subject. A menu opened on the thing
+          itself can, and does.
+        */}
         <Divider />
 
         <ToolbarSelect
@@ -792,7 +750,16 @@ export function EditorToolbar({
           control, not two controls.
         */}
         <TextChip
-          label={pitchDisplay === 'written' ? 'Wrt' : 'Con'}
+          /*
+            Abbreviated because the chip is one glyph wide, but translated all
+            the same: both apps hardcoded the same two English letters here,
+            which is exactly why no parity check could see them.
+          */
+          label={t(
+            pitchDisplay === 'written'
+              ? 'editor.pitchWrittenShort'
+              : 'editor.pitchConcertShort',
+          )}
           name={
             pitchDisplay === 'written'
               ? t('editor.showConcertPitch')

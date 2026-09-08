@@ -33,7 +33,7 @@ describe('ReplaceMusicSheet', () => {
   it('is titled for its scope', () => {
     expect(setup().view.getByText('Replace notes')).toBeTruthy();
     expect(
-      setup({ scope: 'measures' }).view.getByText('Replace measures'),
+      setup({ scope: 'measures' }).view.getByText('Replace bars'),
     ).toBeTruthy();
     expect(
       setup({ scope: 'track' }).view.getByText('Replace track'),

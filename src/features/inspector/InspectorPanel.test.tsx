@@ -39,7 +39,7 @@ describe('InspectorPanel', () => {
     expect(view.getByTestId('inspector-tabs').props.values).toEqual([
       'Track',
       'Note',
-      'Measure',
+      'Bar',
       'Score',
     ]);
   });

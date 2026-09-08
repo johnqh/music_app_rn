@@ -33,6 +33,27 @@ function measureAt(document: MusicDocument, index: number) {
 }
 
 describe('MeasureTab', () => {
+  /*
+    A pickup is a *length*, and this field used to be a switch that always wrote
+    one beat — so a three-beat anacrusis could be written on the web and not
+    here, and a score that already had one showed a toggle whose next touch
+    would have shortened it.
+  */
+  it('offers a pickup in beats, and writes the one picked', () => {
+    const { view, document } = setup(0);
+    fireEvent.press(view.getByLabelText(/pickup/i));
+    // Every length shorter than the bar: a full-length pickup is a bar.
+    expect(
+      view.queryAllByText(/beat/).map(node => node.props.children),
+    ).toEqual(['1 beat', '2 beats', '3 beats']);
+
+    fireEvent.press(view.getByText('3 beats'));
+    const bar = measureAt(document, 0);
+    expect(bar.pickup).toBe(true);
+    // Three beats of a 4/4 bar, in ticks.
+    expect(bar.durationTicks).toBe(document.store.getState().score!.ppq * 3);
+  });
+
   it('sets the segno without touching the coda', () => {
     // They are separate places on purpose: the bar you leave from is not the
     // bar the coda begins at, and a bar can carry both.

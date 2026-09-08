@@ -31,6 +31,7 @@ import {
   REPEAT_JUMPS,
   REPEAT_JUMP_LABEL,
   barNumberAt,
+  beatDurationTicks,
   effectiveClef,
   keySignatureOptions,
 } from '@sudobility/music_types';
@@ -43,6 +44,14 @@ import type {
 import { Button } from '@sudobility/components-rn';
 import { useEffect, useState } from 'react';
 import { EmptyTab, Field } from './Field';
+
+/**
+ * "Not a pickup", as a value a picker can hold.
+ *
+ * A Select's value is a string and an empty one is indistinguishable from
+ * "nothing chosen", which is why the shared picker options use a sentinel too.
+ */
+const NO_PICKUP = 'none';
 import { ReplaceButton } from './ReplaceButton';
 import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
@@ -98,6 +107,10 @@ export function MeasureTab({
     fifths: 0,
     mode: 'major',
   };
+
+  // A pickup's length in beats, which is how a musician names one.
+  const beatTicks = beatDurationTicks(first.timeSignature, score.ppq);
+  const fullBeats = Math.max(1, Math.round(first.durationTicks / beatTicks));
 
   const index =
     score.tracks[0]?.measures.findIndex(m => m.id === first.id) ?? -1;
@@ -249,23 +262,42 @@ export function MeasureTab({
       </Field>
 
       {index === 0 ? (
-        <View className="flex-row items-center justify-between">
+        <Field label={t('inspector.pickup')}>
           {/*
             Offered on bar 1 alone: a pickup is the bar before bar 1, and one in
             the middle of a score is an irregular bar, which is a different
             thing that keeps its number.
+
+            **A length, not a switch.** This was a `Switch` that always wrote a
+            one-beat pickup, so a three-beat anacrusis could be written on the
+            web and not here — and a score that had one showed a toggle already
+            on, which would have shortened it to a beat the moment it was
+            touched. Measured in beats because that is how a musician says it;
+            the ticks follow from the time signature. A pickup as long as the
+            bar is just a bar, so the list stops one beat short.
           */}
-          <Text className="text-foreground text-base">
-            {t('inspector.pickup')}
-          </Text>
-          <Switch
-            checked={first.pickup === true}
-            onCheckedChange={(checked: boolean) =>
-              setPickup(store, checked ? 1 : null)
+          <Select
+            value={
+              first.pickup === true
+                ? String(Math.round(first.durationTicks / beatTicks))
+                : NO_PICKUP
             }
             accessibilityLabel={t('inspector.pickup')}
+            options={[
+              { value: NO_PICKUP, label: t('inspector.pickupNone') },
+              ...Array.from(
+                { length: Math.max(1, fullBeats - 1) },
+                (_unused, i) => ({
+                  value: String(i + 1),
+                  label: t('inspector.pickupBeats', { count: i + 1 }),
+                }),
+              ),
+            ]}
+            onValueChange={(value: string) =>
+              setPickup(store, value === NO_PICKUP ? null : Number(value))
+            }
           />
-        </View>
+        </Field>
       ) : null}
 
       {/*

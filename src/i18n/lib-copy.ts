@@ -12,6 +12,7 @@
 import i18next from 'i18next';
 import type { CommandLabelKey, EditingCopy } from '@sudobility/music_editing';
 import type { LibraryMessages, MusicXmlWarnings } from '@sudobility/music_lib';
+import type { SelectionSummaryCopy } from '@sudobility/music_types';
 
 export function commandLabel(key: CommandLabelKey): string {
   return i18next.t(`command.${key}`);
@@ -36,6 +37,24 @@ export function buildEditingCopy(): EditingCopy {
  * hardcoded English string inside the library defeats it, and a Chinese reader
  * then gets English.
  */
+/**
+ * What the status strip's selection readout says.
+ *
+ * `selectionSummaryLabel` is music_types', so both apps read a selection the
+ * same way and only the words are the host's. The counts go through i18next's
+ * plural handling rather than an appended "s", which is an English-only rule —
+ * the web app's copy of this does the same.
+ */
+export function selectionSummaryCopy(): SelectionSummaryCopy {
+  return {
+    notes: count => i18next.t('selection.notes', { count }),
+    measures: count => i18next.t('selection.measures', { count }),
+    tracks: count => i18next.t('selection.tracks', { count }),
+    none: i18next.t('selection.none'),
+    regenerated: summary => i18next.t('selection.regenerated', { summary }),
+  };
+}
+
 export function musicXmlWarningCopy(): MusicXmlWarnings {
   const t = i18next.t.bind(i18next);
   return {

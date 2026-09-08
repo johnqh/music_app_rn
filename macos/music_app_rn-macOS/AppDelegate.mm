@@ -45,9 +45,22 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
                                                     userInfo:@{@"command" : command}];
 }
 
+/*
+  New, Open, Save and Save As were greyed out from the day the project was
+  generated: this is not an `NSDocument` app, so nothing in the responder chain
+  implemented `newDocument:`, `openDocument:`, `saveDocument:` or
+  `saveDocumentAs:`, and AppKit disables an item whose selector nobody answers.
+  They have selectors of their own now, and JavaScript owns what they mean.
+*/
+- (void)moosiacFileNew:(id)sender { [self postMenuCommand:@"file.new"]; }
+- (void)moosiacFileOpen:(id)sender { [self postMenuCommand:@"file.open"]; }
+- (void)moosiacFileSave:(id)sender { [self postMenuCommand:@"file.save"]; }
+- (void)moosiacFileSaveAs:(id)sender { [self postMenuCommand:@"file.saveAs"]; }
+
 - (void)moosiacImportMidi:(id)sender { [self postMenuCommand:@"import.midi"]; }
 - (void)moosiacImportMusicXml:(id)sender { [self postMenuCommand:@"import.musicxml"]; }
 - (void)moosiacImportTracker:(id)sender { [self postMenuCommand:@"import.tracker"]; }
+- (void)moosiacImportAudio:(id)sender { [self postMenuCommand:@"import.audio"]; }
 - (void)moosiacExportMidi:(id)sender { [self postMenuCommand:@"export.midi"]; }
 - (void)moosiacExportMusicXml:(id)sender { [self postMenuCommand:@"export.musicxml"]; }
 - (void)moosiacExportXm:(id)sender { [self postMenuCommand:@"export.xm"]; }

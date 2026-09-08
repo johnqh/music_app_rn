@@ -94,6 +94,38 @@ export async function saveDocument(
   return uri;
 }
 
+/**
+ * Writes a document somewhere the user chose, and moves it there.
+ *
+ * Separate from `saveDocument`, which writes to wherever the document already
+ * lives and falls back to `defaultDirectory()` for one that has never been
+ * saved. That fallback is what autosave needs and exactly what Save As must not
+ * do — the whole point of Save As is that a person is present to be asked.
+ *
+ * `markSaved` comes after the write, never before, for the reason `saveDocument`
+ * documents: a failed save that had already marked the document clean leaves one
+ * that looks safe to close.
+ */
+export async function saveDocumentAs(
+  document: MusicDocument,
+  storage: DocumentStorage,
+  uri: string,
+  onSaved?: OpenObserver,
+): Promise<string> {
+  const score = document.store.getState().score;
+  if (!score) throw new Error('Cannot save a document with no score.');
+
+  await storage.writeText(
+    uri,
+    serializeDocument({ title: document.title, score }),
+  );
+  markSaved(document, { kind: 'file', uri });
+  // Recorded after the write, never before: a file that failed to save is not
+  // one worth offering to reopen.
+  onSaved?.(document);
+  return uri;
+}
+
 /** A new, empty document — an ordinary document that has never been written. */
 export function newDocument(
   list: DocumentList,

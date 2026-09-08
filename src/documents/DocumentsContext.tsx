@@ -18,18 +18,48 @@ import type { MusicDocument } from './document';
 
 const DocumentsContext = createContext<DocumentList | null>(null);
 
+/**
+ * What to do when a document's score changes.
+ *
+ * The autosaver is built in the composition root, so nothing below it could
+ * reach it — a document created from the File menu would register no change
+ * callback and never autosave. Passed through the provider rather than
+ * imported, because *who writes the bytes* is the app's business and a test
+ * hands in a fake.
+ */
+const ChangedContext = createContext<
+  ((document: MusicDocument) => void) | undefined
+>(undefined);
+
 export function DocumentsProvider({
   list,
+  onDocumentChanged,
   children,
 }: {
   list: DocumentList;
+  onDocumentChanged?: (document: MusicDocument) => void;
   children: ReactNode;
 }) {
   return (
     <DocumentsContext.Provider value={list}>
-      {children}
+      <ChangedContext.Provider value={onDocumentChanged}>
+        {children}
+      </ChangedContext.Provider>
     </DocumentsContext.Provider>
   );
+}
+
+/**
+ * The change callback a newly created document should register.
+ *
+ * Undefined outside a provider that supplies one, which is every test that does
+ * not care about saving — `createDocument` takes it as optional for exactly
+ * that reason.
+ */
+export function useDocumentChanged():
+  | ((document: MusicDocument) => void)
+  | undefined {
+  return useContext(ChangedContext);
 }
 
 export function useDocumentList(): DocumentList {

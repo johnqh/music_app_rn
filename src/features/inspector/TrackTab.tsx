@@ -81,6 +81,38 @@ export function TrackTab({
     [store, track, t],
   );
 
+  /**
+   * Changing the instrument, and the one refusal that has words.
+   *
+   * `setTrackInstrument` carries the notes into the new instrument's compass by
+   * whole octaves, and reports `outOfRange` rather than half-applying when the
+   * part is wider than the instrument can play. The result used to be discarded
+   * here, so a refused change looked exactly like one that happened — the
+   * picker snapped back and nothing said why. The web app has always reported
+   * it; it has a toast and this app does not, so the sentence goes under the
+   * picker that produced it, which is where the reader is already looking.
+   */
+  const [rangeError, setRangeError] = useState<string | null>(null);
+  const chooseInstrument = useCallback(
+    (value: string) => {
+      const result = store
+        .getState()
+        .setTrackInstrument(
+          track?.id ?? '',
+          value,
+          t('inspector.setInstrument'),
+        );
+      setRangeError(
+        !result.ok && result.reason === 'outOfRange'
+          ? t('inspector.instrumentRangeError', {
+              instrument: result.instrumentName,
+            })
+          : null,
+      );
+    },
+    [store, track?.id, t],
+  );
+
   const commitName = useCallback(() => {
     if (!track || draftName === track.name) return;
     store
@@ -138,15 +170,7 @@ export function TrackTab({
                 value={kitOptionValue(track.midiProgram)}
                 options={KIT_OPTIONS}
                 disabled={playing}
-                onChange={value =>
-                  store
-                    .getState()
-                    .setTrackInstrument(
-                      track.id,
-                      value,
-                      t('inspector.setInstrument'),
-                    )
-                }
+                onChange={chooseInstrument}
                 accessibilityLabel={t('inspector.kitOf', { name: track.name })}
               />
             ) : (
@@ -155,20 +179,15 @@ export function TrackTab({
                 value={String(track.midiProgram)}
                 options={INSTRUMENT_OPTIONS}
                 disabled={playing}
-                onChange={value =>
-                  store
-                    .getState()
-                    .setTrackInstrument(
-                      track.id,
-                      value,
-                      t('inspector.setInstrument'),
-                    )
-                }
+                onChange={chooseInstrument}
                 accessibilityLabel={t('inspector.instrument')}
               />
             )}
           </View>
         </View>
+        {rangeError === null ? null : (
+          <Text className="text-destructive mt-1 text-sm">{rangeError}</Text>
+        )}
       </Field>
 
       {/*

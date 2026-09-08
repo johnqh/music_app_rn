@@ -22,9 +22,9 @@
   },
   "articulation": {
     "accent": "重音",
-    "marcato": "强调",
+    "marcato": "强调音",
     "none": "无",
-    "staccato": "断奏",
+    "staccato": "断音",
     "tenuto": "保持音"
   },
   "auth": {
@@ -35,6 +35,12 @@
     "password": "密码",
     "signOut": "退出登录",
     "signedIn": "已登录"
+  },
+  "command": {
+    "clearBars": "清空小节",
+    "clearTrack": "清空音轨",
+    "pasteBars": "粘贴小节",
+    "pasteTrack": "粘贴音轨"
   },
   "common": {
     "cancel": "取消",
@@ -63,8 +69,12 @@
     "viewCredits": "查看积分"
   },
   "dashboard": {
+    "create": "创建",
     "empty": "还没有项目。",
+    "import": "导入",
+    "importFormat": "导入文件",
     "importMidi": "导入 MIDI",
+    "newProject": "新建项目",
     "syncToServer": "保存到服务器"
   },
   "devSettings": {
@@ -544,7 +554,10 @@
     "save": "保存",
     "close": "关闭",
     "unsavedTitle": "未保存的更改",
-    "unsavedBody": "“{{title}}”有尚未保存的更改。"
+    "unsavedBody": "“{{title}}”有尚未保存的更改。",
+    "closeDocument": "关闭 {{title}}",
+    "exportAs": "导出 {{format}}",
+    "saveFailedTitle": "无法保存"
   },
   "duration": {
     "eighth": "八分音符",
@@ -562,33 +575,29 @@
     "addTrackPrompt": "添加哪种音轨？",
     "arpeggiate": "琶音",
     "arpeggiateHint": "琶音",
-    "articulation": "演奏法",
+    "articulation": "演奏记号",
     "articulationHint": "为选中内容添加演奏记号",
     "barNumber": "小节号",
     "barNumberOf_one": "小节号（本谱共 1 小节）",
     "barNumberOf_other": "小节号（1–{{count}}）",
-    "barsAndTracks": "{{bars}} 小节 · {{tracks}} 音轨",
     "beamBreak": "断开符杠",
     "beamBreakHint": "在此断开符杠",
     "beamNone": "不用符杠",
     "beamNoneHint": "取消符杠",
     "blankTrack": "空白音轨",
     "blankTrackHint": "在其他音轨下方添加一行空白谱表，可直接写入。",
-    "clipboard": "剪贴板",
+    "clear": "清空",
     "closeGap": "合并空隙",
     "closeGapDetail": "该轨道后面的音符前移填补空隙",
     "continuousHint": "将乐谱排成一行连续滚动",
     "continuousLayout": "连续排版",
     "copy": "复制",
-    "copyHint": "复制所选",
     "crescendo": "渐强",
     "crescendoHint": "渐强",
     "currentZoom": "当前缩放比例",
     "cut": "剪切",
-    "cutHint": "剪切选中的音符（Ctrl/Cmd+X）",
     "cutMessage": "该音轨上它们之后还有音乐。",
     "cutTitle": "剪切这些音符",
-    "deleteHint": "删除所选",
     "deleteMeasure": "删除小节",
     "deleteSelection": "删除选中内容",
     "diminuendo": "渐弱",
@@ -640,7 +649,6 @@
     "noScore": "未打开乐谱。",
     "noSuchBar_one": "本谱只有 1 小节。",
     "noSuchBar_other": "本谱的小节范围是 1 到 {{count}}。",
-    "noTrack": "无音轨",
     "noteDuration": "音符时值",
     "noteDurationHint": "音符长度——用于新增的音符，也用于选中的音符",
     "noteInput": "音符输入",
@@ -651,10 +659,11 @@
     "pageHint": "按页面宽度折行排列",
     "pageLayout": "分页排版",
     "paste": "粘贴",
-    "pasteHint": "在光标处粘贴（Ctrl/Cmd+V）",
     "pasteMessage": "目标位置已经有内容。",
     "pasteTitle": "粘贴覆盖此处音乐",
+    "pitchConcertShort": "实际",
     "pitchDisplayHint": "显示每位演奏者的记谱音高，或乐谱实际发声的音高",
+    "pitchWrittenShort": "记谱",
     "previousSyllable": "上一个音节",
     "print": "打印…",
     "quantize": "量化",
@@ -686,6 +695,11 @@
     "stackMode": "叠加为和弦",
     "stackModeHint": "叠加：新增的音符会与原有音符组成和弦",
     "stackModeUnavailable": "叠加需要能同时演奏多个音符的乐器——{{instrument}} 无法做到",
+    "subjectBars": "小节",
+    "subjectBars_other": "小节",
+    "subjectNotes": "音符",
+    "subjectNotes_other": "音符",
+    "subjectTrack": "音轨",
     "syllable": "音节",
     "thisInstrument": "该乐器",
     "toggleInspector": "切换属性面板",
@@ -848,7 +862,7 @@
     "clefInherit": "继承（{{clef}}）",
     "coda": "尾声记号",
     "composer": "作曲",
-    "custom": "自定义",
+    "customDuration": "自定义（{{ticks}} tick）",
     "deleteTrack": "删除音轨",
     "deleteTrackConfirm": "删除“{{name}}”及其所有音乐？只能通过撤销恢复。",
     "drumKit": "鼓组",
@@ -859,6 +873,7 @@
     "fingering": "指法",
     "glissando": "滑音",
     "instrument": "乐器",
+    "instrumentRangeError": "{{instrument}} 无法在不改变音程的情况下覆盖该音轨的音域。",
     "jump": "跳转",
     "jumpNone": "无",
     "key": "调号",
@@ -883,6 +898,9 @@
     "ornaments": "装饰音",
     "pan": "声像",
     "pickup": "弱起小节",
+    "pickupBeats": "{{count}} 拍",
+    "pickupBeats_other": "{{count}} 拍",
+    "pickupNone": "无",
     "pitch": "音高",
     "renameTrack": "重命名音轨",
     "replaceMeasures": "替换小节",
@@ -899,7 +917,7 @@
     "setMetadata": "更改乐谱信息",
     "solo": "独奏",
     "spans": "跨音符记号",
-    "tempoHere": "此处速度",
+    "tempoHere": "此处速度（BPM）",
     "tempoHint": "此小节生效的速度。",
     "tieStart": "延音线起点",
     "tieStop": "延音线终点",
@@ -956,6 +974,13 @@
     "resources": "资源",
     "settings": "设置",
     "signIn": "登录"
+  },
+  "newProject": {
+    "generateForMe": "由 AI 生成",
+    "generateForMeHint": "让 AI 谱写音乐。关闭时，你会得到一份使用这些乐器的空白乐谱。",
+    "generationNeedsServer": "生成功能需要服务器上的项目。",
+    "title": "新建项目",
+    "untitled": "未命名项目"
   },
   "ornament": {
     "invertedMordent": "逆波音",
@@ -1063,6 +1088,16 @@
       "openMpt": "当你还想取出模块中的采样时，用这款 tracker 打开它。",
       "verovio": "在浏览器中把 Humdrum 编码的乐谱转换为 MusicXML。"
     }
+  },
+  "selection": {
+    "notes_one": "已选择 {{count}} 个音符",
+    "notes_other": "已选择 {{count}} 个音符",
+    "measures_one": "已选择 {{count}} 个小节",
+    "measures_other": "已选择 {{count}} 个小节",
+    "tracks_one": "已选择 {{count}} 个音轨",
+    "tracks_other": "已选择 {{count}} 个音轨",
+    "none": "未选择任何内容",
+    "regenerated": "已重新生成 {{summary}}"
   },
   "settings": {
     "account": "账户",

@@ -63,6 +63,15 @@ export type TransportBarProps = {
   transport: TransportApi;
   /** The document's store. Only the tempo field writes to it. */
   store: EditingStoreApi;
+  /**
+   * Whether the piano keyboard below is collapsed, and how to toggle it.
+   *
+   * The keyboard's own bar used to carry this. Optional so the transport still
+   * renders standalone in a test, and so a host with no keyboard under it
+   * simply does not offer the control rather than offering a dead one.
+   */
+  keyboardCollapsed?: boolean;
+  onToggleKeyboard?: () => void;
 };
 
 /** `M:SS.d` — tenths make the actual playback rate visible against a wall clock. */
@@ -75,7 +84,13 @@ function formatTimecode(seconds: number): string {
   return `${minutes}:${String(whole).padStart(2, '0')}.${tenths}`;
 }
 
-export function TransportBar({ score, transport, store }: TransportBarProps) {
+export function TransportBar({
+  score,
+  transport,
+  store,
+  keyboardCollapsed,
+  onToggleKeyboard,
+}: TransportBarProps) {
   const { t } = useTranslation();
   const ink = useNotationInk();
   const [loop, setLoop] = useState(false);
@@ -305,6 +320,36 @@ export function TransportBar({ score, transport, store }: TransportBarProps) {
         maxTick={endTick}
         totalSeconds={totalSeconds}
       />
+      {/*
+        The keyboard toggle, rightmost.
+
+        It used to sit on a bar of the keyboard's own, above it — a whole row
+        for one button, and the control that *reveals* the keyboard was inside
+        the thing it reveals. Here it is a transport control like the metronome
+        beside it: something you turn on while playing rather than something you
+        edit. The web app puts it in the same place.
+      */}
+      {onToggleKeyboard ? (
+        <IconButton
+          label={
+            keyboardCollapsed
+              ? t('editor.showKeyboard')
+              : t('editor.hideKeyboard')
+          }
+          selected={!keyboardCollapsed}
+          onPress={onToggleKeyboard}
+        >
+          {/*
+            The same drawing the web toolbar shows: `NOTATION_ICONS` holds it,
+            both apps replay it, so a keyboard here *is* the keyboard there
+            rather than a lookalike. A glyph's colour is passed on native —
+            `currentColor` is an SVG idea react-native-svg does not resolve — so
+            it comes from the theme through `useNotationInk`.
+          */}
+          <NotationIcon name="PianoKeysIcon" color={ink.foreground} />
+        </IconButton>
+      ) : null}
+
       {/*
         Last, and self-effacing: it renders nothing once the engine is ready,
         which is every press of Play after the first.

@@ -70,22 +70,56 @@ function setup() {
   return { view, list };
 }
 
+/**
+ * Opens the Import menu.
+ *
+ * Four buttons became one Select, so a format's label only exists once this has
+ * run. It is separate from choosing because opening is a state update: inside
+ * an `act` block it would not have flushed by the time the option is looked up,
+ * so the menu is opened first and the choice made inside.
+ */
+function openImportMenu(view: ReturnType<typeof setup>['view']) {
+  fireEvent.press(view.getByLabelText('Import a file'));
+}
+
+function choose(view: ReturnType<typeof setup>['view'], label: string) {
+  openImportMenu(view);
+  fireEvent.press(view.getByText(label));
+}
+
 beforeEach(() => {
   mockPickFile.mockReset();
   mockImportDocument.mockReset();
 });
 
 describe('ImportButtons', () => {
-  it('offers one entry point per format', () => {
+  it('offers every format from one control', () => {
+    // Four buttons that differed by a word were one decision — which file —
+    // spread across four controls.
     const { view } = setup();
-    expect(view.getByText('Import MIDI')).toBeTruthy();
-    expect(view.getByText('Import MusicXML')).toBeTruthy();
-    expect(view.getByText('Import module')).toBeTruthy();
+    fireEvent.press(view.getByLabelText('Import a file'));
+    for (const label of [
+      'Import MIDI',
+      'Import MusicXML',
+      'Import module',
+      'Import Audio',
+    ]) {
+      expect(view.getByText(label)).toBeTruthy();
+    }
+  });
+
+  it('keeps reading "Import" rather than becoming the last format chosen', () => {
+    // A menu, not a value. Held with no `value`, so the trigger goes on saying
+    // what the control does.
+    const { view } = setup();
+    choose(view, 'Import module');
+    expect(view.getByText('Import')).toBeTruthy();
   });
 
   it('imports nothing and says nothing when the picker is cancelled', async () => {
     mockPickFile.mockResolvedValue(null);
     const { view } = setup();
+    openImportMenu(view);
     await act(async () => {
       fireEvent.press(view.getByText('Import MIDI'));
     });
@@ -99,6 +133,7 @@ describe('ImportButtons', () => {
     mockPickFile.mockResolvedValue('/tmp/a.xml');
     mockImportDocument.mockResolvedValue({ warnings: ['a track was empty'] });
     const { view } = setup();
+    openImportMenu(view);
     await act(async () => {
       fireEvent.press(view.getByText('Import MusicXML'));
     });
@@ -112,6 +147,7 @@ describe('ImportButtons', () => {
     mockPickFile.mockResolvedValue('/tmp/a.xml');
     mockImportDocument.mockResolvedValue({ warnings: [] });
     const { view } = setup();
+    openImportMenu(view);
     await act(async () => {
       fireEvent.press(view.getByText('Import MusicXML'));
     });
@@ -122,6 +158,7 @@ describe('ImportButtons', () => {
     mockPickFile.mockResolvedValue('/tmp/a.xml');
     mockImportDocument.mockRejectedValue(new Error('not a MusicXML file'));
     const { view } = setup();
+    openImportMenu(view);
     await act(async () => {
       fireEvent.press(view.getByText('Import MusicXML'));
     });
@@ -165,6 +202,7 @@ describe('ImportButtons', () => {
       } as never,
     });
     const { view } = setup();
+    openImportMenu(view);
     await act(async () => {
       fireEvent.press(view.getByText('Import MIDI'));
     });

@@ -41,6 +41,27 @@ maths here, it belongs somewhere else.
   adapter is the whole of React Native support, and `CanvasScoreRenderer` runs
   unchanged. Drawing happens inside `createPicture`, so a scroll replays a
   recorded picture rather than re-running VexFlow.
+- **The reader is shown a *bar*; the code keeps `Measure`.** The shared
+  libraries already split it — `Measure` is the model type, `bar` is the number
+  a reader is shown, which is why `barNumberAt` exists at all (a measure index
+  is not a bar number, because a pickup has an index and no number). The copy
+  used both words interchangeably inside single sentences in both apps. Keys
+  keep the model's word: `inspector.replaceMeasures` reads "Replace Bars".
+  Chinese needed no change — 小节 covers both.
+- **The two apps' copy is pinned against each other from this side.**
+  `cross-app-parity.test.ts` reads `music_app`'s locales off disk and holds 798
+  shared keys to account. Only this direction: the web app's suite must not need
+  a checkout of this one, and these tests skip rather than fail when the sibling
+  is absent. Three checks. **Where the English agrees, the Chinese must agree
+  too** — a key with identical English and different Chinese is a translation
+  fork nobody decided, and six had accumulated. English differences live in
+  `WORDED_DIFFERENTLY` with a reason each; a pointer tooltip and a touch hint
+  may legitimately differ, and "measure" versus "bar" sits there marked
+  **undecided**, because one product should have one word for a bar of music.
+  And every `labelKey` music_types publishes must resolve in both apps and both
+  languages: those lists carry a key rather than a word, so a host with no
+  string for one prints the key — which is exactly what the web's ornament
+  picker did, and what neither app's own parity test could see.
 - **Translations are bundled, not fetched.** A locale that arrives over the
   network is a blank screen on a train. `locale-parity.test.ts` pins both
   halves: the same keys in both files, and every zh string actually containing
@@ -107,6 +128,14 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   used to hide it has been deleted, because a workaround for a fixed bug is a
   blindfold for its recurrence.
 
+- **A `.test.tsx` using `jest.fn()` must `import { jest } from '@jest/globals'`,
+  and forgetting it fails only in `typecheck`.** Jest injects the global at run
+  time, so the suite passes; `tsc` sees the ambient *namespace* and reports
+  `TS2708: Cannot use namespace 'jest' as a value` — which means `bun run test`
+  is green and `bun run verify` is red, and the failure names a file whose tests
+  all passed a moment earlier. Every existing test file here has the import;
+  copy one when adding a file rather than starting from the web app's, where
+  vitest's `vi` needs no such thing.
 - **RNTL is pinned to v13, and that pin is about React.** v14 renders through
   `test-renderer`, whose `react-reconciler` is built for React **19.1.0**
   exactly, and this app is on 19.1.4 for react-native-macos. There is no
@@ -274,6 +303,50 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   equally far from the thing they act on and the reader has to work out which
   region each one means from its name. It briefly sat in the toolbar's More
   menu here; the web has always put it in the tabs.
+- **Cut, copy, paste, clear and delete live on the long-press menu, not on the
+  editing bar** — on both platforms. Four toolbar buttons that all act on
+  something already selected and none of which can say *what*: Delete means a
+  track going, a bar going and the score renumbering, or notes going and the
+  ones behind shifting forward. `ScoreActionsSheet` opens **on the object** and
+  names it first, in small grey type above the entries, from
+  `selectionKind`. **Clear joined them**, and it is a different edit rather than
+  a softer Delete: a cleared bar keeps its number and its markings, a cleared
+  track keeps its instrument and its mix.
+- **The long-press verdict is decided before any branch returns.** It used to be
+  worked out after the track gutter and the measure gutter had each already
+  handled the gesture and returned, so holding a track's name or a bar number
+  was indistinguishable from tapping it — and the menu could only ever be opened
+  over a note or a stave, which is two of the three things it is about.
+  `onContextGesture` fires once the view has selected what was held, which is
+  the same select-then-open the web's right-click does.
+- **The status strip says what is selected — it is not a second place to read
+  the track name.** It used to print the active track's name and a bar/track
+  count, neither of which the web app shows and both of which the reader already
+  had: the renderer paints the track's name into the gutter beside every system,
+  in both apps. What was missing was the one thing a status strip is for.
+  `selectionSummaryLabel` is music_types', so the two apps read a selection with
+  the same function and differ only in the words. The web strip lost two
+  readouts in the same pass, for the mirror-image reason: its bar/beat and zoom
+  percentage repeated what the transport and the toolbar already say.
+- **A refusal from the store has to reach the reader.** `setTrackInstrument`
+  answers `outOfRange` rather than half-applying when the part is wider than the
+  instrument can play, and the Track tab discarded the result — so a refused
+  change looked exactly like one that happened. The web app has a toast; this
+  one does not, so the sentence goes under the picker that produced it. The same
+  shape of bug was in the pickup field, which was a `Switch` that always wrote
+  one beat: a three-beat anacrusis could be written on the web and not here, and
+  a score that had one showed a toggle whose next touch would have shortened it.
+- **The keyboard's show/hide control is the transport bar's rightmost button,
+  and the keyboard draws nothing when collapsed.** It used to be a bar of the
+  keyboard's own — a whole row for one button, and the control that *reveals*
+  the keyboard sat inside the thing it reveals, so the row had to survive
+  collapsing to stay reachable. The glyph is `PianoKeysIcon` from
+  `NOTATION_ICONS`, so it is the same drawing the web toolbar shows: white,
+  black, white, because three identical filled bars read as three black keys and
+  a black key only ever sits *between* two whites. `KeyboardPanel` carries a
+  `testID` because its keys are not drawn until it has been measured and a test
+  renderer measures nothing — there is no key to point at when asserting where
+  the panel sits.
 - **The piano keyboard's range is the active track's instrument, not always all
   88.** `KeyboardPanel` passes no range at one point in its life and
   `PianoKeyboard` fell back to `FULL_RANGE`, so a piccolo part offered three
@@ -335,8 +408,8 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   `ThemeVarsProvider` with `vars()`. Change one alone and the utilities and the
   variables disagree.
 - **The UI mirrors the web app's, through the same component library.** The
-  layout order — title bar, score with the inspector beside it, keyboard,
-  transport, status strip — is `music_app`'s `AppLayout`, and the pieces come
+  layout order — title bar, score with the inspector beside it, transport,
+  keyboard, status strip — is `music_app`'s `AppLayout`, and the pieces come
   from `@sudobility/components-rn`, the React Native port of the
   `@sudobility/components` the web app uses. Build UI from those rather than
   from bare `View`/`Pressable`: a hand-rolled control does not inherit the

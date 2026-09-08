@@ -5,39 +5,30 @@
  * transport and the status strip must be reachable before an optional input
  * surface is, and on a phone the keyboard takes a third of the screen.
  */
-import { jest } from '@jest/globals';
-import { fireEvent } from '@testing-library/react-native';
 import { renderWithApp, testDocument } from '@/test/render';
 import { KeyboardPanel } from './KeyboardPanel';
 
 function setup(collapsed = true) {
-  const onToggle = jest.fn();
   const view = renderWithApp(
-    <KeyboardPanel
-      document={testDocument()}
-      collapsed={collapsed}
-      onToggle={onToggle}
-    />,
+    <KeyboardPanel document={testDocument()} collapsed={collapsed} />,
   );
-  return { view, onToggle };
+  return { view };
 }
 
 describe('KeyboardPanel', () => {
-  it('offers a way to open it while collapsed', () => {
-    // A collapsed panel with no handle is a feature nobody can find.
-    const { view } = setup(true);
-    expect(view.getByText(/keyboard/i)).toBeTruthy();
-  });
-
-  it('reports the toggle rather than holding the state', () => {
+  it('draws nothing at all when collapsed', () => {
     /*
-      The layout owns whether it is open, because the score's height depends on
-      it — a panel that tracked its own would leave the notation sized for the
-      wrong screen.
+      It used to be a bar of its own carrying the show/hide control — a whole
+      row for one button, and the control that reveals the keyboard sat inside
+      the thing it reveals, so the row had to survive collapsing to stay
+      reachable. The control is the transport bar's now, so there is nothing
+      down here that has to stay on screen.
     */
-    const { view, onToggle } = setup(true);
-    fireEvent.press(view.getByText(/keyboard/i));
-    expect(onToggle).toHaveBeenCalled();
+    const { view } = setup(true);
+    // The wrapper the test renderer provides is all that is left; the panel
+    // itself contributes nothing.
+    const tree = view.toJSON();
+    expect(Array.isArray(tree) ? tree : tree?.children ?? null).toBeNull();
   });
 
   it('renders the keys once opened', () => {

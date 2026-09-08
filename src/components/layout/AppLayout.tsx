@@ -1,9 +1,9 @@
 /**
  * The editor, laid out as the web app lays it out.
  *
- * Title bar, then the score with the inspector beside it, then the keyboard,
- * the transport and the status strip. The web app's `AppLayout` has exactly
- * this order, and matching it is the point: the two are the same product, and
+ * Title bar, then the score with the inspector beside it, then the transport,
+ * the keyboard and the status strip. The web app's `AppLayout` has exactly this
+ * order, and matching it is the point: the two are the same product, and
  * somebody who knows where the transport is should not have to look for it.
  *
  * The one deliberate difference is *where the inspector goes*. On the web it is
@@ -23,8 +23,11 @@ import {
   trackNotesInOrder,
 } from '@sudobility/music_types';
 import {
+  canPasteInto,
+  clearSelected,
   deleteSelected,
   selectAll,
+  selectionKind,
   selectMeasureRange,
   selectNotes,
   useClipboardPrompts,
@@ -189,11 +192,13 @@ export function AppLayout({
     render — the same reason the web app keeps it in one.
   */
   const measureAnchor = useRef<number | null>(null);
-  const hasSelection = useStore(
-    document.store,
-    s => s.selection.eventIds.length > 0 || s.selection.measureIds.length > 0,
-  );
-  const hasClipboard = useStore(document.store, s => s.clipboard !== null);
+  const selection = useStore(document.store, s => s.selection);
+  const clipboard = useStore(document.store, s => s.clipboard);
+  const contextKind = selectionKind(selection);
+  const contextCount =
+    contextKind === 'measures'
+      ? selection.measureIds.length
+      : selection.eventIds.length;
   const isPlaying = useStore(document.store, s => s.state) === 'playing';
   const clipboardPrompts = useClipboardPrompts(document.store);
 
@@ -205,6 +210,7 @@ export function AppLayout({
       else if (isPlaying) return; // content is immutable mid-playback
       else if (action === 'cut') clipboardPrompts.requestCut();
       else if (action === 'paste') clipboardPrompts.requestPaste();
+      else if (action === 'clear') clearSelected(store);
       else if (action === 'delete') deleteSelected(store);
     },
     [document, isPlaying, clipboardPrompts],
@@ -324,6 +330,14 @@ export function AppLayout({
                 onMeasureTap(hit, tick);
                 setActionsOpen(true);
               }}
+              /*
+                A hold on a track's name or a bar number opens the menu too, on
+                that object — the view has already selected it by the time this
+                fires, exactly as the web's right-click does. Without this the
+                menu could only ever be opened over a note or a stave, which is
+                two of the three things it is about.
+              */
+              onContextGesture={() => setActionsOpen(true)}
             />
           </View>
           {inspectorVisible ? (
@@ -368,8 +382,8 @@ export function AppLayout({
         wearing the same name.
       */}
       {/*
-        Above the keyboard and the transport: while writing words, the field is
-        what the software keyboard must not cover.
+        Above both bars: while writing words, the field is what the software
+        keyboard must not cover.
       */}
       {lyricStart !== null ? (
         <LyricEntryBar
@@ -380,21 +394,28 @@ export function AppLayout({
         />
       ) : null}
 
-      <KeyboardPanel
-        document={document}
-        collapsed={keyboardCollapsed}
-        onToggle={() => setKeyboardCollapsed(value => !value)}
-      />
+      {/*
+        Transport above the keyboard, matching the web app.
+
+        The keyboard is the one panel here that changes height — it collapses,
+        and it is optional — so with it in between, opening or closing it moved
+        the transport, which is the row a thumb goes to without looking. Fixed
+        rows first, the variable one last.
+      */}
       <TransportBar
         score={score}
         transport={transport}
         store={document.store}
+        keyboardCollapsed={keyboardCollapsed}
+        onToggleKeyboard={() => setKeyboardCollapsed(value => !value)}
       />
+      <KeyboardPanel document={document} collapsed={keyboardCollapsed} />
       <StatusBar document={document} />
       <ScoreActionsSheet
         open={actionsOpen}
-        hasSelection={hasSelection}
-        hasClipboard={hasClipboard}
+        kind={contextKind}
+        count={contextCount}
+        canPaste={canPasteInto(selection, clipboard)}
         canEdit={!isPlaying}
         onAction={runScoreAction}
         onClose={() => setActionsOpen(false)}

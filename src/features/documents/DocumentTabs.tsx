@@ -10,9 +10,11 @@
  * Hidden below two documents, because a single tab is a label, not a choice.
  */
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useDocumentList, useDocuments } from '@/documents/DocumentsContext';
 
 export function DocumentTabs() {
+  const { t } = useTranslation();
   const list = useDocumentList();
   const { documents, activeId } = useDocuments();
   if (documents.length < 2) return null;
@@ -35,7 +37,9 @@ export function DocumentTabs() {
               </Text>
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={`Close ${document.title}`}
+                accessibilityLabel={t('document.closeDocument', {
+                  title: document.title,
+                })}
                 hitSlop={8}
                 onPress={() => list.close(document.id)}
               >

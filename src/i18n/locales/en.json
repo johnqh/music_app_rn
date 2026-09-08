@@ -36,6 +36,12 @@
     "signOut": "Sign out",
     "signedIn": "Signed in"
   },
+  "command": {
+    "clearBars": "Clear bars",
+    "clearTrack": "Clear track",
+    "pasteBars": "Paste bars",
+    "pasteTrack": "Paste track"
+  },
   "common": {
     "cancel": "Cancel",
     "closeDialog": "Close dialog",
@@ -63,13 +69,17 @@
     "viewCredits": "View credits"
   },
   "dashboard": {
+    "create": "Create",
     "empty": "No projects yet.",
+    "import": "Import",
+    "importFormat": "Import a file",
     "importMidi": "Import MIDI",
+    "newProject": "New Project",
     "syncToServer": "Save to the server"
   },
   "devSettings": {
     "generationDiagnostics": "Enable generation diagnostics",
-    "showMeasureBoundaries": "Show measure boundaries",
+    "showMeasureBoundaries": "Show bar boundaries",
     "showScheduling": "Show playback scheduling data",
     "showScoreIds": "Show score IDs",
     "showTicks": "Show tick positions",
@@ -90,7 +100,7 @@
         "heading": "The caret and selection",
         "p1": "The red caret is where the next note goes and where playback starts. Clicking empty staff moves it, makes that track active and clears the selection; clicking a note also selects that note.",
         "p2": "Shift-click adds or removes a note from the selection. Cmd-click selects everything from the caret to where you clicked on the active track, and Cmd-Shift-click does the same across every track.",
-        "p3": "The measure numbers above each system are a gutter of their own: click one to select that bar, shift-click to extend the selection to a span of bars. Replace and regeneration both work on spans, so this is how you aim them."
+        "p3": "The bar numbers above each system are a gutter of their own: click one to select that bar, shift-click to extend the selection to a span of bars. Replace and regeneration both work on spans, so this is how you aim them."
       },
       "noteInput": {
         "heading": "Writing notes",
@@ -223,12 +233,12 @@
     },
     "inspector": {
       "title": "The inspector",
-      "summary": "The property panel: track, note, measure and score.",
+      "summary": "The property panel: track, note, bar and score.",
       "tabs": {
         "heading": "The four tabs",
         "p1": "Track is first because it always has something to show — there is always an active track. It holds the name, the instrument or drum kit, the clef, volume, pan, mute and solo, and deleting the track.",
         "p2": "Note shows what is selected: pitch, accidental, octave, duration, velocity, voice, articulation, ornament, dynamic, chord symbol, fingering, and the spans — slur, glissando, octave bracket.",
-        "p3": "Measure covers the bar: its number, time and key signature, a tempo change starting here, barline style, repeats and endings, a clef change, the navigation marks and whether it is a pickup.",
+        "p3": "Bar covers the one you selected: its number, time and key signature, a tempo change starting here, barline style, repeats and endings, a clef change, the navigation marks and whether it is a pickup.",
         "p4": "Score is the piece itself — its title, composer and description. The title names every exported file, and it is not the same thing as the project name that labels the row on the Projects page."
       },
       "editing": {
@@ -385,7 +395,7 @@
       "summary": "The transport, the piano keyboard, and how the view follows.",
       "transport": {
         "heading": "The transport",
-        "p1": "Space plays and pauses. The transport bar also carries stop, step by a measure either way, loop, a metronome, playback speed, tempo and the master volume.",
+        "p1": "Space plays and pauses. The transport bar also carries stop, step by a bar either way, loop, a metronome, playback speed, tempo and the master volume.",
         "p2": "The first press of play has a soundfont to fetch and hand to the synthesiser, which takes a few seconds. The transport does not claim to be playing until a note can actually sound, and shows the loading progress meanwhile.",
         "p3": "The score cannot be edited while the transport is playing — except for mixing. Mute, solo, volume and pan stay live, because muting a part while listening to it is how an arrangement gets listened to."
       },
@@ -460,13 +470,13 @@
       "summary": "Meter, key, barlines, repeats and the shape of the piece.",
       "bars": {
         "heading": "Bars",
-        "p1": "Click a measure number above a system to select that bar; shift-click another to select the span between them. That is how you aim Replace and regeneration, which both work on a range.",
-        "p2": "The measure grid is shared across tracks. A bar is the same bar on every stave, which is why anything that changes the grid applies to the whole score rather than one part.",
+        "p1": "Click a bar number above a system to select that bar; shift-click another to select the span between them. That is how you aim Replace and regeneration, which both work on a range.",
+        "p2": "The bar grid is shared across tracks. A bar is the same bar on every stave, which is why anything that changes the grid applies to the whole score rather than one part.",
         "p3": "Bar numbers skip a pickup, so the number the inspector shows, the number a player reads and the bar that go-to lands on are all the same number."
       },
       "signatures": {
         "heading": "Time and key",
-        "p1": "Both are set per measure from the Measure tab, and both carry forward until something changes them. Setting a signature on bar 9 changes bar 9 onward, not the whole score.",
+        "p1": "Both are set per bar from the Bar tab, and both carry forward until something changes them. Setting a signature on bar 9 changes bar 9 onward, not the whole score.",
         "p2": "A key signature is stored as its position on the circle of fifths plus major or minor, but the inspector shows you the key name rather than the number.",
         "p3": "Changing the meter changes how long a bar is, so the notes already in it are refitted rather than silently overflowing."
       },
@@ -494,7 +504,7 @@
       },
       "tempo": {
         "heading": "Tempo",
-        "p1": "The transport's tempo field always edits the tempo the piece starts at. The Measure tab's tempo sets a change at that bar, so a piece can slow down or shift at a rehearsal point.",
+        "p1": "The transport's tempo field always edits the tempo the piece starts at. The Bar tab's tempo sets a change at that bar, so a piece can slow down or shift at a rehearsal point.",
         "p2": "It shows the tempo in force, inherited from an earlier bar when this one sets none, so it is never blank and never lies. The starting tempo cannot be removed — a score with no tempo at all has no tempo."
       },
       "clefs": {
@@ -509,7 +519,7 @@
       "summary": "Adding parts, choosing sounds, and balancing them.",
       "adding": {
         "heading": "Adding and removing",
-        "p1": "Add Track offers a blank track, a generated one, or one transcribed from an audio file. A new track gets the same measure grid as the score it joins.",
+        "p1": "Add Track offers a blank track, a generated one, or one transcribed from an audio file. A new track gets the same bar grid as the score it joins.",
         "p2": "A score always keeps at least one track, so the last one cannot be deleted. Deleting any other is a normal edit and undoes like one."
       },
       "instrument": {
@@ -544,7 +554,10 @@
     "save": "Save",
     "close": "Close",
     "unsavedTitle": "Unsaved changes",
-    "unsavedBody": "\"{{title}}\" has changes that have not been saved."
+    "unsavedBody": "\"{{title}}\" has changes that have not been saved.",
+    "closeDocument": "Close {{title}}",
+    "exportAs": "Export {{format}}",
+    "saveFailedTitle": "Could not save"
   },
   "duration": {
     "eighth": "Eighth",
@@ -558,7 +571,7 @@
     "accidental": "Accidental",
     "accidentalHint": "Set the accidental on the selected notes",
     "addMeasure": "Add bar",
-    "addTrack": "Add track",
+    "addTrack": "Add Track",
     "addTrackPrompt": "What kind of track?",
     "arpeggiate": "Arpeggiate",
     "arpeggiateHint": "Arpeggiate",
@@ -567,28 +580,24 @@
     "barNumber": "Bar number",
     "barNumberOf_one": "Bar number (1 bar in this score)",
     "barNumberOf_other": "Bar number (1–{{count}})",
-    "barsAndTracks": "{{bars}} bars · {{tracks}} tracks",
     "beamBreak": "Break beam",
     "beamBreakHint": "Break the beam here",
     "beamNone": "No beam",
     "beamNoneHint": "Remove from beaming",
     "blankTrack": "Blank Track",
     "blankTrackHint": "An empty stave, added below the others, ready to write into.",
-    "clipboard": "Clipboard",
+    "clear": "Clear",
     "closeGap": "Close the gap",
     "closeGapDetail": "Later notes on this track move earlier to fill it",
     "continuousHint": "Lay the score out in one scrolling line",
     "continuousLayout": "Continuous layout",
     "copy": "Copy",
-    "copyHint": "Duplicate the selection",
     "crescendo": "Crescendo",
     "crescendoHint": "Crescendo",
     "currentZoom": "Current zoom level",
     "cut": "Cut",
-    "cutHint": "Cut the selected notes (Ctrl/Cmd+X)",
     "cutMessage": "There is more music after them on this track.",
     "cutTitle": "Cut these notes",
-    "deleteHint": "Delete the selection",
     "deleteMeasure": "Delete bar",
     "deleteSelection": "Delete selection",
     "diminuendo": "Diminuendo",
@@ -608,7 +617,7 @@
     "generateTrack": "Generate Track",
     "generateTrackHint": "Ask for a new part written to fit the music already here.",
     "generateTrackUnavailable": "Only for scores saved as a project on the server.",
-    "glissando": "gliss.",
+    "glissando": "Glissando",
     "glissandoHint": "Glissando between two notes",
     "go": "Go",
     "goToBar": "Go to bar…",
@@ -640,7 +649,6 @@
     "noScore": "No score open.",
     "noSuchBar_one": "This score has only 1 bar.",
     "noSuchBar_other": "This score has bars 1 to {{count}}.",
-    "noTrack": "No track",
     "noteDuration": "Note duration",
     "noteDurationHint": "Note length — for the notes you add, and for any that are selected",
     "noteInput": "Note input",
@@ -651,10 +659,11 @@
     "pageHint": "Wrap systems to the page width",
     "pageLayout": "Page layout",
     "paste": "Paste",
-    "pasteHint": "Paste at the caret (Ctrl/Cmd+V)",
     "pasteMessage": "There is already something where this would land.",
     "pasteTitle": "Paste over this music",
+    "pitchConcertShort": "Con",
     "pitchDisplayHint": "Show each player's written pitch, or what the score sounds",
+    "pitchWrittenShort": "Wrt",
     "previousSyllable": "Previous syllable",
     "print": "Print…",
     "quantize": "Quantize",
@@ -686,6 +695,11 @@
     "stackMode": "Stack as chord",
     "stackModeHint": "Stack: notes you add join what is already there, building a chord",
     "stackModeUnavailable": "Stack needs an instrument that can play more than one note at a time — {{instrument}} cannot",
+    "subjectBars": "Bar",
+    "subjectBars_other": "Bars",
+    "subjectNotes": "Note",
+    "subjectNotes_other": "Notes",
+    "subjectTrack": "Track",
     "syllable": "Syllable",
     "thisInstrument": "this one",
     "toggleInspector": "Toggle inspector panel",
@@ -732,7 +746,7 @@
     "complexity": "Complexity",
     "instrumentation": "Instrumentation",
     "key": "Key",
-    "measures": "Measures",
+    "measures": "Bars",
     "mode": "Mode",
     "mood": "Mood",
     "noMood": "No mood",
@@ -848,7 +862,7 @@
     "clefInherit": "Inherit ({{clef}})",
     "coda": "Coda",
     "composer": "Composer",
-    "custom": "Custom",
+    "customDuration": "Custom ({{ticks}} ticks)",
     "deleteTrack": "Delete track",
     "deleteTrackConfirm": "Delete \"{{name}}\" and all its music? This cannot be undone except with Undo.",
     "drumKit": "Drum kit",
@@ -859,6 +873,7 @@
     "fingering": "Fingering",
     "glissando": "Slide",
     "instrument": "Instrument",
+    "instrumentRangeError": "{{instrument}} cannot cover this track's note span without changing intervals.",
     "jump": "Jump",
     "jumpNone": "None",
     "key": "Key",
@@ -866,7 +881,7 @@
     "kitOf": "Drum kit: {{name}}",
     "major": "major",
     "makeGraceNote": "Make grace note of the next",
-    "measure": "Measure",
+    "measure": "Bar",
     "measureClef": "Clef from here",
     "minor": "minor",
     "mixChange": "Change mix",
@@ -883,9 +898,12 @@
     "ornaments": "Ornaments",
     "pan": "Pan",
     "pickup": "Pickup",
+    "pickupBeats": "{{count}} beat",
+    "pickupBeats_other": "{{count}} beats",
+    "pickupNone": "None",
     "pitch": "Pitch",
     "renameTrack": "Rename track",
-    "replaceMeasures": "Replace Measures",
+    "replaceMeasures": "Replace Bars",
     "replaceNotes": "Replace Notes",
     "replaceTrack": "Replace Track",
     "score": "Score",
@@ -899,7 +917,7 @@
     "setMetadata": "Change score details",
     "solo": "Solo",
     "spans": "Spans",
-    "tempoHere": "Tempo here",
+    "tempoHere": "Tempo here (BPM)",
     "tempoHint": "The tempo in force at this bar.",
     "tieStart": "Tie start",
     "tieStop": "Tie stop",
@@ -935,7 +953,7 @@
     "noPitchOrRest": "A note with neither pitch nor rest was skipped.",
     "noTempo": "No tempo was given; {{defaultBpm}} BPM was used.",
     "nonPositiveDuration": "A note with a non-positive duration was skipped.",
-    "noteTrimmed": "A note was trimmed to fit its measure.",
+    "noteTrimmed": "A note was trimmed to fit its bar.",
     "tempoClamped": "Tempo {{bpm}} was outside {{min}}-{{max}} and became {{clamped}}.",
     "unpitched": "Unpitched notes were placed on a percussion staff.",
     "unsupportedArticulation": "Unsupported articulation <{{tag}}> was dropped.",
@@ -945,7 +963,7 @@
     "unsupportedNotation": "Unsupported notation <{{tag}}> was dropped.",
     "unsupportedNoteElement": "Unsupported note element <{{tag}}> was dropped.",
     "unsupportedPitchStep": "Unsupported pitch step \"{{step}}\".",
-    "unsupportedTime": "Unsupported time signature in measure {{measureNumber}}."
+    "unsupportedTime": "Unsupported time signature in bar {{measureNumber}}."
   },
   "nav": {
     "community": "Community",
@@ -956,6 +974,13 @@
     "resources": "Resources",
     "settings": "Settings",
     "signIn": "Sign in"
+  },
+  "newProject": {
+    "generateForMe": "Generate for me",
+    "generateForMeHint": "Let AI write the music. Off, you get an empty score with these instruments.",
+    "generationNeedsServer": "Generating needs a project on the server.",
+    "title": "New Project",
+    "untitled": "Untitled Project"
   },
   "ornament": {
     "invertedMordent": "Inv. mordent",
@@ -976,7 +1001,7 @@
   "replace": {
     "action": "Replace",
     "keepComplexity": "Keep as it is",
-    "measuresTitle": "Replace measures",
+    "measuresTitle": "Replace bars",
     "notesTitle": "Replace notes",
     "nothingSelected": "Select some music first.",
     "preserveBoundary": "Preserve boundary notes",
@@ -1064,6 +1089,16 @@
       "verovio": "Converts Humdrum-encoded scores to MusicXML in the browser."
     }
   },
+  "selection": {
+    "notes_one": "{{count}} note selected",
+    "notes_other": "{{count}} notes selected",
+    "measures_one": "{{count}} bar selected",
+    "measures_other": "{{count}} bars selected",
+    "tracks_one": "{{count}} track selected",
+    "tracks_other": "{{count}} tracks selected",
+    "none": "No selection",
+    "regenerated": "{{summary}}, regenerated"
+  },
   "settings": {
     "account": "Account",
     "language": "Language",
@@ -1143,7 +1178,7 @@
     "goToStart": "Go to start",
     "loadFailed": "Instruments failed to load",
     "masterVolume": "Master volume",
-    "measureBeat": "Current measure and beat",
+    "measureBeat": "Current bar and beat",
     "nextMeasure": "Next bar",
     "pause": "Pause",
     "play": "Play",

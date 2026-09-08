@@ -103,6 +103,19 @@ export type ScrollingScoreProps = {
    * it started, and must not open a menu.
    */
   onMeasureLongPress?: (hit: MeasureHit, tick: number) => void;
+  /**
+   * A hold resolved to what it was over, after that thing has been selected.
+   *
+   * Separate from `onMeasureLongPress`, which aims the caret at a point on a
+   * stave: this says *what kind of object* the menu should be about, which is
+   * the one thing the menu cannot work out for itself once it is open.
+   */
+  onContextGesture?: (
+    target:
+      | { kind: 'track'; trackId: string }
+      | { kind: 'measure'; index: number }
+      | { kind: 'notes' },
+  ) => void;
 };
 
 /** How often a scroll reports back. 16ms is one frame; more is wasted repaint. */
@@ -135,6 +148,7 @@ export function ScrollingScore({
   onMeasureSelect,
   onWriteNote,
   onMeasureLongPress,
+  onContextGesture,
 }: ScrollingScoreProps) {
   /*
     The canvas draws in literal colours, so it has to be told the scheme.
@@ -218,6 +232,22 @@ export function ScrollingScore({
       const point = { x: locationX + scrollLeft, y: locationY + scrollTop };
 
       /*
+        Decided here, before any branch returns.
+
+        It used to be worked out further down, after the track gutter and the
+        measure gutter had each already returned — so holding a track's name or
+        a bar number was indistinguishable from tapping it, and the context menu
+        could only ever be opened over a note or a stave. Those are two of the
+        three things the menu is *about*.
+      */
+      const travelled =
+        start === null
+          ? 0
+          : Math.hypot(locationX - start.x, locationY - start.y);
+      const held = start === null ? 0 : Date.now() - start.at;
+      const isLongPress = held >= LONG_PRESS_MS && travelled <= LONG_PRESS_SLOP;
+
+      /*
         The track-info gutter first, in **viewport** coordinates.
 
         The gutter is painted over the sheet at the viewport's left edge rather
@@ -234,6 +264,8 @@ export function ScrollingScore({
         : null;
       if (gutterTrackId) {
         onTrackTap?.(gutterTrackId);
+        if (isLongPress)
+          onContextGesture?.({ kind: 'track', trackId: gutterTrackId });
         return;
       }
 
@@ -247,18 +279,13 @@ export function ScrollingScore({
         : null;
       if (gutterMeasure !== null) {
         onMeasureSelect?.(gutterMeasure);
+        if (isLongPress)
+          onContextGesture?.({ kind: 'measure', index: gutterMeasure });
         return;
       }
 
       const hit = measureAtPoint(plan, point);
       if (!hit) return;
-
-      const travelled =
-        start === null
-          ? 0
-          : Math.hypot(locationX - start.x, locationY - start.y);
-      const held = start === null ? 0 : Date.now() - start.at;
-      const isLongPress = held >= LONG_PRESS_MS && travelled <= LONG_PRESS_SLOP;
 
       const tick =
         tickForPoint(
@@ -270,6 +297,19 @@ export function ScrollingScore({
         ) ?? 0;
 
       if (isLongPress) {
+        /*
+          A note under the hold still selects that note first, so the menu is
+          about what was pressed rather than about the bar around it — the same
+          select-then-open the web's right-click does.
+        */
+        const heldBox = frameRef.current?.idToBBox;
+        const heldNote = heldBox ? eventIdAtPoint(heldBox, point) : null;
+        if (heldNote && onNoteTap) {
+          const chordIds = eventIdsAtPoint(heldBox!, point);
+          onNoteTap(chordIds.length > 0 ? chordIds : [heldNote]);
+          onContextGesture?.({ kind: 'notes' });
+          return;
+        }
         onMeasureLongPress?.(hit, tick);
         return;
       }

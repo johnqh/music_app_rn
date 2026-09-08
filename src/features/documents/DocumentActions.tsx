@@ -89,7 +89,7 @@ export function DocumentActions({
         <Pressable
           key={format}
           accessibilityRole="button"
-          accessibilityLabel={`Export ${format}`}
+          accessibilityLabel={t('document.exportAs', { format })}
           disabled={!document}
           style={[styles.button, !document && styles.off]}
           onPress={() => void exportAs(format)}

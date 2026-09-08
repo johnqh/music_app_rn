@@ -31,6 +31,37 @@ function activeTrack(document: MusicDocument) {
 }
 
 describe('TrackTab', () => {
+  /*
+    `setTrackInstrument` refuses rather than half-applying when the part is
+    wider than the instrument can play, and this panel used to discard that
+    result — so a refused change looked exactly like one that happened. The web
+    app has always said so; it has a toast and this app does not, so the
+    sentence goes under the picker.
+  */
+  it('says why an instrument was refused, rather than silently not changing', () => {
+    const { view, document } = setup();
+    /*
+      The refusal is stubbed rather than provoked. Building a part wider than
+      an instrument's compass takes a score fixture that says nothing about
+      this panel; what regressed here is that the *result was discarded*, and
+      that is exactly what this drives.
+    */
+    act(() => {
+      document.store.setState({
+        setTrackInstrument: () => ({
+          ok: false,
+          reason: 'outOfRange',
+          instrumentName: 'Clavinet',
+        }),
+      });
+    });
+
+    fireEvent.press(view.getByText('Acoustic Grand Piano'));
+    fireEvent.press(view.getByText('Clavinet'));
+
+    expect(view.getByText(/cannot cover/i)).toBeTruthy();
+  });
+
   it('shows the active track without needing one to be chosen', () => {
     /*
       `selectActiveTrackId` falls back to the first track, which is what makes

@@ -61,7 +61,7 @@ describe('GenerateScoreSheet', () => {
 
   it('rescales the quote when the length changes', () => {
     const { view } = setup();
-    fireEvent.changeText(view.getByLabelText(/measures/i), '32');
+    fireEvent.changeText(view.getByLabelText(/bars/i), '32');
     expect(view.getByText(/32/)).toBeTruthy();
   });
 
@@ -71,7 +71,7 @@ describe('GenerateScoreSheet', () => {
     // cannot be relied on to constrain it.
     const { view, onSubmit } = setup();
     fireEvent.changeText(view.getByLabelText('Prompt'), 'something');
-    fireEvent.changeText(view.getByLabelText(/measures/i), '0');
+    fireEvent.changeText(view.getByLabelText(/bars/i), '0');
     fireEvent.press(view.getByRole('button', { name: 'Generate' }));
     expect(onSubmit).not.toHaveBeenCalled();
   });

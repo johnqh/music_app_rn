@@ -5,6 +5,7 @@
  * engine, and a control wired to the store instead would move a number nothing
  * reads. Each one here is checked against the player it should have called.
  */
+import { jest } from '@jest/globals';
 import { act, fireEvent } from '@testing-library/react-native';
 import { installTestAppServices } from '@/config/initialize';
 import type { IMusicPlayer } from '@sudobility/music_player';
@@ -65,11 +66,27 @@ function recordingPlayer() {
   };
 }
 
-function Harness({ document }: { document: ReturnType<typeof testDocument> }) {
+function Harness({
+  document,
+  keyboard,
+}: {
+  document: ReturnType<typeof testDocument>;
+  keyboard?: { collapsed: boolean; onToggle: () => void };
+}) {
   const score = document.store.getState().score!;
   const transport = useTransport(score);
   return (
-    <TransportBar score={score} transport={transport} store={document.store} />
+    <TransportBar
+      score={score}
+      transport={transport}
+      store={document.store}
+      {...(keyboard
+        ? {
+            keyboardCollapsed: keyboard.collapsed,
+            onToggleKeyboard: keyboard.onToggle,
+          }
+        : {})}
+    />
   );
 }
 
@@ -197,5 +214,46 @@ describe('TransportBar', () => {
       });
       expect(document.store.getState().score!.tempoMap[0]!.bpm).toBe(before);
     });
+  });
+});
+
+describe('the keyboard toggle', () => {
+  /*
+    It used to sit on a bar of the keyboard's own, above it — a whole row for
+    one button, and the control that *reveals* the keyboard was inside the thing
+    it reveals, so the row had to survive collapsing in order to stay reachable.
+    Here it is a transport control like the metronome beside it. The web app
+    puts it in the same place, drawn with the same shared glyph.
+  */
+  it('reports a toggle rather than holding the state itself', () => {
+    const onToggle = jest.fn();
+    installTestAppServices({ player: recordingPlayer().player });
+    const view = renderWithApp(
+      <Harness
+        document={testDocument()}
+        keyboard={{ collapsed: false, onToggle }}
+      />,
+    );
+
+    fireEvent.press(view.getByLabelText('Hide keyboard'));
+    expect(onToggle).toHaveBeenCalled();
+  });
+
+  it('names what pressing it will do, not what is showing', () => {
+    // A button says what it does. Collapsed, it offers to show the keyboard.
+    installTestAppServices({ player: recordingPlayer().player });
+    const view = renderWithApp(
+      <Harness
+        document={testDocument()}
+        keyboard={{ collapsed: true, onToggle: jest.fn() }}
+      />,
+    );
+    expect(view.getByLabelText('Show keyboard')).toBeTruthy();
+  });
+
+  it('offers nothing when the host has no keyboard below it', () => {
+    // Rather than a dead control.
+    const { view } = setup();
+    expect(view.queryByLabelText(/keyboard/i)).toBeNull();
   });
 });

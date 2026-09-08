@@ -7,6 +7,7 @@
  * permanent "0 issues" is a permanent invitation to stop reading the strip.
  */
 import { act, fireEvent } from '@testing-library/react-native';
+
 import { renderWithApp, testDocument } from '@/test/render';
 import type { MusicDocument } from '@/documents/document';
 import { StatusBar } from './StatusBar';
@@ -31,9 +32,22 @@ function breakFirstMeasure(document: MusicDocument) {
 }
 
 describe('StatusBar', () => {
-  it('reports the track and the score size', () => {
-    const view = renderWithApp(<StatusBar document={testDocument()} />);
-    expect(view.getByText(/bars/i)).toBeTruthy();
+  /*
+    What you have selected, which is what a status strip is for — and what the
+    web app has always shown here. This used to say the active track's name and
+    a bar count, both of which the reader already had: the renderer paints the
+    track's name into the gutter beside every system.
+  */
+  it('says what is selected, and says so when nothing is', () => {
+    const document = testDocument();
+    const view = renderWithApp(<StatusBar document={document} />);
+    expect(view.getByText('No selection')).toBeTruthy();
+
+    act(() => {
+      const bars = document.store.getState().score!.tracks[0].measures;
+      document.store.getState().selectMeasures(bars.slice(0, 2).map(m => m.id));
+    });
+    expect(view.getByText('2 bars selected')).toBeTruthy();
   });
 
   it('shows no issue count on a clean score', () => {

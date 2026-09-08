@@ -1,6 +1,11 @@
 /**
  * The macOS File menu, as events.
  *
+ * New, Open, Save and Save As are here alongside Import and Export. All four
+ * were greyed out until they had selectors of their own: AppKit disables a menu
+ * item whose selector nobody in the responder chain implements, and this is not
+ * an `NSDocument` app, so `newDocument:` and its siblings answered to nothing.
+ *
  * AppKit owns the menu and JavaScript owns the importers, so the app delegate
  * answers each item's selector and posts a notification that a small native
  * module (`MoosiacMenuBridge`, declared in `AppDelegate.mm`) turns into a JS
@@ -16,9 +21,14 @@ import { useEffect, useRef } from 'react';
 import { NativeEventEmitter, NativeModules } from 'react-native';
 
 export const MENU_COMMANDS = [
+  'file.new',
+  'file.open',
+  'file.save',
+  'file.saveAs',
   'import.midi',
   'import.musicxml',
   'import.tracker',
+  'import.audio',
   'export.midi',
   'export.musicxml',
   'export.xm',

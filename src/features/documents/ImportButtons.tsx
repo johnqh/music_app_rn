@@ -1,8 +1,8 @@
 /**
- * Bringing a file in.
+ * Bringing a file in — one menu, every format.
  *
  * Every import makes a **new document**, never an edit to the open one — which
- * is why these live in the empty state and on the dashboard rather than on the
+ * is why this lives in the empty state and on the dashboard rather than on the
  * editor's own toolbar. The web app follows the same rule for the same reason:
  * an Import menu inside a project could only throw you out of the project you
  * had open.
@@ -14,17 +14,31 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button } from '@sudobility/components-rn';
+import { Select } from '@sudobility/components-rn';
 import type { NativeUploadFile } from '@sudobility/music_client';
 import type { ImportFormat } from '@/documents/import';
 import { ImportFeedback, useImport } from './useImport';
 import { AudioImportSheet } from './AudioImportSheet';
 
-const OFFERED: readonly { format: ImportFormat; labelKey: string }[] = [
-  { format: 'midi', labelKey: 'import.midi' },
-  { format: 'musicxml', labelKey: 'import.musicXml' },
-  { format: 'tracker', labelKey: 'import.tracker' },
-];
+/**
+ * What the Import menu offers, in one control.
+ *
+ * Four buttons that differed by a word were one decision — which file — spread
+ * across four controls. Audio is among them and stays offered whether or not a
+ * server is configured: it *says* why it cannot run rather than vanishing,
+ * because a control that comes and goes teaches the reader nothing about where
+ * to find it.
+ *
+ * A project document is deliberately absent. Opening one of those is File →
+ * Open and Recent Documents, not an import — an import makes a new document out
+ * of somebody else's format.
+ */
+const OFFERED = [
+  { value: 'midi', labelKey: 'import.midi' },
+  { value: 'musicxml', labelKey: 'import.musicXml' },
+  { value: 'tracker', labelKey: 'import.tracker' },
+  { value: 'audio', labelKey: 'import.audio' },
+] as const;
 
 export type ImportButtonsProps = {
   /**
@@ -49,24 +63,21 @@ export function ImportButtons({ onTranscribeAudio }: ImportButtonsProps = {}) {
 
   return (
     <View className="flex-row flex-wrap gap-2">
-      {OFFERED.map(o => (
-        <Button
-          key={o.format}
-          variant="secondary"
-          onPress={() => void run(o.format)}
-        >
-          {t(o.labelKey)}
-        </Button>
-      ))}
-
       {/*
-        Audio is offered whether or not a server is configured, and *says* why
-        it cannot run rather than vanishing: a control that comes and goes
-        teaches the reader nothing about where to find it.
+        Held with no `value`, so the trigger goes on reading "Import" rather
+        than becoming the last format chosen — this is a menu, not a setting.
       */}
-      <Button variant="secondary" onPress={() => setAudioOpen(true)}>
-        {t('import.audio')}
-      </Button>
+      <Select
+        accessibilityLabel={t('dashboard.importFormat')}
+        placeholder={t('dashboard.import')}
+        options={OFFERED.map(o => ({ value: o.value, label: t(o.labelKey) }))}
+        onValueChange={value => {
+          // Audio is not a `run(format)` import: it uploads to the server
+          // rather than decoding locally, so it opens a sheet of its own.
+          if (value === 'audio') setAudioOpen(true);
+          else void run(value as ImportFormat);
+        }}
+      />
 
       <AudioImportSheet
         open={audioOpen}

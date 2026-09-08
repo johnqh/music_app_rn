@@ -143,27 +143,11 @@ describe('EditorToolbar', () => {
     expect(onLayoutModeChange).toHaveBeenCalledWith('continuous');
   });
 
-  it('leaves paste disabled until something has been copied', () => {
-    const { view, document } = setup();
-    const paste = view.getByLabelText(/paste/i);
-    expect(paste.props.accessibilityState.disabled).toBe(true);
-
-    // The clipboard holds *notes*, so an empty score's rests will not fill it —
-    // which is correct, and is why this writes one first.
-    selectFirstNote(document);
-    fireEvent.press(view.getByLabelText(/copy/i));
-    expect(document.store.getState().clipboard).not.toBeNull();
-  });
-
-  it('copies without writing into the score', () => {
-    // The bug this exists for: Copy was bound to `duplicateSelected`, which
-    // writes a second copy into the music straight away. Both typecheck.
-    const { view, document } = setup();
-    selectFirstNote(document);
-    const before = document.store.getState().score;
-    fireEvent.press(view.getByLabelText(/copy/i));
-    expect(document.store.getState().score).toBe(before);
-  });
+  /*
+    Copy, Cut, Paste and Delete are the long-press menu's now — see
+    `ScoreActionsSheet.test.tsx`, which covers all four plus the Clear that
+    joined them, and keeps the guard that Copy must not write into the score.
+  */
 
   it('starts lyric entry through its caller, which owns the note list', () => {
     // Behind More actions, where the web bar keeps it: a real action, but not

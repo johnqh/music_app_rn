@@ -1,6 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DocumentList } from './document-list.js';
-import { newDocument, openDocument, saveDocument } from './document-storage.js';
+import {
+  newDocument,
+  openDocument,
+  saveDocument,
+  saveDocumentAs,
+} from './document-storage.js';
 import type { DocumentStorage } from './document-storage.js';
 import { serializeDocument } from './document-file.js';
 import {
@@ -98,5 +103,85 @@ describe('saving', () => {
     // A document that looks safe to close after a failed save is how work is lost.
     expect(doc.dirty).toBe(true);
     expect(doc.origin.kind).toBe('unsaved');
+  });
+});
+
+/*
+  Save As is not Save with a path argument.
+
+  `saveDocument` falls back to a default directory for a document that has never
+  been written, which is what autosave needs and exactly what Save As must not
+  do — the whole point of Save As is that a person is present to be asked.
+*/
+describe('saving somewhere chosen', () => {
+  it('writes to the chosen path and adopts it as the origin', async () => {
+    const { storage, written } = fakeStorage();
+    const list = new DocumentList();
+    const doc = newDocument(
+      list,
+      createEmptyScore({ title: 'X' }),
+      'Wedding March',
+    );
+
+    const uri = await saveDocumentAs(doc, storage, '/elsewhere/Chosen.moosiac');
+
+    expect(uri).toBe('/elsewhere/Chosen.moosiac');
+    expect(written['/elsewhere/Chosen.moosiac']).toContain('"version":1');
+    // Adopting the new path is what makes the *next* Save go there rather than
+    // back to wherever the document came from.
+    expect(doc.origin).toEqual({
+      kind: 'file',
+      uri: '/elsewhere/Chosen.moosiac',
+    });
+    expect(doc.dirty).toBe(false);
+  });
+
+  it('ignores the default directory entirely', async () => {
+    const { storage, written } = fakeStorage();
+    const list = new DocumentList();
+    const doc = newDocument(
+      list,
+      createEmptyScore({ title: 'X' }),
+      'Wedding March',
+    );
+
+    await saveDocumentAs(doc, storage, '/elsewhere/Chosen.moosiac');
+
+    expect(written['/docs/Wedding March.moosiac']).toBeUndefined();
+  });
+
+  it('leaves the document dirty when the write fails', async () => {
+    // Marking it clean before the write is how a failed save leaves a document
+    // that looks safe to close.
+    const { storage } = fakeStorage();
+    storage.writeText = () => Promise.reject(new Error('disk full'));
+    const list = new DocumentList();
+    const doc = newDocument(
+      list,
+      createEmptyScore({ title: 'X' }),
+      'Wedding March',
+    );
+    doc.dirty = true;
+
+    await expect(
+      saveDocumentAs(doc, storage, '/elsewhere/Chosen.moosiac'),
+    ).rejects.toThrow('disk full');
+    expect(doc.dirty).toBe(true);
+    expect(doc.origin.kind).not.toBe('file');
+  });
+
+  it('tells the recent list only after the write landed', async () => {
+    const { storage } = fakeStorage();
+    const list = new DocumentList();
+    const doc = newDocument(
+      list,
+      createEmptyScore({ title: 'X' }),
+      'Wedding March',
+    );
+    const onSaved = vi.fn();
+
+    await saveDocumentAs(doc, storage, '/elsewhere/Chosen.moosiac', onSaved);
+
+    expect(onSaved).toHaveBeenCalledWith(doc);
   });
 });

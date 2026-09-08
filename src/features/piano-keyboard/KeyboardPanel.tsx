@@ -13,8 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { chordSelection, pitchToMidi } from '@sudobility/music_types';
-import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { selectActiveTrackId } from '@sudobility/music_editing';
 import {
@@ -29,7 +28,6 @@ import { trackKeyboardRange } from '@sudobility/music_types';
 import { FULL_RANGE, snapToWhiteKeys } from '@sudobility/music_drawing';
 import { getAppServices } from '@/config/initialize';
 import type { MusicDocument } from '@/documents/document';
-import { Text } from '@sudobility/components-rn';
 import { PianoKeyboard } from './PianoKeyboard';
 import { useContainerSize } from '@/features/layout/useContainerSize';
 
@@ -41,16 +39,16 @@ const KEYBOARD_HEIGHT = 120;
 export type KeyboardPanelProps = {
   document: MusicDocument;
   /** Collapsed hides the keys and leaves the header, as the web panel does. */
+  /**
+   * Whether the panel is collapsed.
+   *
+   * Only to skip drawing when it is: the *control* is the transport bar's now,
+   * so this panel no longer offers one and takes no `onToggle`.
+   */
   collapsed: boolean;
-  onToggle: () => void;
 };
 
-export function KeyboardPanel({
-  document,
-  collapsed,
-  onToggle,
-}: KeyboardPanelProps) {
-  const { t } = useTranslation();
+export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
   const { size, onLayout, measured } = useContainerSize();
   const [sounding, setSounding] = useState<ReadonlySet<number>>(new Set());
   const activeTrackId = useStore(document.store, selectActiveTrackId);
@@ -155,35 +153,22 @@ export function KeyboardPanel({
     [document],
   );
 
-  if (collapsed) {
-    return (
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('editor.showKeyboard')}
-        accessibilityState={{ expanded: false }}
-        onPress={onToggle}
-        className="border-border bg-card items-center border-t py-3"
-      >
-        <Text className="text-muted-foreground text-sm">
-          {t('editor.showKeyboard')}
-        </Text>
-      </Pressable>
-    );
-  }
+  /*
+    Nothing at all when collapsed.
+
+    This used to be a bar of its own carrying the show/hide control, which cost
+    a whole row for one button — and put the control that *reveals* the keyboard
+    inside the thing it reveals, so the row had to survive collapsing in order
+    to stay reachable. The control is the transport bar's now, directly above,
+    so there is nothing left down here that has to stay on screen.
+  */
+  if (collapsed) return null;
 
   return (
-    <View>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('editor.hideKeyboard')}
-        accessibilityState={{ expanded: true }}
-        onPress={onToggle}
-        className="border-border bg-card items-center border-t py-3"
-      >
-        <Text className="text-muted-foreground text-sm">
-          {t('editor.hideKeyboard')}
-        </Text>
-      </Pressable>
+    // `testID` so the panel is addressable as a whole: its keys are not drawn
+    // until it has been measured, and a test renderer measures nothing, so
+    // there is no key to point at when asserting where the panel sits.
+    <View testID="piano-keyboard-panel" className="border-border border-t">
       <View onLayout={onLayout} style={{ height: KEYBOARD_HEIGHT }}>
         {measured ? (
           <PianoKeyboard

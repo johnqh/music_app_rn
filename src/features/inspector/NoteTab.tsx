@@ -132,6 +132,14 @@ export function NoteTab({
   const durationName = commonValue(
     notes.map(n => durationNameForTicks(n.durationTicks, score.ppq)),
   );
+  /*
+    `durationNameForTicks` answers null for a length no single notehead spells,
+    and `commonValue` answers null when the selection disagrees — so the name
+    alone cannot tell "custom" from "mixed", and this field reported every
+    tie-joined or imported note as Mixed. The ticks separate them: agreed ticks
+    with no name is one custom length, which is what the web app names.
+  */
+  const durationTicks = commonValue(notes.map(n => n.durationTicks));
   const velocity = commonValue(notes.map(n => n.velocity));
   const articulation = commonValue(notes.map(n => n.articulation ?? NO_MARK));
   const dynamic = commonValue(notes.map(n => n.dynamic ?? NO_MARK));
@@ -216,7 +224,13 @@ export function NoteTab({
           value={durationName ?? ''}
           accessibilityLabel={t('inspector.duration')}
           disabled={playing}
-          placeholder={durationName === null ? mixed : t('inspector.custom')}
+          placeholder={
+            durationName !== null
+              ? undefined
+              : durationTicks === null
+              ? mixed
+              : t('inspector.customDuration', { ticks: durationTicks })
+          }
           options={DURATION_NAMES.map((name: DurationName) => ({
             value: name,
             label: t(`duration.${name}`),
