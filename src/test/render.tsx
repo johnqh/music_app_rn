@@ -6,9 +6,10 @@
  * key, so an assertion on visible text checks nothing) and a document to edit.
  * `renderWithApp` provides the first; `testDocument` builds the second.
  */
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { render } from '@testing-library/react-native';
 import { PortalHost } from '@sudobility/components-rn';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createEmptyScore } from '@sudobility/music_types';
 import { createDocument } from '@/documents/document';
 import type { MusicDocument } from '@/documents/document';
@@ -64,5 +65,25 @@ export function renderWithApp(ui: ReactElement) {
     nothing — the host itself is always there — so "rendered nothing" is an
     assertion about its children.
   */
-  return render(ui, { wrapper: PortalHost });
+  /*
+    A React Query client, exactly as `App.tsx` mounts one.
+
+    Anything that reads server data through a hook throws "No QueryClient set"
+    without it — which takes the whole render down rather than leaving a value
+    missing, so a component that merely *might* ask the server would otherwise
+    break every test that renders it.
+
+    Fresh per render with retries off: a retrying query turns a deliberate
+    failure into a slow one, and a cache shared between tests is a test that
+    passes because of what the last one fetched.
+  */
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <QueryClientProvider client={queryClient}>
+      <PortalHost>{children}</PortalHost>
+    </QueryClientProvider>
+  );
+  return render(ui, { wrapper });
 }

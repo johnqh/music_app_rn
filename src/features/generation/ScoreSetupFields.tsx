@@ -21,17 +21,24 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Animated, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Input, Select, Text } from '@sudobility/components-rn';
+import { Input, Select, Switch, Text } from '@sudobility/components-rn';
+import { useScorePresets } from '@sudobility/music_client';
+import { publicServerContext } from '@/config/server';
 import {
   GENERATE_SCORE_COMPLEXITY_OPTIONS,
   GENERATE_SCORE_KEY_FIFTHS_OPTIONS,
   GENERATE_SCORE_MOOD_OPTIONS,
   GENERATE_SCORE_STYLE_OPTIONS,
   GENERATE_SCORE_STYLE_PRESETS,
+  DEFAULT_VOCAL_INSTRUMENT_VALUE,
+  hasVocalInstrument,
   styleInstrumentsWithGuest,
   GENERATE_SCORE_TIME_SIGNATURE_OPTIONS,
+  DEFAULT_INSTRUMENT_VALUE,
   FAMILY_GROUPS,
   KIT_OPTIONS,
+  VOICE_OPTIONS,
+  sortOptionsByLabel,
 } from '@sudobility/music_lib';
 import type {
   GenerateScoreComplexity,
@@ -43,12 +50,24 @@ import type {
  *
  * The web app's picker keeps the family groups because its `Select` renders
  * them; this one is a flat list with the family in the label, since the native
- * picker has no group heading. Built from the same two exports, so a catalogue
- * change moves both — the kits come first for the same reason they do there:
- * a drum kit is not program 40, and putting them among the melodic programs is
- * how the two come to be confused.
+ * picker has no group heading. Built from the same three exports, so a
+ * catalogue change moves both, and in the same order they appear there.
+ *
+ * The voices come first because General MIDI files them under Ensemble,
+ * between String Ensemble and Orchestra Hit, which is where nobody setting out
+ * to write a song looks for a singer. The kits come next for the reason they
+ * always did: a drum kit is not program 40, and putting them among the melodic
+ * programs is how the two come to be confused.
+ *
+ * Exported so it can be asserted on directly: the picker opens a modal, which
+ * a test environment does not mount, so the only honest check is of the list
+ * the picker is handed.
  */
-const INSTRUMENT_OPTIONS: readonly { value: string; label: string }[] = [
+export const GENERATION_INSTRUMENT_OPTIONS: readonly {
+  value: string;
+  label: string;
+}[] = [
+  ...VOICE_OPTIONS.map(voice => ({ value: voice.value, label: voice.label })),
   ...KIT_OPTIONS.map(kit => ({ value: kit.value, label: kit.label })),
   ...FAMILY_GROUPS.flatMap(group =>
     group.instruments.map(instrument => ({
@@ -57,6 +76,58 @@ const INSTRUMENT_OPTIONS: readonly { value: string; label: string }[] = [
     })),
   ),
 ];
+
+/**
+ * The style and mood lists, in the order they are read.
+ *
+ * Thirty-three styles in declaration order — waltz, jazz, pop, cinematic — is
+ * the order the vocabulary grew in and no order to find "reggae" by. Sorted on
+ * the translated label rather than the key, and under the language on screen,
+ * through `sortOptionsByLabel`, which the web dialog sorts with too.
+ *
+ * The "no style" entry is pinned above them: it is not a member of the
+ * vocabulary, it is its absence.
+ */
+export function styleSelectOptions(
+  t: (key: string) => string,
+  locale?: string,
+): { value: string; label: string }[] {
+  return [
+    { value: NONE, label: t('generateScore.noStyle') },
+    ...sortOptionsByLabel(
+      GENERATE_SCORE_STYLE_OPTIONS,
+      value => t(`generateScore.styleName.${value}`),
+      locale,
+    ).map(value => ({
+      value,
+      label: t(`generateScore.styleName.${value}`),
+    })),
+  ];
+}
+
+/**
+ * The moods, translated as well as sorted.
+ *
+ * They were rendered as their own raw values — `bittersweet`, `triumphant` —
+ * so a Chinese reader chose a mood in English from a list with no key to be
+ * missing from, which is the one class of gap `locale-parity` cannot see.
+ */
+export function moodSelectOptions(
+  t: (key: string) => string,
+  locale?: string,
+): { value: string; label: string }[] {
+  return [
+    { value: NONE, label: t('generateScore.noMood') },
+    ...sortOptionsByLabel(
+      GENERATE_SCORE_MOOD_OPTIONS,
+      value => t(`generateScore.moodName.${value}`),
+      locale,
+    ).map(value => ({
+      value,
+      label: t(`generateScore.moodName.${value}`),
+    })),
+  ];
+}
 
 /**
  * A select needs a value for "none", and `undefined` is not one.
@@ -89,11 +160,43 @@ export type ScoreSetupDraft = {
   setMode: (v: 'major' | 'minor') => void;
   instruments: readonly string[];
   setInstruments: (v: readonly string[]) => void;
+  lyrics: boolean;
+  setLyrics: (v: boolean) => void;
+  /**
+   * What the words are about, when that is not what the piece is about.
+   *
+   * Separate questions: the prompt describes the music, and the words over it
+   * can be about coming home without the music brief being about coming home.
+   * Blank means "the same as the piece", which is what the lyric always
+   * followed.
+   */
+  lyricsTheme: string;
+  setLyricsTheme: (v: string) => void;
+  /**
+   * What the project is called when nothing was typed.
+   *
+   * Two names, because the two modes produce different things and a reader
+   * scanning a list can tell them apart. It is the placeholder *and* the
+   * fallback: a placeholder showing a name you do not get is a label for a
+   * value that never existed.
+   */
+  defaultTitle: string;
+  /** Whether anybody in the roster can sing, which is what the lyrics switch turns on. */
+  hasVocal: boolean;
+  /**
+   * Adds or takes back the singer the sheet offers with its Generate toggle.
+   *
+   * Here rather than in the sheet because the roster and the style that
+   * overwrites it both live in this hook — a caller reaching in to splice the
+   * list would be a second place that has to know what a voice is.
+   */
+  setGenerating: (v: boolean) => void;
   /** The same object both music_lib builders take. */
   draft: GenerateScoreRequestDraft;
 };
 
 export function useScoreSetupDraft(): ScoreSetupDraft {
+  const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
   const [measuresText, setMeasuresText] = useState('16');
@@ -105,8 +208,31 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
   const [timeSignature, setTimeSignature] = useState('4/4');
   const [fifths, setFifths] = useState('0');
   const [mode, setMode] = useState<'major' | 'minor'>('major');
+  /*
+    Piano, the same opening roster the web dialog has.
+
+    It used to be whatever sat first in the flattened option list, which was the
+    Standard drum kit — so New Project on native started as a drum solo, and
+    would now start as a voice.
+  */
+  const [lyrics, setLyrics] = useState(true);
+  const [lyricsTheme, setLyricsTheme] = useState('');
+  /*
+    Whether a model is writing the music.
+
+    Held here rather than only in the sheet because two things in this hook turn
+    on it: the default title, and whether a style that rewrites the roster puts
+    the singer back.
+  */
+  const [generating, setGeneratingState] = useState(false);
+  /*
+    The singer this sheet added, so turning the toggle back off removes that one
+    and not a voice the reader chose themselves. A ref: it is read inside
+    handlers and must never cause a render.
+  */
+  const autoVocal = useRef(false);
   const [instruments, setInstruments] = useState<readonly string[]>([
-    INSTRUMENT_OPTIONS[0]?.value ?? '',
+    DEFAULT_INSTRUMENT_VALUE,
   ]);
 
   /*
@@ -137,11 +263,41 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
       appended last and this list is editable, so it is visible before anything
       is generated and removable by somebody who wanted the plain lineup.
     */
-    setInstruments([...styleInstrumentsWithGuest(next)]);
+    /*
+      A style overwrites the whole roster deliberately, so the singer has to be
+      put back: a vocal that vanished the moment a genre was chosen is a song
+      the reader thought they had asked for and did not get.
+    */
+    const roster = [...styleInstrumentsWithGuest(next)];
+    const singing = generating && !hasVocalInstrument(roster);
+    autoVocal.current = singing;
+    setInstruments(
+      singing ? [DEFAULT_VOCAL_INSTRUMENT_VALUE, ...roster] : roster,
+    );
     setTempoText(String(preset.tempo));
     setMeasuresText(String(preset.measures));
     setTimeSignature(preset.timeSignature);
     if (preset.mode) setMode(preset.mode);
+  };
+
+  /*
+    Turning the model on gives the roster somebody to sing, because a song needs
+    one and the form otherwise opens on a piano solo. Turning it off takes back
+    exactly what was given.
+  */
+  const setGenerating = (next: boolean): void => {
+    setGeneratingState(next);
+    if (next) {
+      if (hasVocalInstrument(instruments)) return;
+      autoVocal.current = true;
+      setInstruments([DEFAULT_VOCAL_INSTRUMENT_VALUE, ...instruments]);
+      return;
+    }
+    if (!autoVocal.current) return;
+    autoVocal.current = false;
+    const at = instruments.indexOf(DEFAULT_VOCAL_INSTRUMENT_VALUE);
+    if (at === -1 || instruments.length <= 1) return;
+    setInstruments(instruments.filter((_, index) => index !== at));
   };
 
   const durationMeasures = Number(measuresText);
@@ -156,11 +312,18 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
     ...(style === NONE ? {} : { style }),
     ...(mood === NONE ? {} : { mood }),
     tempoText,
+    lyrics,
+    lyricsTheme,
   };
 
   return {
     title,
     setTitle,
+    defaultTitle: t(
+      generating
+        ? 'newProject.defaultTitleGenerated'
+        : 'newProject.defaultTitle',
+    ),
     prompt,
     setPrompt,
     measuresText,
@@ -181,6 +344,12 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
     setMode,
     instruments,
     setInstruments,
+    lyrics,
+    setLyrics,
+    lyricsTheme,
+    setLyricsTheme,
+    hasVocal: hasVocalInstrument(instruments),
+    setGenerating,
     draft,
   };
 }
@@ -249,19 +418,53 @@ export function ScoreSetupFields({
   /** Renders the prompt, style, mood and complexity fields. */
   showAi: boolean;
 }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  /*
+    The briefs the server offers for this style.
+
+    `i18n.exists` filters what arrives: a server one version ahead of this app
+    would otherwise offer a brief's id as its own label. The value carried is
+    the *text*, because that text is the prompt.
+  */
+  const { data: presetKeys } = useScorePresets(
+    publicServerContext(),
+    draft.style === NONE ? undefined : draft.style,
+  );
+  const presets = (presetKeys ?? [])
+    .filter(key => i18n.exists(`generateScore.preset.${key}`))
+    .map(key => ({
+      value: t(`generateScore.preset.${key}`),
+      label: t(`generateScore.preset.${key}`),
+    }));
+
   return (
     <>
       <Field label={t('generateScore.titleField')}>
         <Input
           value={draft.title}
           onChangeText={draft.setTitle}
-          placeholder={t('generateScore.titlePlaceholder')}
+          placeholder={draft.defaultTitle}
           accessibilityLabel={t('generateScore.titleField')}
         />
       </Field>
 
       <Reveal shown={showAi}>
+        {/* A starting point, chosen from the briefs the server offers for the
+            style in hand. Rendered only when a list has arrived: the list is
+            the server's, so a local document with no server gets no control
+            rather than one that opens empty. */}
+        {presets.length > 0 ? (
+          <Field label={t('generateScore.presetPrompts')}>
+            <Select
+              value=""
+              placeholder={t('generate.presets')}
+              accessibilityLabel={t('generateScore.presetPrompts')}
+              options={presets}
+              onValueChange={draft.setPrompt}
+            />
+          </Field>
+        ) : null}
+
         <Field label={t('generate.prompt')}>
           <Input
             value={draft.prompt}
@@ -271,6 +474,42 @@ export function ScoreSetupFields({
             accessibilityLabel={t('generate.prompt')}
           />
         </Field>
+
+        {/* Only where somebody can sing them: syllables under a bass line are
+            not a lyric. music_lib drops the field from the request otherwise,
+            rather than trusting this to stay in step with the roster. */}
+        {draft.hasVocal ? (
+          <View className="flex-row items-center gap-3 pb-3">
+            <Switch
+              checked={draft.lyrics}
+              onCheckedChange={draft.setLyrics}
+              accessibilityLabel={t('newProject.writeLyrics')}
+            />
+            <View className="flex-1">
+              <Text className="text-foreground text-base">
+                {t('newProject.writeLyrics')}
+              </Text>
+              <Text className="text-muted-foreground text-sm">
+                {t('newProject.writeLyricsHint')}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Only where words are actually being written: a subject for a lyric
+            nobody asked for is the disagreement this field was once left out to
+            avoid, and music_lib drops it from the request on the same rule
+            rather than trusting this to stay in step. */}
+        {draft.hasVocal && draft.lyrics ? (
+          <Field label={t('newProject.lyricsTheme')}>
+            <Input
+              value={draft.lyricsTheme}
+              onChangeText={draft.setLyricsTheme}
+              placeholder={t('newProject.lyricsThemePlaceholder')}
+              accessibilityLabel={t('newProject.lyricsTheme')}
+            />
+          </Field>
+        ) : null}
       </Reveal>
 
       <Field label={t('generateScore.measures')}>
@@ -296,16 +535,7 @@ export function ScoreSetupFields({
           <Select
             value={draft.style}
             accessibilityLabel={t('generateScore.style')}
-            options={[
-              { value: NONE, label: t('generateScore.noStyle') },
-              // Translated, not the raw token: the list showed `heavyMetal`
-              // and `bossaNova` to every reader, and a Chinese one has names
-              // for these genres too.
-              ...GENERATE_SCORE_STYLE_OPTIONS.map(value => ({
-                value,
-                label: t(`generateScore.styleName.${value}`),
-              })),
-            ]}
+            options={styleSelectOptions(t, i18n.language)}
             onValueChange={draft.applyStyle}
           />
         </Field>
@@ -314,13 +544,7 @@ export function ScoreSetupFields({
           <Select
             value={draft.mood}
             accessibilityLabel={t('generateScore.mood')}
-            options={[
-              { value: NONE, label: t('generateScore.noMood') },
-              ...GENERATE_SCORE_MOOD_OPTIONS.map(value => ({
-                value,
-                label: value,
-              })),
-            ]}
+            options={moodSelectOptions(t, i18n.language)}
             onValueChange={draft.setMood}
           />
         </Field>
@@ -387,7 +611,7 @@ export function ScoreSetupFields({
               key={`${value}-${index}`}
               value={value}
               accessibilityLabel={t('generateScore.instrumentation')}
-              options={[...INSTRUMENT_OPTIONS]}
+              options={[...GENERATION_INSTRUMENT_OPTIONS]}
               onValueChange={next =>
                 draft.setInstruments(
                   draft.instruments.map((v, i) => (i === index ? next : v)),

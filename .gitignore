@@ -19,3 +19,8 @@ assets/soundfont/
 macos/build/
 macos/DerivedData/
 android/app/.cxx/
+
+# Local environment files — never committed (mirrors music_app).
+.env
+.env.local
+.env.*.local

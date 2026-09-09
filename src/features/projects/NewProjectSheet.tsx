@@ -95,7 +95,16 @@ export function NewProjectSheet({
   const handleCreate = (): void => {
     if (!canCreate) return;
     if (generating) {
-      const request = buildGenerateScoreRequest(setup.draft);
+      /*
+        The default title reaches the *request*, not the draft.
+        `buildNewProjectScore` reads the same draft and writes the title into
+        the score's own metadata, where blank has always meant "Untitled" — the
+        score's title and the project's name are different things.
+      */
+      const request = buildGenerateScoreRequest({
+        ...setup.draft,
+        title: setup.title.trim() || setup.defaultTitle,
+      });
       if (request) onSubmit({ kind: 'generate', request });
       return;
     }
@@ -105,7 +114,7 @@ export function NewProjectSheet({
     // says "Untitled", and a row in a list needs one a reader can pick out.
     onSubmit({
       kind: 'blank',
-      title: setup.title.trim() || t('newProject.untitled'),
+      title: setup.title.trim() || setup.defaultTitle,
       score,
     });
   };
@@ -140,7 +149,12 @@ export function NewProjectSheet({
         <View className="flex-row items-center gap-3 pb-3">
           <Switch
             checked={generateForMe}
-            onCheckedChange={setGenerateForMe}
+            onCheckedChange={next => {
+              setGenerateForMe(next);
+              // The roster and the style that overwrites it both live in the
+              // draft, so the singer is added and taken back there.
+              setup.setGenerating(next && generationAvailable);
+            }}
             disabled={!generationAvailable}
             accessibilityLabel={t('newProject.generateForMe')}
           />
