@@ -1,6 +1,6 @@
 {
   "name": "music_app_rn",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "private": true,
   "engines": {
     "node": ">=20"
@@ -43,8 +43,8 @@
     "@sudobility/music_codecs": "^0.2.22",
     "@sudobility/music_drawing": "^0.0.30",
     "@sudobility/music_editing": "^0.0.15",
-    "@sudobility/music_io": "^0.9.32",
-    "@sudobility/music_lib": "^1.9.31",
+    "@sudobility/music_io": "^0.9.33",
+    "@sudobility/music_lib": "^1.9.32",
     "@sudobility/music_player": "^0.1.22",
     "@sudobility/music_types": "^0.13.21",
     "@sudobility/types": "^1.9.67",
