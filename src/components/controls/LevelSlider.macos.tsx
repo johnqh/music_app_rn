@@ -179,7 +179,13 @@ function SliderShell({
       style={{ height: SHELL_HEIGHT, opacity: disabled ? 0.5 : 1 }}
       accessibilityRole="adjustable"
       accessibilityLabel={label}
-      accessibilityValue={{ min, max, now: value }}
+      /*
+        Whole numbers, as a percentage of the range. The native side reads
+        `min`/`max`/`now` as integers and throws on a fraction — a volume of
+        0.787 took down the whole import screen with "Loss of precision during
+        arithmetic conversion: (long long)".
+      */
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(fraction * 100) }}
       accessibilityState={{ disabled }}
       {...(disabled ? {} : responder.panHandlers)}
     >

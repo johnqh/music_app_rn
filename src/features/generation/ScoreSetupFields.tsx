@@ -32,7 +32,7 @@ import {
   GENERATE_SCORE_STYLE_PRESETS,
   DEFAULT_VOCAL_INSTRUMENT_VALUE,
   hasVocalInstrument,
-  styleInstrumentsWithGuest,
+  styleRoster,
   GENERATE_SCORE_TIME_SIGNATURE_OPTIONS,
   DEFAULT_INSTRUMENT_VALUE,
   FAMILY_GROUPS,
@@ -160,6 +160,13 @@ export type ScoreSetupDraft = {
   setMode: (v: 'major' | 'minor') => void;
   instruments: readonly string[];
   setInstruments: (v: readonly string[]) => void;
+  /**
+   * Whether the part at this position is one of the chosen style's essential
+   * instruments, which cannot be changed away while generating — a reggae
+   * without its kit is not reggae. Only the first of each is locked, so a
+   * second kit is still the reader's to change.
+   */
+  isLockedInstrument: (index: number) => boolean;
   lyrics: boolean;
   setLyrics: (v: boolean) => void;
   /**
@@ -234,6 +241,8 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
   const [instruments, setInstruments] = useState<readonly string[]>([
     DEFAULT_INSTRUMENT_VALUE,
   ]);
+  /** The chosen style's essential instruments, as picker values. */
+  const [essentials, setEssentials] = useState<readonly string[]>([]);
 
   /*
     Choosing a style fills the form with the ordinary shape of that genre.
@@ -257,22 +266,21 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
       next === NONE ? undefined : GENERATE_SCORE_STYLE_PRESETS[next];
     if (!preset) return;
     /*
-      Through `styleInstrumentsWithGuest`, shared with the web dialog: the
-      roster plus one common instrument the genre would not have asked for, so
-      two goes at the same style are not the same five instruments twice. It is
-      appended last and this list is editable, so it is visible before anything
-      is generated and removable by somebody who wanted the plain lineup.
+      Through `styleRoster`, shared with the web dialog: the style's essential
+      instruments (locked while generating), its preferred ones (the singer
+      among them in a song style, only while the model writes the music) and a
+      couple of its optional ones drawn fresh each time, so two goes at one
+      style are not the same band twice. A style overwrites the whole roster
+      deliberately: half one genre and half another is nobody's ensemble.
     */
-    /*
-      A style overwrites the whole roster deliberately, so the singer has to be
-      put back: a vocal that vanished the moment a genre was chosen is a song
-      the reader thought they had asked for and did not get.
-    */
-    const roster = [...styleInstrumentsWithGuest(next)];
-    const singing = generating && !hasVocalInstrument(roster);
-    autoVocal.current = singing;
-    setInstruments(
-      singing ? [DEFAULT_VOCAL_INSTRUMENT_VALUE, ...roster] : roster,
+    const roster = styleRoster(next, { voice: generating });
+    const values = roster.map(entry => entry.value);
+    autoVocal.current = hasVocalInstrument(values);
+    setInstruments(values);
+    setEssentials(
+      roster
+        .filter(entry => entry.tier === 'essential')
+        .map(entry => entry.value),
     );
     setTempoText(String(preset.tempo));
     setMeasuresText(String(preset.measures));
@@ -344,6 +352,11 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
     setMode,
     instruments,
     setInstruments,
+    isLockedInstrument: (index: number) =>
+      generating &&
+      style !== NONE &&
+      essentials.includes(instruments[index]) &&
+      instruments.indexOf(instruments[index]) === index,
     lyrics,
     setLyrics,
     lyricsTheme,
@@ -607,17 +620,24 @@ export function ScoreSetupFields({
       <Field label={t('generateScore.instrumentation')}>
         <View className="gap-2">
           {draft.instruments.map((value, index) => (
-            <Select
-              key={`${value}-${index}`}
-              value={value}
-              accessibilityLabel={t('generateScore.instrumentation')}
-              options={[...GENERATION_INSTRUMENT_OPTIONS]}
-              onValueChange={next =>
-                draft.setInstruments(
-                  draft.instruments.map((v, i) => (i === index ? next : v)),
-                )
-              }
-            />
+            <View key={`${value}-${index}`} className="gap-1">
+              <Select
+                value={value}
+                accessibilityLabel={t('generateScore.instrumentation')}
+                options={[...GENERATION_INSTRUMENT_OPTIONS]}
+                disabled={draft.isLockedInstrument(index)}
+                onValueChange={next =>
+                  draft.setInstruments(
+                    draft.instruments.map((v, i) => (i === index ? next : v)),
+                  )
+                }
+              />
+              {draft.isLockedInstrument(index) ? (
+                <Text className="text-muted-foreground text-sm">
+                  {t('generateScore.essential')}
+                </Text>
+              ) : null}
+            </View>
           ))}
         </View>
       </Field>

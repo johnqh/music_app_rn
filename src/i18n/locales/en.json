@@ -744,6 +744,7 @@
     "presets": "Presets"
   },
   "generateScore": {
+    "essential": "(essential)",
     "complexity": "Complexity",
     "instrumentation": "Instrumentation",
     "key": "Key",

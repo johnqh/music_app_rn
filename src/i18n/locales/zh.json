@@ -744,6 +744,7 @@
     "presets": "预设"
   },
   "generateScore": {
+    "essential": "（必需）",
     "complexity": "复杂度",
     "instrumentation": "配器",
     "key": "调号",

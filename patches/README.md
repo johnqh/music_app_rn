@@ -80,3 +80,20 @@ nothing about whether it *compiles* for this platform.
 Note the filename: `patch-package` could not generate this one under Bun
 (`Cannot read properties of undefined`), so the file is sudojo's, renamed to
 patch-package's `name+version.patch` convention. It applies the same way.
+
+## `react-native-macos+0.81.9.patch` — skip component classes a Mac build does not link
+
+Codegen runs with `--targetPlatform ios` for a macOS build, so the generated
+`RCTThirdPartyComponentsProvider.mm` lists every Fabric component of every
+iOS-capable library — including `react-native-screens` and
+`@react-native-community/slider`, which have no macOS implementation and are
+left out of the macOS Pods. Their `NSClassFromString` lookups return nil, and a
+nil inside the generated dictionary literal throws at the first render: the
+app launched, loaded its bundle, and aborted in
+`+[RCTThirdPartyComponentsProvider thirdPartyFabricComponents]`.
+
+The patch changes the generator to emit name/class pairs and the template to
+build the dictionary from the classes that actually exist. Excluding those two
+libraries in `react-native.config.js` instead is not an option — see the
+comment there: a `platforms` entry replaces the package's own map and broke the
+Android build.
