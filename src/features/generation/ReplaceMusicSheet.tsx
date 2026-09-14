@@ -60,6 +60,8 @@ export type ReplaceMusicSheetProps = {
   canSubmit: boolean;
   onClose: () => void;
   onSubmit: (submission: ReplaceSubmission) => void;
+  /** The bars the region touches times its tracks: what the server bills. */
+  estimatedCredits?: number;
 };
 
 const TITLE_KEY: Record<ReplaceScope, string> = {
@@ -74,6 +76,7 @@ export function ReplaceMusicSheet({
   canSubmit,
   onClose,
   onSubmit,
+  estimatedCredits = 0,
 }: ReplaceMusicSheetProps) {
   const { t } = useTranslation();
   const [instruction, setInstruction] = useState('');
@@ -133,6 +136,11 @@ export function ReplaceMusicSheet({
       ]}
     >
       <ScrollView keyboardShouldPersistTaps="handled">
+        {estimatedCredits > 0 ? (
+          <Text className="text-muted-foreground pb-3 text-sm">
+            {t('generate.estimate', { count: estimatedCredits })}
+          </Text>
+        ) : null}
         <Field label={t('generate.prompt')}>
           <Input
             value={instruction}

@@ -17,6 +17,7 @@ import { ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Input, Select, Text } from '@sudobility/components-rn';
 import {
+  estimateGenerateTrackCredits,
   DEFAULT_INSTRUMENT_VALUE,
   FAMILY_GROUPS,
   KIT_OPTIONS,
@@ -101,7 +102,7 @@ export function GenerateTrackSheet({
           />
         </View>
 
-        <View className="gap-1">
+        <View className="gap-1 pb-3">
           <Text className="text-muted-foreground text-sm">
             {t('generate.instrument')}
           </Text>
@@ -112,6 +113,13 @@ export function GenerateTrackSheet({
             onValueChange={setValue}
           />
         </View>
+
+        {/* Every bar of the score, once: what the server bills for a new part. */}
+        <Text className="text-muted-foreground text-sm">
+          {t('generate.estimate', {
+            count: estimateGenerateTrackCredits(score),
+          })}
+        </Text>
       </ScrollView>
     </FormModal>
   );

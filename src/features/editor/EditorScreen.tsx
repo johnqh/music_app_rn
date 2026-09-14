@@ -42,10 +42,15 @@ import {
   exportScopeNeedsPrompt,
   exportTargetScore,
   hiddenTrackCount,
+  selectActiveTrackId,
 } from '@sudobility/music_editing';
 import type { Score } from '@sudobility/music_types';
 import { renderEvents, renderSamples } from '@sudobility/music_player';
-import { reportError } from '@sudobility/music_lib';
+import {
+  estimateReplacementCredits,
+  replacementRegion,
+  reportError,
+} from '@sudobility/music_lib';
 import { getAppServices } from '@/config/initialize';
 import { getMusicClient } from '@/config/server';
 import { useAuth } from '@/auth/AuthContext';
@@ -144,6 +149,16 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
   const selection = useStore(document.store, s => s.selection);
   const hasSelection =
     selection.eventIds.length > 0 || selection.measureIds.length > 0;
+  const activeTrackId = useStore(document.store, selectActiveTrackId);
+  // What the open Replace will bill: the bars its region touches, per track.
+  const replaceRegion =
+    score && replaceScope
+      ? replacementRegion(score, selection, activeTrackId, replaceScope)
+      : null;
+  const replaceCredits =
+    score && replaceRegion
+      ? estimateReplacementCredits(score, replaceRegion)
+      : 0;
 
   /*
     A document only has a project to generate into when it came from one. A
@@ -365,6 +380,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
             open={replaceScope !== null}
             scope={replaceScope ?? 'notes'}
             canSubmit={hasSelection}
+            estimatedCredits={replaceCredits}
             onClose={() => setReplaceScope(null)}
             onSubmit={submission => {
               const scope = replaceScope;
