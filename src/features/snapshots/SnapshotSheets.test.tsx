@@ -71,7 +71,7 @@ describe('CreateSnapshotSheet', () => {
     expect(onCreate).toHaveBeenCalledWith(
       'Version 3',
       'A Composer',
-      'Quartet — Version 3',
+      'Quartet Version 3',
     );
   });
 });

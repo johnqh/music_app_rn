@@ -8,6 +8,7 @@
  * them are invisible on inspection: the score simply plays differently.
  */
 import { act, fireEvent } from '@testing-library/react-native';
+import { addBlankTrack } from '@sudobility/music_editing';
 import { renderWithApp, testDocument } from '@/test/render';
 import { MeasureTab } from './MeasureTab';
 import type { MusicDocument } from '@/documents/document';
@@ -95,5 +96,67 @@ describe('MeasureTab', () => {
     // Bar 2 sets no tempo of its own; the field still has to say 120.
     const { view } = setup(1);
     expect(view.getByLabelText(/tempo/i).props.value).toBe('120');
+  });
+
+  it('names the bar by its number in the heading', () => {
+    // `barNumberAt`, never `index + 1`: a pickup has an index and no number.
+    const { view } = setup(1);
+    expect(view.getByText('Bar 2')).toBeTruthy();
+  });
+
+  /*
+    The clef picker used to resolve the clef in force from the *active* track
+    and write the change onto it — so selecting bar 2 of the second part while
+    the first was active changed the first part's clef. `setClefAtMeasure`
+    works the track out from the bar itself.
+  */
+  it("writes a clef change onto the bar's own track, not the active one", () => {
+    const document = testDocument();
+    act(() => {
+      addBlankTrack(document.store);
+      const score = document.store.getState().score!;
+      document.store.getState().setActiveTrack(score.tracks[0].id);
+      document.store
+        .getState()
+        .selectMeasures([score.tracks[1].measures[1].id]);
+    });
+    const view = renderWithApp(<MeasureTab document={document} />);
+    fireEvent.press(view.getByLabelText('Clef from here'));
+    fireEvent.press(view.getByText('bass'));
+    const score = document.store.getState().score!;
+    expect(score.tracks[1].measures[1].clef).toBe('bass');
+    expect(score.tracks[0].measures[1].clef).toBeUndefined();
+  });
+
+  it('writes nothing when the tempo field is left untouched', () => {
+    /*
+      The field shows the tempo in force; blurring it used to write that value
+      as an event of this bar's own, turning an inherited tempo into a change
+      nobody made (and an undo entry with it).
+    */
+    const { view, document } = setup(1);
+    const before = document.store.getState().score!.tempoMap.length;
+    fireEvent(view.getByLabelText(/tempo here/i), 'blur');
+    expect(document.store.getState().score!.tempoMap).toHaveLength(before);
+  });
+
+  it('clamps a typed tempo to what a score can hold', () => {
+    const { view, document } = setup(1);
+    const field = view.getByLabelText(/tempo here/i);
+    fireEvent.changeText(field, '9000');
+    fireEvent(field, 'blur');
+    const bar = measureAt(document, 1);
+    const event = document.store
+      .getState()
+      .score!.tempoMap.find(e => e.tick === bar.startTick);
+    expect(event?.bpm).toBe(400);
+  });
+
+  it('offers the denominators a time signature can have, as a picker', () => {
+    // A typed 3 has no nearest note value to snap to; the command refuses it.
+    const { view, document } = setup(1);
+    fireEvent.press(view.getByLabelText('Time sig. denominator'));
+    fireEvent.press(view.getByText('8'));
+    expect(measureAt(document, 1).timeSignature.denominator).toBe(8);
   });
 });

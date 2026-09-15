@@ -1,127 +1,107 @@
 /**
- * The two snapshot rules that fail silently.
+ * What the panel does with `useProjectSnapshots`.
  *
- * **Creating one must flush the live score first.** The server copies the
- * *projects row*, and saving is debounced — so a snapshot taken moments after
- * an edit pins the score as it was before it, and right after a generation it
- * can pin the placeholder rather than the result. Nothing about that is visible
- * until somebody opens the snapshot much later.
- *
- * **Publishing happens in the same step as creating**, because that is how the
- * sheet asks it. A create that quietly skipped the publish would leave the
- * reader believing their music was public when it was not.
+ * The rules themselves — flush before creating, no re-download, the stamp
+ * noted — are music_client's and tested there. What fails silently *here* is
+ * the wiring between a sheet and the hook: **publishing happens in the same
+ * step as creating**, because that is how the sheet asks it, and a create that
+ * quietly skipped the publish would leave the reader believing their music was
+ * public when it was not. Nor must a snapshot that was not asked to be public
+ * become so.
  */
 import { jest } from '@jest/globals';
 import { act, fireEvent } from '@testing-library/react-native';
-import { createEmptyScore } from '@sudobility/music_types';
-import { createDocument } from '@/documents/document';
+import type { ProjectSnapshots } from '@sudobility/music_client';
 import { renderWithApp } from '@/test/render';
 import { SnapshotsPanel } from './SnapshotsPanel';
-import type { SnapshotGateway } from './SnapshotsPanel';
 
-function projectDocument() {
-  return createDocument({
-    id: 'd',
-    title: 'Quartet',
-    score: createEmptyScore({ title: 'Quartet' }),
-    origin: { kind: 'project', projectId: 'p1' },
+function fakeSnapshots(
+  overrides: Partial<ProjectSnapshots> = {},
+): ProjectSnapshots {
+  return {
+    snapshots: [],
+    nodes: [],
+    parentSnapshotId: null,
+    published: [],
+    defaultPublisherName: undefined,
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(async () => {}),
+    create: jest.fn(async () => null),
+    publish: jest.fn(async () => null),
+    rename: jest.fn(async () => null),
+    unpublish: jest.fn(async () => ({} as never)),
+    open: jest.fn(async () => ({} as never)),
+    ...overrides,
+  } as ProjectSnapshots;
+}
+
+async function createFrom(view: ReturnType<typeof renderWithApp>) {
+  fireEvent.press(view.getByText('New snapshot'));
+  await act(async () => {
+    // By role: the sheet's title says the same words as its confirm button.
+    fireEvent.press(view.getByRole('button', { name: 'Create snapshot' }));
   });
 }
-
-function gateway(): SnapshotGateway & { calls: string[] } {
-  const calls: string[] = [];
-  return {
-    calls,
-    listSnapshots: jest.fn(async () => {
-      calls.push('list');
-      return [];
-    }),
-    getProjectStatus: jest.fn(async () => ({
-      status: 'ready',
-      updatedAt: '2026-01-01T00:00:00.000Z',
-      parentSnapshotId: null,
-    })),
-    createSnapshot: jest.fn(async () => {
-      calls.push('create');
-      return { id: 's1', name: 'Version 1' };
-    }),
-    openSnapshot: jest.fn(async () => {
-      calls.push('open');
-      return undefined;
-    }),
-    publishSnapshot: jest.fn(async () => {
-      calls.push('publish');
-      return undefined;
-    }),
-  } as unknown as SnapshotGateway & { calls: string[] };
-}
-
-async function setup() {
-  const document = projectDocument();
-  const g = gateway();
-  const flush = jest.fn(async () => void g.calls.push('flush'));
-  const reload = jest.fn(async () => {});
-  const view = renderWithApp(
-    <SnapshotsPanel
-      document={document}
-      gateway={g}
-      getToken={async () => 'tok'}
-      flush={flush}
-      reload={reload}
-    />,
-  );
-  /*
-    Flushes the effect's promises. `waitFor` polls with timers, and this
-    component settles in microtasks — an empty async `act` is the shorter and
-    more reliable way to let them run.
-  */
-  await act(async () => {});
-  return { view, g, flush, reload };
-}
-
-afterEach(() => {
-  jest.useRealTimers();
-});
 
 describe('SnapshotsPanel', () => {
-  it('flushes the live score before asking for a snapshot', async () => {
-    const { view, g } = await setup();
-    fireEvent.press(view.getByText('New snapshot'));
-    await act(async () => {
-      // By role: the sheet's title says the same words as its confirm button.
-      fireEvent.press(view.getByRole('button', { name: 'Create snapshot' }));
-    });
-    /*
-      Presence *and* order. `indexOf` alone is a trap: with no flush at all it
-      answers -1, which is less than every real index, so the ordering
-      assertion passes while the rule is broken. Asserting the sequence
-      directly cannot do that.
-    */
-    expect(g.calls).toEqual(['list', 'flush', 'create', 'list']);
+  it('creates a snapshot without publishing one that was not asked to be', async () => {
+    const snapshots = fakeSnapshots();
+    const view = renderWithApp(
+      <SnapshotsPanel snapshots={snapshots} projectName="Quartet" />,
+    );
+    await createFrom(view);
+    expect(snapshots.create).toHaveBeenCalledWith({ name: 'Version 1' });
   });
 
-  it('does not publish a snapshot that was not asked to be published', async () => {
-    const { view, g } = await setup();
+  it('publishes in the same step when the sheet asks it to', async () => {
+    const snapshots = fakeSnapshots({ defaultPublisherName: 'A Composer' });
+    const view = renderWithApp(
+      <SnapshotsPanel snapshots={snapshots} projectName="Quartet" />,
+    );
     fireEvent.press(view.getByText('New snapshot'));
+    fireEvent(view.getByLabelText('Publish'), 'valueChange', true);
+    fireEvent(view.getByLabelText(/full copyright/i), 'valueChange', true);
     await act(async () => {
-      // By role: the sheet's title says the same words as its confirm button.
       fireEvent.press(view.getByRole('button', { name: 'Create snapshot' }));
     });
-    expect(g.createSnapshot).toHaveBeenCalled();
-    expect(g.publishSnapshot).not.toHaveBeenCalled();
+    expect(snapshots.create).toHaveBeenCalledWith({
+      name: 'Version 1',
+      publish: { publisherName: 'A Composer', publicName: 'Quartet Version 1' },
+    });
   });
 
-  it('re-reads the project after creating one, since that re-parents it', async () => {
-    // Creating a snapshot changes the project row, and it is *this* client
-    // that changed it — so it must re-read rather than leave it to the poll,
-    // which would see its own write as somebody else's change.
-    const { view, g, reload } = await setup();
-    fireEvent.press(view.getByText('New snapshot'));
-    await act(async () => {
-      // By role: the sheet's title says the same words as its confirm button.
-      fireEvent.press(view.getByRole('button', { name: 'Create snapshot' }));
+  it('reports a failed write rather than swallowing it', async () => {
+    const snapshots = fakeSnapshots({
+      create: jest.fn(async () => {
+        throw new Error('offline');
+      }),
     });
-    expect(reload).toHaveBeenCalled();
-    expect(g.createSnapshot).toHaveBeenCalled();
+    const view = renderWithApp(
+      <SnapshotsPanel snapshots={snapshots} projectName="Quartet" />,
+    );
+    await createFrom(view);
+    expect(view.getByText('offline')).toBeTruthy();
+  });
+
+  it('offers to withdraw what is already public', async () => {
+    const published = {
+      id: 's1',
+      name: 'Version 1',
+      publicId: 'pub1',
+      publicName: 'Quartet Version 1',
+      publisherName: 'A Composer',
+    } as never;
+    const snapshots = fakeSnapshots({
+      snapshots: [published],
+      published: [published],
+    });
+    const view = renderWithApp(
+      <SnapshotsPanel snapshots={snapshots} projectName="Quartet" />,
+    );
+    await act(async () => {
+      fireEvent.press(view.getByText('Unpublish'));
+    });
+    expect(snapshots.unpublish).toHaveBeenCalledWith('s1');
   });
 });

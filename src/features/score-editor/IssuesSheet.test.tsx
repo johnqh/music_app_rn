@@ -7,7 +7,8 @@
  * sheet stays open when anything remains.
  */
 import { jest } from '@jest/globals';
-import { act } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
+import type { MusicDocument } from '@/documents/document';
 import { renderWithApp, testDocument } from '@/test/render';
 import { IssuesSheet } from './IssuesSheet';
 
@@ -18,6 +19,66 @@ function setup() {
     <IssuesSheet open document={document} onClose={onClose} />,
   );
   return { view, document, onClose };
+}
+
+/** Takes bar 1's rest away, so the bar no longer adds up — a repairable issue. */
+function shortenFirstBar(document: MusicDocument): void {
+  act(() => {
+    const score = document.store.getState().score!;
+    const shortened = {
+      ...score,
+      tracks: score.tracks.map(track => ({
+        ...track,
+        measures: track.measures.map((m, i) =>
+          i === 0 ? { ...m, voices: [{ ...m.voices[0], events: [] }] } : m,
+        ),
+      })),
+    };
+    document.store.getState().setScore(shortened, { resetHistory: true });
+  });
+}
+
+/**
+ * Eleven whole notes struck together in bar 1 — past the readability threshold
+ * for notes sounding at once, which `repairScore` deliberately leaves alone:
+ * there is no non-arbitrary choice of which note to delete.
+ */
+function overcrowdFirstBar(document: MusicDocument): void {
+  act(() => {
+    const score = document.store.getState().score!;
+    const track = score.tracks[0];
+    const measure = track.measures[0];
+    const voice = measure.voices[0];
+    // Distinct pitches, so nothing is an exact duplicate the repair would drop.
+    const steps = ['C', 'D', 'E', 'F', 'G', 'A', 'B'] as const;
+    const events = Array.from({ length: 11 }, (_, i) => ({
+      id: `crowd-${i}`,
+      pitch: {
+        step: steps[i % 7],
+        octave: 3 + Math.floor(i / 7),
+        accidental: 0 as const,
+      },
+      startTick: measure.startTick,
+      durationTicks: measure.durationTicks,
+      velocity: 80,
+      voiceId: voice.id,
+      trackId: track.id,
+    }));
+    const crowded = {
+      ...score,
+      tracks: score.tracks.map((t, ti) =>
+        ti === 0
+          ? {
+              ...t,
+              measures: t.measures.map((m, i) =>
+                i === 0 ? { ...m, voices: [{ ...voice, events }] } : m,
+              ),
+            }
+          : t,
+      ),
+    };
+    document.store.getState().setScore(crowded, { resetHistory: true });
+  });
 }
 
 describe('IssuesSheet', () => {
@@ -57,5 +118,39 @@ describe('IssuesSheet', () => {
     const issues = document.store.getState().validationIssues;
     expect(issues.length).toBeGreaterThan(0);
     expect(view.getByText(issues[0].message)).toBeTruthy();
+  });
+
+  /*
+    Fix all's outcome is music_editing's `repairIssuesOutcome`, shared with the
+    web: what it says, and whether the list closes. It used to be decided here
+    and said nothing at all — the sheet closed or it did not, and a press that
+    repaired nothing looked exactly like a press that did not register.
+  */
+  it('closes and says how many were fixed when the list empties', () => {
+    const { view, document, onClose } = setup();
+    shortenFirstBar(document);
+    act(() => {
+      fireEvent.press(view.getByRole('button', { name: 'Fix all' }));
+    });
+    expect(document.store.getState().validationIssues).toHaveLength(0);
+    expect(onClose).toHaveBeenCalled();
+    const toasts = document.store.getState().toasts;
+    expect(toasts.at(-1)?.message).toMatch(/^Fixed \d+ issues?\.$/);
+    expect(toasts.at(-1)?.severity).toBe('success');
+  });
+
+  it('stays open and says so when nothing could be fixed', () => {
+    const { view, document, onClose } = setup();
+    overcrowdFirstBar(document);
+    expect(document.store.getState().validationIssues.length).toBeGreaterThan(
+      0,
+    );
+    act(() => {
+      fireEvent.press(view.getByRole('button', { name: 'Fix all' }));
+    });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(document.store.getState().toasts.at(-1)?.message).toBe(
+      'Nothing here can be fixed automatically.',
+    );
   });
 });

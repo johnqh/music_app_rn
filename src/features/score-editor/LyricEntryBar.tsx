@@ -11,13 +11,16 @@
  * word and moves on, which is what tells the renderer to draw the hyphen and
  * what MusicXML calls `syllabic`. **Return** commits and stops.
  *
- * The one difference from the web bar, and it is deliberate: that one reads
- * `keydown` and calls `preventDefault`, which a software keyboard has no
- * equivalent for — a typed space on a phone is a character in the field, not a
- * key event anything can cancel. So this watches the *text* instead. A trailing
- * space or hyphen means "that syllable is finished", which is true of a
- * hardware keyboard as well, so one rule covers a Mac, an iPad with a keyboard
- * case, and a phone with none. Explicit Back and Done controls sit beside it
+ * **The rules are music_editing's** (`lyricEntryStep`, `applyLyricStep`,
+ * `splitLyricSeparator`), shared with the web bar. What differs is only how a
+ * keystroke arrives. The web reads `keydown` and cancels it; a software
+ * keyboard has no key event to cancel — a typed space on a phone is already a
+ * character in the field — so this watches the *text* and asks
+ * `splitLyricSeparator` after each change. A separator counts **anywhere** in
+ * the text, as the key does on the web: this bar used to honour one only at
+ * the end, so a hyphen typed with the cursor inside a word broke the syllable
+ * on the web and was a plain character here — one keystroke, two meanings,
+ * depending on the app. Explicit Back and Done controls sit beside the field
  * because Shift+Space and Escape are not reachable on a phone at all.
  *
  * The syllable's own join — begin/middle/end — is derived here rather than
@@ -29,8 +32,17 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Input, Text } from '@sudobility/components-rn';
 import type { NoteEvent } from '@sudobility/music_types';
-import type { EditingStoreApi } from '@sudobility/music_editing';
-import { lyricTextAt, writeLyric } from '@sudobility/music_editing';
+import type {
+  EditingStoreApi,
+  LyricEntryState,
+  LyricInput,
+} from '@sudobility/music_editing';
+import {
+  applyLyricStep,
+  lyricEntryStep,
+  lyricTextAt,
+  splitLyricSeparator,
+} from '@sudobility/music_editing';
 
 export type LyricEntryBarProps = {
   store: EditingStoreApi;
@@ -50,7 +62,10 @@ export function LyricEntryBar({
   const { t } = useTranslation();
   const [index, setIndex] = useState(startIndex);
   const [draft, setDraft] = useState('');
-  /** Whether the syllable *before* this one ended in a hyphen. */
+  /**
+   * Whether the syllable *before* this one ended in a hyphen. A ref: it is read
+   * inside the handlers and changing it must not re-render.
+   */
   const continuing = useRef(false);
 
   const note = notes[index];
@@ -72,44 +87,31 @@ export function LyricEntryBar({
 
   if (!note) return null;
 
-  const commit = (text: string, hyphenated: boolean): void => {
-    continuing.current = writeLyric(store, {
-      noteId: note.id,
-      text,
+  /** Run one entry input over `text` — the shared step, then the one store write. */
+  const perform = (input: LyricInput, text: string): void => {
+    const state: LyricEntryState = {
+      index,
+      count: notes.length,
       continuing: continuing.current,
-      hyphenated,
-    });
-  };
-
-  const advance = (text: string, hyphenated: boolean): void => {
-    commit(text, hyphenated);
-    if (index + 1 >= notes.length) {
+    };
+    const step = lyricEntryStep(state, input, text);
+    applyLyricStep(store, notes, step);
+    continuing.current = step.state.continuing;
+    if (step.close) {
       onClose();
       return;
     }
-    setIndex(index + 1);
+    if (step.state.index === index) setDraft(text.trim());
+    else setIndex(step.state.index);
   };
 
   const handleChange = (next: string): void => {
-    /*
-      A separator is only a separator at the end. Typing one in the middle of a
-      syllable — fixing "beau" to "beaut" by way of the arrow keys — must not
-      throw the entry two notes forward.
-    */
-    if (next.endsWith(' ')) {
-      advance(next.slice(0, -1).trim(), false);
+    const { syllable, separator } = splitLyricSeparator(next);
+    if (separator === null) {
+      setDraft(next);
       return;
     }
-    if (next.endsWith('-')) {
-      advance(next.slice(0, -1).trim(), true);
-      return;
-    }
-    setDraft(next);
-  };
-
-  const stepBack = (): void => {
-    commit(draft, continuing.current);
-    setIndex(Math.max(0, index - 1));
+    perform(separator, syllable);
   };
 
   return (
@@ -134,15 +136,12 @@ export function LyricEntryBar({
         returnKeyType="done"
         accessibilityLabel={t('editor.syllable')}
         onChangeText={handleChange}
-        onSubmitEditing={() => {
-          commit(draft, false);
-          onClose();
-        }}
+        onSubmitEditing={() => perform('enter', draft)}
         className="h-8 flex-1 px-2 text-base"
       />
       <Button
         variant="ghost"
-        onPress={stepBack}
+        onPress={() => perform('back', draft)}
         disabled={index === 0}
         accessibilityLabel={t('editor.previousSyllable')}
       >
@@ -150,12 +149,12 @@ export function LyricEntryBar({
       </Button>
       <Button
         variant="ghost"
-        onPress={() => advance(draft, true)}
+        onPress={() => perform('hyphen', draft)}
         accessibilityLabel={t('editor.hyphenate')}
       >
         {'-'}
       </Button>
-      <Button variant="ghost" onPress={() => advance(draft, false)}>
+      <Button variant="ghost" onPress={() => perform('space', draft)}>
         {'␣'}
       </Button>
       <Button variant="ghost" onPress={onClose}>

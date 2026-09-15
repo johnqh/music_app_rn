@@ -8,9 +8,9 @@
  *     wiring at all; if it threw instead, every such test would need a wrapper.
  *   - `system` resolves through the OS and *keeps* resolving — a device that
  *     goes dark at sunset takes the app with it, with no relaunch.
- *   - `setMode` repaints immediately and writes in the background. Awaiting the
- *     disk write before applying makes the toggle feel broken, and that is
- *     exactly the kind of change that looks harmless in review.
+ *   - `setMode` writes the **device prefs**, which is the one store every open
+ *     document mirrors and the binding persists. Setting it anywhere else would
+ *     change one tab and remember nothing.
  *
  * `useColorScheme` is mocked at its own module path rather than through the
  * `react-native` barrel. Both obvious barrel approaches fail: a wholesale
@@ -25,23 +25,15 @@ import { Text } from 'react-native';
 import { render, screen, act } from '@testing-library/react-native';
 
 const mockColorScheme = jest.fn(() => 'light' as string | null);
-const mockLoad = jest.fn(async () => 'system' as string);
-const mockSave = jest.fn(async () => undefined);
 
 jest.mock('react-native/Libraries/Utilities/useColorScheme', () => ({
   __esModule: true,
   default: () => mockColorScheme(),
 }));
-jest.mock('./theme-preference', () => ({
-  loadThemeMode: (...a: unknown[]) => mockLoad(...(a as [])),
-  saveThemeMode: (...a: unknown[]) => mockSave(...(a as [])),
-}));
-jest.mock('@/documents/rn-key-value', () => ({
-  createKeyValueStore: () => ({}),
-}));
-
 const { ThemeProvider, useTheme } =
   require('./ThemeContext') as typeof import('./ThemeContext');
+const { devicePrefs } =
+  require('./useDevicePrefs') as typeof import('./useDevicePrefs');
 
 function Probe() {
   const { mode, resolved } = useTheme();
@@ -54,15 +46,13 @@ async function renderTheme() {
       <Probe />
     </ThemeProvider>,
   );
-  // The persisted mode arrives from an effect; let it land.
   await act(async () => {});
   return view;
 }
 
 beforeEach(() => {
   mockColorScheme.mockReturnValue('light');
-  mockLoad.mockResolvedValue('system');
-  mockSave.mockClear();
+  devicePrefs.getState().setThemeMode('system');
 });
 
 describe('useTheme without a provider', () => {
@@ -97,16 +87,33 @@ describe('resolving the scheme', () => {
 
   it('lets an explicit choice override the OS', async () => {
     mockColorScheme.mockReturnValue('dark');
-    mockLoad.mockResolvedValue('light');
+    devicePrefs.getState().setThemeMode('light');
     await renderTheme();
     expect(screen.getByText('light/light')).toBeTruthy();
   });
 });
 
-describe('the remembered preference', () => {
-  it('adopts what was stored, rather than defaulting over it', async () => {
-    mockLoad.mockResolvedValue('dark');
+describe('the device preference', () => {
+  it('adopts what the prefs store holds, rather than defaulting over it', async () => {
+    devicePrefs.getState().setThemeMode('dark');
     await renderTheme();
     expect(screen.getByText('dark/dark')).toBeTruthy();
+  });
+
+  it('writes a change to the prefs store and repaints at once', async () => {
+    function Setter() {
+      const { mode, setMode } = useTheme();
+      return <Text onPress={() => setMode('dark')}>{`mode:${mode}`}</Text>;
+    }
+    render(
+      <ThemeProvider>
+        <Setter />
+      </ThemeProvider>,
+    );
+    await act(async () => {
+      screen.getByText('mode:system').props.onPress();
+    });
+    expect(devicePrefs.getState().themeMode).toBe('dark');
+    expect(screen.getByText('mode:dark')).toBeTruthy();
   });
 });

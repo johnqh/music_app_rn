@@ -1,72 +1,90 @@
 /**
- * The selected bar's properties — the web inspector's Measure tab.
+ * The selected bar's properties — the web inspector's Bar tab.
+ *
+ * **Reflects and invokes, and decides nothing.** What each field offers and
+ * what it commits is music_editing's `inspector.ts` and music_types' field
+ * values, which the web's `measure-fields.tsx` reads too: the clefs a bar's
+ * picker offers (`measureClefOptions`), what a typed tempo writes
+ * (`commitBarTempo`), the pickup lengths (`pickupBeatOptions`), how "1, 2"
+ * becomes a volta (`parseEndingNumbers`), the barlines (`BARLINE_OPTIONS`) and
+ * the denominators a time signature may have. This tab used to work each of
+ * those out inline, and had quietly parted from the web on three: the clef
+ * picker read and wrote the **active** track rather than the bar's own, the
+ * tempo field wrote an unrounded, unclamped value, and every per-bar field found
+ * the bar's index on the *first* track — so a bar selected on any other part
+ * edited bar 1.
  *
  * **Bar numbers, not indices.** `barNumberAt` skips pickups and answers `null`
  * for one, because a pickup has no number; nothing here computes `index + 1`.
- * That is what makes the number shown, the number a player reads and the bar
- * "go to bar 33" lands on all the same 33.
  *
- * `Tempo here` shows the tempo **in force** — inherited from an earlier bar
- * when this one sets none — so it is never blank and never lies.
+ * **One bar at a time for boundaries.** The time and key signatures apply to
+ * the whole selection; tempo, clef, barline, navigation, pickup and repeats are
+ * each a boundary at one bar, and applying one across a span would write the
+ * same boundary onto every bar in it — so they are offered for a single bar,
+ * as on the web.
  */
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import { NumberInput, Select, Switch, Text } from '@sudobility/components-rn';
-import { DraftInput } from './DraftInput';
+import type { TFunction } from 'i18next';
+import { Button, Input, Select, Switch, Text } from '@sudobility/components-rn';
 import {
+  commitBarTempo,
+  measureClefOptions,
   removeTempoAt,
+  selectEditLocked,
   selectSelectedMeasures,
   setBarline,
+  setClefAtMeasure,
   setKeySignature,
-  setMeasureClef,
   setNavigation,
   setPickup,
   setRepeats,
-  setTempoAt,
   setTimeSignature,
 } from '@sudobility/music_editing';
 import {
-  CLEFS,
+  BARLINE_OPTIONS,
+  INHERIT_CLEF,
+  KEY_MODE_OPTIONS,
+  MAX_TIME_SIG_NUMERATOR,
+  NO_JUMP,
+  NO_PICKUP,
   REPEAT_JUMPS,
   REPEAT_JUMP_LABEL,
+  SINGLE_BARLINE,
+  TIME_SIG_DENOMINATOR_OPTIONS,
   barNumberAt,
-  beatDurationTicks,
-  effectiveClef,
+  commonValue,
+  formatEndingNumbers,
   keySignatureOptions,
+  measureIndexOf,
+  parseEndingNumbers,
+  pickupBeatOptions,
+  tempoAtBar,
+  trackOfMeasure,
 } from '@sudobility/music_types';
 import type {
   BarlineStyle,
   Clef,
   KeySignature,
+  KeySignatureOption,
+  Measure,
   RepeatJump,
+  ReplaceScope,
+  Score,
 } from '@sudobility/music_types';
-import { Button } from '@sudobility/components-rn';
-import { useEffect, useState } from 'react';
+import { DraftInput, NumberDraftInput } from './DraftInput';
 import { EmptyTab, Field } from './Field';
-
-/**
- * "Not a pickup", as a value a picker can hold.
- *
- * A Select's value is a string and an empty one is indistinguishable from
- * "nothing chosen", which is why the shared picker options use a sentinel too.
- */
-const NO_PICKUP = 'none';
 import { ReplaceButton } from './ReplaceButton';
-import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
 
-/**
- * "Carry on with whatever clef is in force", as a value a picker can hold.
- *
- * A select needs a value for absence, and `undefined` is not one. Local to the
- * UI rather than shared with the model, because the *model* stores absence as a
- * missing field — which is the whole point of storing only the changes.
- */
-const INHERIT_CLEF = 'inherit';
-
-/** The same, for "this bar carries no jump". */
-const NO_JUMP = 'none';
+type BarFieldProps = {
+  document: MusicDocument;
+  score: Score;
+  measure: Measure;
+  locked: boolean;
+};
 
 export function MeasureTab({
   document,
@@ -79,112 +97,92 @@ export function MeasureTab({
   const store = document.store;
   const measures = useStore(store, selectSelectedMeasures);
   const score = useStore(store, s => s.score);
-  const playing = useStore(store, s => s.state) === 'playing';
-  const [endingDraft, setEndingDraft] = useState('');
-  const firstMeasure = measures[0];
+  /*
+    `selectEditLocked`, the same question the web tab asks: content is
+    immutable while the transport plays, and every field here writes the score.
+  */
+  const locked = useStore(store, selectEditLocked);
 
-  useEffect(() => {
-    setEndingDraft((firstMeasure?.endingNumbers ?? []).join(', '));
-  }, [firstMeasure?.id, firstMeasure?.endingNumbers]);
-
-  if (measures.length === 0 || !score) {
-    return <EmptyTab message={t('inspector.selectMeasure')} />;
-  }
   const first = measures[0];
-  if (!first) return <EmptyTab message={t('inspector.selectMeasure')} />;
+  if (!score || !first)
+    return <EmptyTab message={t('inspector.selectMeasure')} />;
 
   const measureIds = measures.map(m => m.id);
-  const applyTimeSignature = (timeSignature: {
-    numerator: number;
-    denominator: number;
-  }): void => {
-    setTimeSignature(store, measureIds, timeSignature);
-  };
-  const applyKeySignature = (keySignature: KeySignature): void => {
-    setKeySignature(store, measureIds, keySignature);
-  };
-  const keySig: KeySignature = first.keySignature ?? {
-    fifths: 0,
-    mode: 'major',
-  };
+  const timeSig = commonValue(measures.map(m => m.timeSignature));
+  const keySig: KeySignature | null = commonValue(
+    measures.map(m => m.keySignature ?? { fifths: 0, mode: 'major' as const }),
+  );
+  const keyMode = keySig?.mode ?? 'major';
 
-  // A pickup's length in beats, which is how a musician names one.
-  const beatTicks = beatDurationTicks(first.timeSignature, score.ppq);
-  const fullBeats = Math.max(1, Math.round(first.durationTicks / beatTicks));
-
-  const index =
-    score.tracks[0]?.measures.findIndex(m => m.id === first.id) ?? -1;
+  /*
+    The number a player reads. A bar selected across every track is one bar
+    with several ids, so the numbers are made distinct before deciding between
+    "Bar 3" and a range — the web's heading said "Bars 3–3" for that selection.
+  */
   const grid = score.tracks[0]?.measures ?? [];
-  const number = index >= 0 ? barNumberAt(grid, index) : null;
-  // The last tempo event at or before this bar — what a player would be at.
-  const tempoInForce =
-    [...score.tempoMap]
-      .filter(e => e.tick <= first.startTick)
-      .sort((a, b) => a.tick - b.tick)
-      .at(-1)?.bpm ?? 120;
-  /*
-    The event this bar sets, as opposed to one it inherits. Only the former can
-    be removed — see the Remove control below.
-  */
-  const ownTempoEvent =
-    score.tempoMap.find(e => e.tick === first.startTick) ?? null;
-  /*
-    The clef is resolved through `effectiveClef`, never read off the measure:
-    absent means "carry on", so reading `measure.clef` directly answers nothing
-    for the great majority of bars.
-  */
-  const activeTrack =
-    score.tracks.find(tr => tr.id === store.getState().activeTrackId) ??
-    score.tracks[0]!;
-  const inForceClef = effectiveClef(activeTrack, Math.max(0, index));
+  const numbers = [
+    ...new Set(
+      measures
+        .map(m => barNumberAt(grid, m.index))
+        .filter((n): n is number => n !== null),
+    ),
+  ];
+  const heading =
+    numbers.length === 0
+      ? t('inspector.pickup')
+      : numbers.length > 1
+      ? t('inspector.measureRange', {
+          from: Math.min(...numbers),
+          to: Math.max(...numbers),
+        })
+      : t('inspector.measureNumber', { number: numbers[0] });
+
+  const single = measures.length === 1;
 
   return (
     <View className="gap-3">
-      <Field label={t('inspector.bar')}>
-        <Text className="text-foreground text-base">
-          {/* Null for a pickup: it has no number, and 0 would be a lie. */}
-          {number ?? t('inspector.pickup')}
-        </Text>
-      </Field>
+      <Text className="text-foreground text-base font-semibold">{heading}</Text>
 
       {/*
-        Editable, not a readout. The web panel has always let a bar's meter be
-        changed here and this one only printed it, so a score imported in 4/4
-        could not be put into 3/4 anywhere in the app.
+        The numerator is typed (bounded by `MAX_TIME_SIG_NUMERATOR`); the
+        denominator is a picker, because it is one of a handful of note values
+        and there is no nearest one to snap a typed 3 to — `setTimeSignature`
+        refuses it, so a free field would look live and then do nothing.
       */}
       <Field label={t('inspector.timeSignature')}>
         <View className="flex-row items-center gap-2">
-          <View
-            className="flex-1"
-            accessibilityLabel={t('inspector.timeSigNumerator')}
-          >
-            <NumberInput
-              value={first.timeSignature.numerator}
+          <View className="flex-1">
+            <NumberDraftInput
+              value={timeSig?.numerator ?? null}
               min={1}
-              max={32}
-              disabled={playing}
-              onChange={(value: number) =>
-                applyTimeSignature({
-                  numerator: Math.max(1, Math.round(value)),
-                  denominator: first.timeSignature.denominator,
+              max={MAX_TIME_SIG_NUMERATOR}
+              integer
+              editable={!locked}
+              mixedPlaceholder={t('inspector.mixed')}
+              accessibilityLabel={t('inspector.timeSigNumerator')}
+              onCommit={numerator =>
+                setTimeSignature(store, measureIds, {
+                  numerator,
+                  denominator: timeSig?.denominator ?? 4,
                 })
               }
             />
           </View>
           <Text className="text-muted-foreground text-base">/</Text>
-          <View
-            className="flex-1"
-            accessibilityLabel={t('inspector.timeSigDenominator')}
-          >
-            <NumberInput
-              value={first.timeSignature.denominator}
-              min={1}
-              max={64}
-              disabled={playing}
-              onChange={(value: number) =>
-                applyTimeSignature({
-                  numerator: first.timeSignature.numerator,
-                  denominator: Math.max(1, Math.round(value)),
+          <View className="flex-1">
+            <Select
+              value={timeSig ? String(timeSig.denominator) : ''}
+              placeholder={t('inspector.mixed')}
+              accessibilityLabel={t('inspector.timeSigDenominator')}
+              disabled={locked}
+              options={TIME_SIG_DENOMINATOR_OPTIONS.map(d => ({
+                value: String(d),
+                label: String(d),
+              }))}
+              onValueChange={(value: string) =>
+                setTimeSignature(store, measureIds, {
+                  numerator: timeSig?.numerator ?? 4,
+                  denominator: Number(value),
                 })
               }
             />
@@ -202,33 +200,35 @@ export function MeasureTab({
         <View className="flex-row gap-2">
           <View className="flex-1">
             <Select
-              value={String(keySig.fifths)}
+              value={keySig ? String(keySig.fifths) : ''}
+              placeholder={t('inspector.mixed')}
               accessibilityLabel={t('inspector.key')}
-              disabled={playing}
-              options={keySignatureOptions(keySig.mode).map(option => ({
+              disabled={locked}
+              options={keySignatureOptions(keyMode).map(option => ({
                 value: String(option.fifths),
-                label: option.label,
+                label: keyOptionLabel(t, option, keyMode),
               }))}
               onValueChange={(value: string) =>
-                applyKeySignature({
+                setKeySignature(store, measureIds, {
                   fifths: Number(value),
-                  mode: keySig.mode,
+                  mode: keyMode,
                 })
               }
             />
           </View>
           <View className="flex-1">
             <Select
-              value={keySig.mode}
+              value={keySig?.mode ?? ''}
+              placeholder={t('inspector.mixed')}
               accessibilityLabel={t('inspector.keyMode')}
-              disabled={playing}
-              options={[
-                { value: 'major', label: t('inspector.major') },
-                { value: 'minor', label: t('inspector.minor') },
-              ]}
+              disabled={locked}
+              options={KEY_MODE_OPTIONS.map(option => ({
+                value: option.value,
+                label: t(option.labelKey),
+              }))}
               onValueChange={(value: string) =>
-                applyKeySignature({
-                  fifths: keySig.fifths,
+                setKeySignature(store, measureIds, {
+                  fifths: keySig?.fifths ?? 0,
                   mode: value as KeySignature['mode'],
                 })
               }
@@ -237,185 +237,235 @@ export function MeasureTab({
         </View>
       </Field>
 
-      <Field label={t('inspector.barline')}>
-        {/*
-          Only `double` and `final`; absent is the ordinary single line, which
-          is almost every bar. The repeat barlines are two independent flags and
-          deliberately live elsewhere.
-        */}
-        <Select
-          value={first.barline ?? 'single'}
-          accessibilityLabel={t('inspector.barline')}
-          options={[
-            { value: 'single', label: t('inspector.barlineSingle') },
-            { value: 'double', label: t('inspector.barlineDouble') },
-            { value: 'final', label: t('inspector.barlineFinal') },
-          ]}
-          onValueChange={(value: string) =>
-            setBarline(
-              store,
-              index,
-              value === 'single' ? undefined : (value as BarlineStyle),
-            )
-          }
+      {single ? (
+        <TempoField
+          document={document}
+          score={score}
+          measure={first}
+          locked={locked}
         />
-      </Field>
-
-      {index === 0 ? (
-        <Field label={t('inspector.pickup')}>
-          {/*
-            Offered on bar 1 alone: a pickup is the bar before bar 1, and one in
-            the middle of a score is an irregular bar, which is a different
-            thing that keeps its number.
-
-            **A length, not a switch.** This was a `Switch` that always wrote a
-            one-beat pickup, so a three-beat anacrusis could be written on the
-            web and not here — and a score that had one showed a toggle already
-            on, which would have shortened it to a beat the moment it was
-            touched. Measured in beats because that is how a musician says it;
-            the ticks follow from the time signature. A pickup as long as the
-            bar is just a bar, so the list stops one beat short.
-          */}
-          <Select
-            value={
-              first.pickup === true
-                ? String(Math.round(first.durationTicks / beatTicks))
-                : NO_PICKUP
-            }
-            accessibilityLabel={t('inspector.pickup')}
-            options={[
-              { value: NO_PICKUP, label: t('inspector.pickupNone') },
-              ...Array.from(
-                { length: Math.max(1, fullBeats - 1) },
-                (_unused, i) => ({
-                  value: String(i + 1),
-                  label: t('inspector.pickupBeats', { count: i + 1 }),
-                }),
-              ),
-            ]}
-            onValueChange={(value: string) =>
-              setPickup(store, value === NO_PICKUP ? null : Number(value))
-            }
-          />
-        </Field>
+      ) : null}
+      {single ? (
+        <ClefField
+          document={document}
+          score={score}
+          measure={first}
+          locked={locked}
+        />
+      ) : null}
+      {single ? (
+        <BarlineField
+          document={document}
+          score={score}
+          measure={first}
+          locked={locked}
+        />
+      ) : null}
+      {single ? (
+        <NavigationFields
+          document={document}
+          score={score}
+          measure={first}
+          locked={locked}
+        />
+      ) : null}
+      {single && first.index === 0 ? (
+        <PickupField
+          document={document}
+          score={score}
+          measure={first}
+          locked={locked}
+        />
+      ) : null}
+      {single ? (
+        <RepeatFields
+          document={document}
+          score={score}
+          measure={first}
+          locked={locked}
+        />
       ) : null}
 
-      {/*
-        A clef change is stored on the bar it happens at; absent means "carry on
-        with what is in force". Bar 1 is not a change — it is where the clef is
-        *established* — so it offers no Inherit and writes to the track instead,
-        which `setMeasureClef` routes for us.
-      */}
-      <Field label={t('inspector.measureClef')}>
-        <Select
-          value={first.clef ?? (index === 0 ? inForceClef : INHERIT_CLEF)}
-          accessibilityLabel={t('inspector.measureClef')}
-          disabled={playing}
-          options={[
-            ...(index === 0
-              ? []
-              : [
-                  {
-                    value: INHERIT_CLEF,
-                    label: t('inspector.clefInherit', { clef: inForceClef }),
-                  },
-                ]),
-            ...CLEFS.map(c => ({ value: c as string, label: c })),
-          ]}
-          onValueChange={(value: string) =>
-            setMeasureClef(
-              store,
-              activeTrack.id,
-              index,
-              value === INHERIT_CLEF ? undefined : (value as Clef),
-            )
-          }
+      {onReplace ? (
+        <ReplaceButton
+          document={document}
+          scope="measures"
+          label={t('inspector.replaceMeasures')}
+          onReplace={onReplace}
         />
-      </Field>
+      ) : null}
+    </View>
+  );
+}
 
-      {/*
-        Two independent flags, not one span: a `:|` with no matching `|:`
-        repeats from the start of the piece, which is a real marking rather
-        than an error to prevent.
-      */}
-      <Text className="text-muted-foreground text-sm">
-        {t('editor.repeats')}
-      </Text>
-      <Toggle
-        label={t('editor.repeatStart')}
-        checked={first.repeatStart === true}
-        disabled={playing}
-        onChange={checked =>
-          setRepeats(store, first.id, { repeatStart: checked })
-        }
+/**
+ * The tempo in force at this bar, and whether this bar sets it.
+ *
+ * Shows the tempo a player would count here — inherited from an earlier bar
+ * when this one sets none — so it is never blank and never lies. `commitBarTempo`
+ * parses, rounds and clamps, edits the bar's own event by id, and writes nothing
+ * for blank text or the tempo already in force; when it declines, the draft goes
+ * back to what the field showed. Remove is offered only for a change this bar
+ * makes: the starting tempo is not a change, and removing it would leave the
+ * score with no tempo at all.
+ */
+function TempoField({ document, score, measure, locked }: BarFieldProps) {
+  const { t } = useTranslation();
+  const here = tempoAtBar(score, measure);
+  const shown = String(Math.round(here.bpm));
+  const [draft, setDraft] = useState(shown);
+  useEffect(() => setDraft(shown), [shown, measure.id]);
+
+  const commit = () => {
+    if (!commitBarTempo(document.store, measure, draft)) setDraft(shown);
+  };
+
+  return (
+    <Field label={t('inspector.tempoHere')}>
+      <DraftTextField
+        value={draft}
+        onChange={setDraft}
+        onCommit={commit}
+        editable={!locked}
+        accessibilityLabel={t('inspector.tempoHere')}
       />
-      <Toggle
-        label={t('editor.repeatEnd')}
-        checked={first.repeatEnd === true}
-        disabled={playing}
-        onChange={checked =>
-          setRepeats(store, first.id, { repeatEnd: checked })
-        }
-      />
-      <Field label={t('editor.ending')}>
-        <DraftInput
-          value={endingDraft}
-          placeholder={t('editor.endingPlaceholder')}
-          accessibilityLabel={t('editor.ending')}
-          onCommit={text => {
-            /*
-              "1, 2" is a bar played on both passes. Anything unparseable
-              clears, rather than storing a bracket nobody asked for.
-            */
-            const numbers = text
-              .split(',')
-              .map(part => Number(part.trim()))
-              .filter(n => Number.isInteger(n) && n > 0);
-            setRepeats(store, first.id, { endingNumbers: numbers });
+      {here.ownEventId && !here.isStarting ? (
+        <Button
+          variant="ghost"
+          disabled={locked}
+          onPress={() => {
+            if (here.ownEventId) removeTempoAt(document.store, here.ownEventId);
           }}
-        />
-      </Field>
-      <Text className="text-muted-foreground text-sm">
-        {t('editor.repeatsPlaybackNote')}
-      </Text>
+        >
+          {t('editor.removeTempoChange')}
+        </Button>
+      ) : (
+        <Text className="text-muted-foreground text-sm">
+          {here.ownEventId
+            ? t('inspector.tempoStarting')
+            : t('inspector.tempoInherited')}
+        </Text>
+      )}
+    </Field>
+  );
+}
 
-      {/*
-        The places are flags and the instruction is an enum. `toCoda` and `coda`
-        are separate on purpose: the bar you *leave* from is not the bar the
-        coda begins at, and a bar can carry the coda sign and a `Fine` at once.
-      */}
+/**
+ * The clef this bar reads in, on the bar's **own** track.
+ *
+ * `trackOfMeasure` and `measureClefOptions` answer which part and which clefs;
+ * `setClefAtMeasure` writes it. Bar 1 establishes the part's clef rather than
+ * changing it, so it offers no Inherit; a later bar shows its own change, or
+ * Inherit, whose label names the clef in force.
+ */
+function ClefField({ document, score, measure, locked }: BarFieldProps) {
+  const { t } = useTranslation();
+  const track = trackOfMeasure(score, measure.id);
+  if (!track) return null;
+  const index = measureIndexOf(score, measure.id) ?? 0;
+  const { value, inForce, options } = measureClefOptions(track, index);
+
+  return (
+    <Field label={t('inspector.measureClef')}>
+      <Select
+        value={value as string}
+        accessibilityLabel={t('inspector.measureClef')}
+        disabled={locked}
+        options={options.map(option => ({
+          value: option as string,
+          label:
+            option === INHERIT_CLEF
+              ? t('inspector.clefInherit', { clef: inForce })
+              : option,
+        }))}
+        onValueChange={(next: string) =>
+          setClefAtMeasure(
+            document.store,
+            measure.id,
+            next === INHERIT_CLEF ? undefined : (next as Clef),
+          )
+        }
+      />
+    </Field>
+  );
+}
+
+/**
+ * The line this bar ends with: `BARLINE_OPTIONS`, single first, where single is
+ * the absence of a style. The repeat barlines are independent flags and live in
+ * `RepeatFields`.
+ */
+function BarlineField({ document, score, measure, locked }: BarFieldProps) {
+  const { t } = useTranslation();
+  const index = measureIndexOf(score, measure.id);
+  if (index === null) return null;
+  return (
+    <Field label={t('inspector.barline')}>
+      <Select
+        value={measure.barline ?? SINGLE_BARLINE}
+        accessibilityLabel={t('inspector.barline')}
+        disabled={locked}
+        options={BARLINE_OPTIONS.map(option => ({
+          value: option.value,
+          label: t(option.labelKey),
+        }))}
+        onValueChange={(value: string) =>
+          setBarline(
+            document.store,
+            index,
+            value === SINGLE_BARLINE ? undefined : (value as BarlineStyle),
+          )
+        }
+      />
+    </Field>
+  );
+}
+
+/**
+ * The navigation marks. The places are flags and the instruction is an enum;
+ * `toCoda` and `coda` are separate on purpose — the bar you *leave* from is not
+ * the bar the coda begins at. The jump labels are not translated: `D.S. al Coda`
+ * is Italian on every edition.
+ */
+function NavigationFields({ document, score, measure, locked }: BarFieldProps) {
+  const { t } = useTranslation();
+  const index = measureIndexOf(score, measure.id);
+  if (index === null) return null;
+  const store = document.store;
+  return (
+    <>
       <Text className="text-muted-foreground text-sm">
         {t('inspector.navigation')}
       </Text>
       <Toggle
         label={t('inspector.segno')}
-        checked={first.segno === true}
-        disabled={playing}
+        checked={measure.segno === true}
+        disabled={locked}
         onChange={checked => setNavigation(store, index, { segno: checked })}
       />
       <Toggle
         label={t('inspector.coda')}
-        checked={first.coda === true}
-        disabled={playing}
+        checked={measure.coda === true}
+        disabled={locked}
         onChange={checked => setNavigation(store, index, { coda: checked })}
       />
       <Toggle
         label={t('inspector.toCoda')}
-        checked={first.toCoda === true}
-        disabled={playing}
+        checked={measure.toCoda === true}
+        disabled={locked}
         onChange={checked => setNavigation(store, index, { toCoda: checked })}
       />
       <Toggle
         label={t('inspector.fine')}
-        checked={first.fine === true}
-        disabled={playing}
+        checked={measure.fine === true}
+        disabled={locked}
         onChange={checked => setNavigation(store, index, { fine: checked })}
       />
       <Field label={t('inspector.jump')}>
         <Select
-          value={first.jump ?? NO_JUMP}
+          value={measure.jump ?? NO_JUMP}
           accessibilityLabel={t('inspector.jump')}
-          disabled={playing}
+          disabled={locked}
           options={[
             { value: NO_JUMP, label: t('inspector.jumpNone') },
             ...REPEAT_JUMPS.map(value => ({
@@ -430,46 +480,150 @@ export function MeasureTab({
           }
         />
       </Field>
+    </>
+  );
+}
 
-      <Field label={t('inspector.tempoHere')} hint={t('inspector.tempoHint')}>
-        {/*
-          Shows the tempo *in force* — inherited from an earlier bar when this
-          one sets none — so it is never blank and never lies.
-        */}
+/**
+ * The pickup, on bar 1 only — an anacrusis is the run-up to bar 1, and a short
+ * bar elsewhere is an irregular bar that keeps its number.
+ *
+ * **A length, not a switch.** This was once a `Switch` that always wrote a
+ * one-beat pickup, so a three-beat anacrusis could be written on the web and
+ * not here. `pickupBeatOptions` answers the current length and every length
+ * shorter than the bar, in beats, because that is how a musician says it.
+ */
+function PickupField({ document, score, measure, locked }: BarFieldProps) {
+  const { t } = useTranslation();
+  const { current, beats } = pickupBeatOptions(measure, score.ppq);
+  return (
+    <Field label={t('inspector.pickup')}>
+      <Select
+        value={current}
+        accessibilityLabel={t('inspector.pickup')}
+        disabled={locked}
+        options={[
+          { value: NO_PICKUP, label: t('inspector.pickupNone') },
+          ...beats.map(count => ({
+            value: String(count),
+            label: t('inspector.pickupBeats', { count }),
+          })),
+        ]}
+        onValueChange={(value: string) =>
+          setPickup(document.store, value === NO_PICKUP ? null : Number(value))
+        }
+      />
+    </Field>
+  );
+}
+
+/**
+ * The repeat barlines and volta. Two independent flags, not one span: a `:|`
+ * with no matching `|:` repeats from the start of the piece. The volta is typed
+ * as "1, 2" and parsed by `parseEndingNumbers`, which drops anything that is not
+ * a pass number rather than storing a bracket nobody asked for.
+ */
+function RepeatFields({ document, measure, locked }: BarFieldProps) {
+  const { t } = useTranslation();
+  const store = document.store;
+  return (
+    <>
+      <Text className="text-muted-foreground text-sm">
+        {t('editor.repeats')}
+      </Text>
+      <Toggle
+        label={t('editor.repeatStart')}
+        checked={measure.repeatStart === true}
+        disabled={locked}
+        onChange={checked =>
+          setRepeats(store, measure.id, { repeatStart: checked })
+        }
+      />
+      <Toggle
+        label={t('editor.repeatEnd')}
+        checked={measure.repeatEnd === true}
+        disabled={locked}
+        onChange={checked =>
+          setRepeats(store, measure.id, { repeatEnd: checked })
+        }
+      />
+      <Field label={t('editor.ending')}>
         <DraftInput
-          value={String(Math.round(tempoInForce))}
-          onCommit={text => {
-            const bpm = Number(text);
-            if (Number.isFinite(bpm) && bpm > 0) {
-              setTempoAt(store, { tick: first.startTick, bpm });
-            }
-          }}
-          accessibilityLabel={t('inspector.tempoHere')}
+          value={formatEndingNumbers(measure.endingNumbers)}
+          placeholder={t('editor.endingPlaceholder')}
+          accessibilityLabel={t('editor.ending')}
+          editable={!locked}
+          onCommit={text =>
+            setRepeats(store, measure.id, {
+              endingNumbers: parseEndingNumbers(text),
+            })
+          }
         />
       </Field>
-      {/*
-        Offered only when the event is this bar's own: the starting tempo is not
-        a change, and removing it would leave the score with no tempo at all.
-      */}
-      {ownTempoEvent ? (
-        <Button
-          variant="ghost"
-          disabled={playing}
-          onPress={() => removeTempoAt(store, ownTempoEvent.id)}
-        >
-          {t('editor.removeTempoChange')}
-        </Button>
-      ) : null}
+      <Text className="text-muted-foreground text-sm">
+        {t('editor.repeatsPlaybackNote')}
+      </Text>
+    </>
+  );
+}
 
-      {onReplace ? (
-        <ReplaceButton
-          scope="measures"
-          label={t('inspector.replaceMeasures')}
-          disabled={playing}
-          onReplace={onReplace}
-        />
-      ) : null}
-    </View>
+/**
+ * A text field whose draft the caller holds — the tempo's, which has to reset
+ * its draft when the commit is declined, so `DraftInput`'s own draft will not
+ * do.
+ */
+function DraftTextField({
+  value,
+  onChange,
+  onCommit,
+  editable,
+  accessibilityLabel,
+}: {
+  value: string;
+  onChange: (text: string) => void;
+  onCommit: () => void;
+  editable: boolean;
+  accessibilityLabel: string;
+}) {
+  return (
+    <Input
+      value={value}
+      onChangeText={onChange}
+      onBlur={onCommit}
+      onSubmitEditing={onCommit}
+      keyboardType="numeric"
+      editable={editable}
+      accessibilityLabel={accessibilityLabel}
+    />
+  );
+}
+
+/**
+ * A key picker entry, in the reader's language.
+ *
+ * `keySignatureOptions` answers the tonic and the count apart because "major",
+ * "minor" and "2 sharps" are words a translator owns; its own `label` is the
+ * English sentence this tab used to print straight into a Chinese build. The
+ * tonic is a note name and reads the same everywhere. The web's
+ * `keyOptionLabel`, with the web's keys.
+ */
+function keyOptionLabel(
+  t: TFunction,
+  option: KeySignatureOption,
+  mode: KeySignature['mode'],
+): string {
+  const accidentals =
+    option.accidentalKind === 'none'
+      ? t('inspector.keyNoAccidentals')
+      : t(
+          option.accidentalKind === 'sharp'
+            ? 'inspector.keySharps'
+            : 'inspector.keyFlats',
+          { count: option.accidentalCount },
+        );
+  return t(
+    mode === 'minor' ? 'inspector.keyOptionMinor' : 'inspector.keyOptionMajor',
+    { tonic: option.tonic, accidentals },
   );
 }
 

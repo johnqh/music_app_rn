@@ -1,15 +1,22 @@
 /**
  * What `music_client`'s hooks need, or null when there is no server.
  *
- * Null rather than a context with an empty token: the hooks would then fire
- * requests that are guaranteed to fail, and every screen would have to
- * distinguish "not configured" from "failed" itself.
+ * Null rather than a context with no token: the hooks would then fire requests
+ * that are guaranteed to fail, and every screen would have to distinguish "not
+ * configured" from "failed" itself.
  *
- * The token is resolved rather than captured — Firebase's `currentUser` is null
- * between start-up and the first auth-state report, so a token read too early
- * answers null for a signed-in user.
+ * **The token is a getter, awaited per request, never a value.** This used to
+ * resolve the token into React state and hand the hooks a string, which had
+ * two failures built in: a token captured when the context was built starts
+ * failing an hour into a session, and the first render after start-up handed
+ * over `null` for a signed-in user (Firebase's `currentUser` is null until the
+ * first auth-state report) so every query sat disabled until a re-render
+ * happened to fix it. `getToken` is the auth layer's own, which waits for the
+ * session to be restored; `userId` is what lets a query know synchronously
+ * whether it may run at all, and keys per-account answers such as `useSiteAdmin`
+ * so one account's answer is never shown to the next.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import type { MusicHookContext } from '@sudobility/music_client';
 import { getMusicClient, getNetworkClient } from '@/config/server';
 import { CONSTANTS } from '@/config/constants';
@@ -17,25 +24,15 @@ import { useAuth } from '@/auth/AuthContext';
 
 export function useServerContext(): MusicHookContext | null {
   const { user, getToken } = useAuth();
-  const [token, setToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    void getToken().then(next => {
-      if (!cancelled) setToken(next);
-    });
-    return () => {
-      cancelled = true;
-    };
-    // Re-read when the signed-in user changes: a token belongs to an account.
-  }, [getToken, user?.uid]);
+  const userId = user?.uid ?? null;
 
   return useMemo(() => {
     if (!getMusicClient()) return null;
     return {
       networkClient: getNetworkClient(),
       baseUrl: CONSTANTS.API_URL,
-      token,
+      getToken,
+      userId,
     };
-  }, [token]);
+  }, [getToken, userId]);
 }

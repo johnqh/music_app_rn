@@ -15,21 +15,36 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Text } from '@sudobility/components-rn';
 import { View } from 'react-native';
-import { syncDocumentToServer } from '@/documents/project-sync';
+import { useStore } from 'zustand';
+import type { DocumentStore } from '@sudobility/music_lib';
 import { getMusicClient } from '@/config/server';
 import { useAuth } from '@/auth/AuthContext';
 import { useActiveDocument } from '@/documents/DocumentsContext';
 
 export function SyncToServerButton() {
-  const { t } = useTranslation();
-  const { user, getToken } = useAuth();
   const document = useActiveDocument();
+  const { user } = useAuth();
+  if (!getMusicClient() || !user || !document) return null;
+  return <SyncDocument store={document.store} />;
+}
+
+/**
+ * The button itself, over one store.
+ *
+ * `syncToServer` is the store's (music_lib): it creates the project, moves the
+ * origin, records the server's version and leaves the document clean only if
+ * nothing was edited while the project was being made — otherwise the pending
+ * save carries that edit to the project. The copy this replaced cleared the
+ * dirty flag regardless, marking an edit made mid-sync as saved.
+ */
+function SyncDocument({ store }: { store: DocumentStore }) {
+  const { t } = useTranslation();
+  const origin = useStore(store, s => s.origin);
+  const serverAvailable = useStore(store, s => s.serverAvailable);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const client = getMusicClient();
-  if (!client || !user || !document) return null;
-  if (document.origin.kind === 'project') return null;
+  if (!serverAvailable || origin.kind === 'project') return null;
 
   return (
     <View className="gap-1">
@@ -39,7 +54,9 @@ export function SyncToServerButton() {
         onPress={() => {
           setBusy(true);
           setError(null);
-          void syncDocumentToServer(document, client, getToken)
+          void store
+            .getState()
+            .syncToServer()
             .catch(e => setError(e instanceof Error ? e.message : String(e)))
             .finally(() => setBusy(false));
         }}

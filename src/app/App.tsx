@@ -15,27 +15,32 @@ import { newProjectScore } from '@sudobility/music_lib';
 // Side-effect: activates the Swiss design theme before anything renders.
 import '@/config/designTheme';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { StyleSheet } from 'react-native';
+import { AppState, StyleSheet } from 'react-native';
 import * as RNLocalize from 'react-native-localize';
-import { initializeApp } from '@/config/initialize';
-import { initializeI18n } from '@/i18n';
+import { bindDevicePrefs, mirrorDevicePrefs } from '@sudobility/music_lib';
+import type { StoreContext } from '@sudobility/music_lib';
+import { initializeApp, getAppServices } from '@/config/initialize';
+import { getMusicClient } from '@/config/server';
+import { devicePrefs } from '@/config/useDevicePrefs';
+import { followLanguagePref, initializeI18n } from '@/i18n';
 import { DocumentList } from '@/documents/document-list';
-import { createDocument } from '@/documents/document';
-import type { MusicDocument } from '@/documents/document';
-import { createAutosaver } from '@/documents/autosave';
-import { saveDocument } from '@/documents/document-storage';
+import { newDocument } from '@/documents/document';
+import type { DocumentServices } from '@/documents/document';
 import { createFileStorage } from '@/documents/rn-storage';
+import { createKeyValueStore } from '@/documents/rn-key-value';
+import { recordRecent } from '@/documents/useRecentTracking';
 import { DocumentsProvider } from '@/documents/DocumentsContext';
+import { appToasts, Toasts } from '@/features/toasts/Toasts';
 import { MenuImportCommands } from '@/features/documents/MenuImportCommands';
 import { MenuFileCommands } from '@/features/documents/MenuFileCommands';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { PortalHost } from '@sudobility/components-rn';
 import { ThemeVarsProvider } from '@/components/ThemeVarsProvider';
 import { ThemeProvider } from '@/config/ThemeContext';
-import { AuthProvider } from '@/auth/AuthContext';
+import { AuthProvider, readIdToken } from '@/auth/AuthContext';
 import { Navigation } from './Navigation';
 
 /*
@@ -56,33 +61,74 @@ const queryClient = new QueryClient({
 
 export default function App() {
   /*
-    The autosaver travels with the list.
+    Everything a document is built with, built once.
 
-    It is built here, so nothing below could reach it — and a document created
-    from the File menu would then register no change callback and never save
-    itself. Handing `notifyChanged` to the provider is what lets any screen
-    create a document that behaves like the scratch one.
+    Every document store in the app — the scratch one below, a New from the File
+    menu, an import, a project opened from the dashboard — is made with these
+    services, handed down by `DocumentsProvider`. That is what the old
+    arrangement got wrong: its autosaver lived here and nothing below could
+    reach it, so a document made anywhere else registered no change callback
+    and never saved itself.
   */
-  const { list, notifyChanged } = useMemo(() => {
+  const { list, services } = useMemo(() => {
     initializeApp({ dev: __DEV__ });
-    initializeI18n(RNLocalize.getLocales().map(l => l.languageTag));
+    const deviceTags = RNLocalize.getLocales().map(l => l.languageTag);
+    initializeI18n(deviceTags);
 
-    const documents = new DocumentList();
+    const keyValue = createKeyValueStore();
     /*
-      Saving happens outside editing. The editing store reports that something
-      changed; who writes the bytes, and when, is the app's business — which is
-      what lets the same slices back a local file here and a server project on
-      the web.
+      Device prefs: loaded once, written back on every change. The stored
+      language wins over the device's once the load lands; until then the
+      device's is in force, which is what a first launch wants anyway.
     */
-    const storage = createFileStorage();
-    const autosaver = createAutosaver({
-      save: d => saveDocument(d, storage),
+    bindDevicePrefs(devicePrefs, keyValue);
+    followLanguagePref(devicePrefs, deviceTags);
+
+    /*
+      The server context every store closes over for life. The token getter is
+      Firebase's own singleton read per call, never a provider's state: the
+      scratch document is built before any provider mounts, and a store keeps
+      the context it was built with. No client means no server at all, which
+      `hasServer` reports and every server-backed control asks.
+    */
+    const client = getMusicClient();
+    const context: StoreContext = {
+      ...(client ? { client, getToken: readIdToken } : {}),
+      // Autosave failures, playback errors, generation failures and editing
+      // refusals all arrive here, whichever tab raised them.
+      toasts: appToasts,
+    };
+    const documentServices: DocumentServices = {
+      context,
+      files: createFileStorage(),
+      // After a write succeeds, never before: a file that failed to save is
+      // not one worth offering to reopen.
+      onSaved: saved => recordRecent(keyValue, saved),
+    };
+
+    /*
+      The list owns each document's lifetime: the prefs editing reads (theme,
+      developer mode, pitch display) are mirrored into its store while it is
+      open and detached when it closes.
+    */
+    const documents = new DocumentList({
+      attach: document => mirrorDevicePrefs(devicePrefs, document.store),
+      /*
+        A tab going behind another stops playing, before its caret is banked —
+        but only if it is playing: the engine's pause reports "paused" even
+        from a stopped transport. A tab that just closed has already been
+        paused by its editor's player binding as it unmounted.
+      */
+      leaveFront: leaving => {
+        if (leaving?.store.getState().state === 'playing') {
+          getAppServices().player.pause();
+        }
+      },
     });
     // Something to look at on first launch. A real "new score" goes through the
     // same call, which is the point: an unsaved document is an ordinary one.
     documents.open(
-      createDocument({
-        id: 'scratch',
+      newDocument(documentServices, {
         title: 'Untitled',
         /*
           The same score a "New Project" makes, from the same place: a piano
@@ -91,14 +137,25 @@ export default function App() {
           disagree — and so a blank page always has a track on it.
         */
         score: newProjectScore('Untitled'),
-        onChanged: d => autosaver.notify(d),
       }),
     );
-    return {
-      list: documents,
-      notifyChanged: (d: MusicDocument) => autosaver.notify(d),
-    };
+    return { list: documents, services: documentServices };
   }, []);
+
+  /*
+    Flush on the way out of the foreground.
+
+    A phone may kill a backgrounded app without another word, and the autosave
+    debounce is exactly the window in which the last edit exists only in
+    memory. `inactive` counts — on iOS that is the app switcher, which is where
+    a swipe ends the process.
+  */
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') void list.flushAll();
+    });
+    return () => subscription.remove();
+  }, [list]);
 
   return (
     <GestureHandlerRootView style={styles.fill}>
@@ -115,10 +172,7 @@ export default function App() {
                 ask whether there is an account.
               */}
               <AuthProvider>
-                <DocumentsProvider
-                  list={list}
-                  onDocumentChanged={notifyChanged}
-                >
+                <DocumentsProvider list={list} services={services}>
                   {/*
                     Above everything that opens a picker: a portalled sheet
                     draws here, so it escapes the scrolling toolbar that would
@@ -136,6 +190,7 @@ export default function App() {
                     <MenuImportCommands />
                     <MenuFileCommands />
                     <Navigation />
+                    <Toasts />
                   </PortalHost>
                 </DocumentsProvider>
               </AuthProvider>

@@ -7,6 +7,7 @@
  * `track-slice` action, and the rules those enforce are rules about a score,
  * which is why they live in music_editing rather than here.
  */
+import { jest } from '@jest/globals';
 import { act, fireEvent } from '@testing-library/react-native';
 import { addBlankTrack } from '@sudobility/music_editing';
 import { renderWithApp, testDocument } from '@/test/render';
@@ -33,13 +34,14 @@ function activeTrack(document: MusicDocument) {
 describe('TrackTab', () => {
   /*
     `setTrackInstrument` refuses rather than half-applying when the part is
-    wider than the instrument can play, and this panel used to discard that
-    result — so a refused change looked exactly like one that happened. The web
-    app has always said so; it has a toast and this app does not, so the
-    sentence goes under the picker.
+    wider than the instrument can play, and this panel once discarded that
+    result — so a refused change looked exactly like one that happened. It then
+    printed the sentence under the picker, because this app had no toasts; it
+    has them now, and a refusal is a toast on the web, so it is one here too.
   */
-  it('says why an instrument was refused, rather than silently not changing', () => {
+  it('reports a refused instrument as an error toast', () => {
     const { view, document } = setup();
+    const pushToast = jest.fn(() => 'toast');
     /*
       The refusal is stubbed rather than provoked. Building a part wider than
       an instrument's compass takes a score fixture that says nothing about
@@ -53,13 +55,29 @@ describe('TrackTab', () => {
           reason: 'outOfRange',
           instrumentName: 'Clavinet',
         }),
+        pushToast,
       });
     });
 
     fireEvent.press(view.getByText('Acoustic Grand Piano'));
     fireEvent.press(view.getByText('Clavinet'));
 
-    expect(view.getByText(/cannot cover/i)).toBeTruthy();
+    expect(pushToast).toHaveBeenCalledWith({
+      message: expect.stringMatching(/Clavinet cannot cover/),
+      severity: 'error',
+    });
+    expect(view.queryByText(/cannot cover/i)).toBeNull();
+  });
+
+  it('puts a declined rename back to the name the track has', () => {
+    // `renameTrack` refuses a blank name; the field must not keep showing one.
+    const { view, document } = setup();
+    const name = activeTrack(document).name;
+    const field = view.getByLabelText(/name/i);
+    fireEvent.changeText(field, '   ');
+    fireEvent(field, 'blur');
+    expect(activeTrack(document).name).toBe(name);
+    expect(view.getByLabelText(/name/i).props.value).toBe(name);
   });
 
   it('shows the active track without needing one to be chosen', () => {

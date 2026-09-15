@@ -2,12 +2,13 @@
  * The title bar.
  *
  * Its rule is that a control is **absent rather than dead** when it cannot
- * work: Generate, Snapshots and Print each depend on something the document may
- * not have — a project row, or a print service — and a button that is present
- * and refuses invites a tap that can only fail.
+ * work: Snapshots and Print each depend on something the document may not have
+ * — a project row, or a print service — and a button that is present and
+ * refuses invites a tap that can only fail. There is no Generate at all: an
+ * open project offers Generate Again on the Score tab, as the web does.
  */
 import { jest } from '@jest/globals';
-import { fireEvent } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
 import { renderWithApp, testDocument } from '@/test/render';
 import { TitleBar } from './TitleBar';
 
@@ -31,9 +32,21 @@ describe('TitleBar', () => {
     expect(setup().view.getByText('Quartet')).toBeTruthy();
   });
 
-  it('omits Generate for a document with no project behind it', () => {
-    // A local file has no row on the server for a job to write back to.
-    expect(setup().view.queryByLabelText(/generate/i)).toBeNull();
+  it('offers no Generate: a new score is where a project starts', () => {
+    expect(
+      setup({ onSnapshots: jest.fn() }).view.queryByLabelText(/generate/i),
+    ).toBeNull();
+  });
+
+  it("shows the store's save state, including an autosave in flight", () => {
+    const { view, document } = setup();
+    expect(view.getByText('Saved')).toBeTruthy();
+    act(() => {
+      document.store.setState(state => {
+        state.saveState = 'saving';
+      });
+    });
+    expect(view.getByText('Saving…')).toBeTruthy();
   });
 
   it('omits Snapshots for the same reason', () => {
@@ -45,14 +58,11 @@ describe('TitleBar', () => {
   });
 
   it('offers each one when its prerequisite is there', () => {
-    const onGenerate = jest.fn();
     const onSnapshots = jest.fn();
     const onPrint = jest.fn();
-    const { view } = setup({ onGenerate, onSnapshots, onPrint });
-    fireEvent.press(view.getByLabelText(/generate/i));
+    const { view } = setup({ onSnapshots, onPrint });
     fireEvent.press(view.getByLabelText(/snapshot/i));
     fireEvent.press(view.getByLabelText(/print/i));
-    expect(onGenerate).toHaveBeenCalled();
     expect(onSnapshots).toHaveBeenCalled();
     expect(onPrint).toHaveBeenCalled();
   });

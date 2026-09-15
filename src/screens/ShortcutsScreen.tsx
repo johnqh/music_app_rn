@@ -13,14 +13,23 @@
 import { SectionList, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@sudobility/components-rn';
-import { SHORTCUTS, SHORTCUT_GROUPS } from '@sudobility/music_editing';
+import {
+  SHORTCUTS,
+  SHORTCUT_GROUPS,
+  shortcutGroupLabelKey,
+} from '@sudobility/music_editing';
 import type { ShortcutRow } from '@sudobility/music_editing';
 
 export function ShortcutsScreen() {
   const { t } = useTranslation();
 
   const sections = SHORTCUT_GROUPS.map(group => ({
-    title: t(`shortcuts.${group}`),
+    /*
+      `shortcutGroupLabelKey`, never a template here: this built
+      `shortcuts.<group>`, which neither locale has, and so printed the key as
+      every heading. The web docs page reads the same function.
+    */
+    title: t(shortcutGroupLabelKey(group)),
     data: SHORTCUTS.filter(row => row.group === group),
   })).filter(section => section.data.length > 0);
 

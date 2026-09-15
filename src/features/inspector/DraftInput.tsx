@@ -1,5 +1,5 @@
 /**
- * A text field that commits on blur.
+ * Text fields that commit on blur.
  *
  * Every text property in the inspector wants this: dispatching per keystroke
  * makes each letter its own undo entry, so a typed chord symbol would take
@@ -8,6 +8,8 @@
  */
 import { useEffect, useState } from 'react';
 import { Input } from '@sudobility/components-rn';
+import { parseNumericDraft } from '@sudobility/music_types';
+import type { NumericDraftOptions } from '@sudobility/music_types';
 
 export type DraftInputProps = {
   value: string;
@@ -38,6 +40,79 @@ export function DraftInput({
       }}
       editable={editable}
       {...(placeholder ? { placeholder } : {})}
+      {...(accessibilityLabel ? { accessibilityLabel } : {})}
+    />
+  );
+}
+
+export type NumberDraftInputProps = NumericDraftOptions & {
+  /**
+   * The value every selected object agrees on, or `null` where they disagree —
+   * which shows an empty field with `mixedPlaceholder` rather than the first
+   * object's value presented as everyone's.
+   */
+  value: number | null;
+  onCommit: (value: number) => void;
+  mixedPlaceholder?: string;
+  editable?: boolean;
+  accessibilityLabel?: string;
+};
+
+/**
+ * A number field that commits on blur — the web's `MixedNumberField`.
+ *
+ * It replaced the library `NumberInput`, which is the wrong control here for
+ * two reasons the web had already found. Its value is a real `number`, so it
+ * has no way to say "these notes disagree": a Mixed selection read as whatever
+ * the fallback happened to be, and nudging it applied that to every note. And
+ * it commits on every change, so typing `100` into velocity wrote 1, then 10,
+ * then 100 — three undo entries, and two velocities nobody asked for.
+ *
+ * The text goes through music_types' `parseNumericDraft`, never `Number()`.
+ * Blank is "no change" rather than 0 — an emptied velocity field once wrote
+ * silence that way — and out-of-range text is clamped to the bounds given
+ * here. Whatever does not commit (blank, nonsense, the value already held)
+ * puts the field back to what the store holds, so it never shows a number the
+ * score does not have.
+ */
+export function NumberDraftInput({
+  value,
+  onCommit,
+  mixedPlaceholder,
+  editable = true,
+  accessibilityLabel,
+  min,
+  max,
+  integer,
+}: NumberDraftInputProps) {
+  const shown = value === null ? '' : String(value);
+  const [draft, setDraft] = useState(shown);
+  useEffect(() => setDraft(shown), [shown]);
+
+  const commit = () => {
+    const parsed = parseNumericDraft(draft, {
+      ...(min === undefined ? {} : { min }),
+      ...(max === undefined ? {} : { max }),
+      ...(integer === undefined ? {} : { integer }),
+    });
+    if (parsed === null || parsed === value) {
+      setDraft(shown);
+      return;
+    }
+    onCommit(parsed);
+  };
+
+  return (
+    <Input
+      value={draft}
+      onChangeText={setDraft}
+      onBlur={commit}
+      onSubmitEditing={commit}
+      keyboardType="numeric"
+      editable={editable}
+      {...(value === null && mixedPlaceholder
+        ? { placeholder: mixedPlaceholder }
+        : {})}
       {...(accessibilityLabel ? { accessibilityLabel } : {})}
     />
   );

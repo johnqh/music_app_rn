@@ -91,6 +91,19 @@ describe('NewProjectSheet', () => {
     expect(submission.request.prompt).toBe('a calm piano melody');
   });
 
+  it("asks the web's default backend for the music", () => {
+    // The web dialog has always opened on DeepSeek; the native sheet sent no
+    // variant at all, so one brief produced two backends' music depending on
+    // the device. Both now open on music_lib's DEFAULT_GENERATION_VARIANT.
+    const { view, onSubmit } = setup();
+    turnGenerationOn(view);
+    fireEvent.changeText(view.getByLabelText('Prompt'), 'a calm piano melody');
+    fireEvent.press(view.getByRole('button', { name: 'Create' }));
+    const submission = submitted(onSubmit);
+    if (submission.kind !== 'generate') throw new Error('expected generate');
+    expect(submission.request.variant).toBe('deepseek');
+  });
+
   it('does not refuse a blank project to somebody with no credits', () => {
     // A blank project costs nothing. Refusing it would refuse work the server
     // never charges for.

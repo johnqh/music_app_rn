@@ -15,6 +15,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useActiveDocument } from '@/documents/DocumentsContext';
 import { DeveloperSettingsSheet } from '@/features/editor/DeveloperSettingsSheet';
 import { useTheme } from '@/config/ThemeContext';
+import { devicePrefs } from '@/config/useDevicePrefs';
 import { THEME_MODES } from '@sudobility/music_editing';
 import type { ThemeMode } from '@sudobility/music_editing';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
@@ -43,7 +44,11 @@ export function SettingsScreen() {
             value: code,
             label: t(`settings.language_${code}`),
           }))}
-          onValueChange={(value: string) => void i18n.changeLanguage(value)}
+          // A device pref, so the choice survives a relaunch; the composition
+          // root keeps i18next on whatever the prefs store says.
+          onValueChange={(value: string) =>
+            devicePrefs.getState().setLanguage(value)
+          }
         />
       </Row>
 

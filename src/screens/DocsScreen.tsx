@@ -19,7 +19,12 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Button, MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
 import type { RootStackParamList } from '@/app/Navigation';
-import { DOCS_TOPICS } from '@sudobility/music_editing';
+import {
+  DOCS_GROUPS,
+  DOCS_TOPICS,
+  docsGroupLabelKey,
+} from '@sudobility/music_editing';
+import type { DocsGroup } from '@sudobility/music_editing';
 
 import { InstrumentReference } from '@/features/docs/InstrumentReference';
 import { FormatReference } from '@/features/docs/FormatReference';
@@ -34,18 +39,42 @@ export function DocsScreen() {
   return (
     <View className="bg-background flex-1 flex-row">
       <ScrollView className="border-border w-44 border-r">
-        {DOCS_TOPICS.map(d => (
-          <Pressable
-            key={d.id}
-            accessibilityRole="button"
-            accessibilityState={{ selected: d.id === topicId }}
-            onPress={() => setTopicId(d.id)}
-            className={d.id === topicId ? 'bg-muted px-3 py-2' : 'px-3 py-2'}
-            style={{ minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' }}
-          >
-            <Text className="text-foreground text-base">{t(d.title)}</Text>
-          </Pressable>
-        ))}
+        {/*
+          Under the web's group headings — Start here, Using the app,
+          Reference — through music_editing's `docsGroupLabelKey`. The list was
+          one flat run of sixteen topics here, so a reader looking for the
+          reference tables had nothing to navigate by.
+        */}
+        {DOCS_GROUPS.map((group: DocsGroup) => {
+          const topics = DOCS_TOPICS.filter(d => d.group === group);
+          if (topics.length === 0) return null;
+          return (
+            <View key={group} className="pb-2">
+              <Text className="text-muted-foreground px-3 pt-3 pb-1 text-sm font-semibold uppercase">
+                {t(docsGroupLabelKey(group))}
+              </Text>
+              {topics.map(d => (
+                <Pressable
+                  key={d.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: d.id === topicId }}
+                  onPress={() => setTopicId(d.id)}
+                  className={
+                    d.id === topicId ? 'bg-muted px-3 py-2' : 'px-3 py-2'
+                  }
+                  style={{
+                    minHeight: MIN_TOUCH_TARGET,
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text className="text-foreground text-base">
+                    {t(d.title)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          );
+        })}
       </ScrollView>
 
       <ScrollView className="flex-1" contentContainerClassName="p-4 gap-3">

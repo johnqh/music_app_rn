@@ -17,24 +17,29 @@
  *
  * Renders nothing when there is nothing to say, so a ready engine costs no
  * space.
+ *
+ * **Read from the document store, not from the player.** `bindPlayer` writes
+ * the load state into the store it binds (`synthLoad`), exactly as the web
+ * adapter writes it into the app store — so this subscribed to the player on
+ * its own once, and now reads what the binding already mirrors. The percentage
+ * is music_types' `synthLoadPercent`, the web indicator's rule.
  */
-import { useEffect, useState } from 'react';
 import { View } from 'react-native';
+import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@sudobility/components-rn';
+import { synthLoadPercent } from '@sudobility/music_types';
 import type { PlaybackLoadState } from '@sudobility/music_types';
-import { getAppServices } from '@/config/initialize';
+import type { TransportStoreApi } from './usePlayerBinding';
 
-/** The engine's load state, subscribed to directly rather than through a store. */
-export function useSynthLoad(): PlaybackLoadState {
-  const [load, setLoad] = useState<PlaybackLoadState>({ status: 'idle' });
-  useEffect(() => getAppServices().player.onLoadState(setLoad), []);
-  return load;
+/** The engine's load state, as the player binding mirrors it into the store. */
+export function useSynthLoad(store: TransportStoreApi): PlaybackLoadState {
+  return useStore(store, s => s.synthLoad);
 }
 
-export function SynthLoadIndicator() {
+export function SynthLoadIndicator({ store }: { store: TransportStoreApi }) {
   const { t } = useTranslation();
-  const load = useSynthLoad();
+  const load = useSynthLoad(store);
 
   if (load.status === 'idle' || load.status === 'ready') return null;
 
@@ -50,8 +55,7 @@ export function SynthLoadIndicator() {
     );
   }
 
-  const percent =
-    load.fraction === null ? null : Math.round(load.fraction * 100);
+  const percent = synthLoadPercent(load);
   const label =
     percent === null
       ? t('transport.preparingUnknown')

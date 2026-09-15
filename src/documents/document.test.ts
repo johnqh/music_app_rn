@@ -1,150 +1,170 @@
 /**
- * An open document: one score, one editing store, one file it came from.
+ * This app's wiring of music_lib's document stores.
  *
- * The invariant worth guarding is that **a freshly opened document is clean**:
- * a document born dirty makes its owner write a file (or POST a project) the
- * instant it is opened, for a score nobody has touched. Nothing throws when
- * that regresses; it just saves constantly.
+ * The saving rules themselves are music_lib's and tested there. What is pinned
+ * here is what this app hands them, and the two invariants a reader would lose
+ * work over if the wiring were wrong:
  *
- * Three things turn out to be distinct, and the tests pin all three, because
- * only the middle one should schedule a save:
+ * - **a freshly opened document is clean** — a document born dirty writes a file
+ *   (or a project) the instant it opens, for a score nobody has touched;
+ * - **a failed save leaves the document dirty** — one that looks clean after its
+ *   write failed looks safe to close.
  *
- *   - *adopting* a score (`setScore`) reports nothing — it is how a document is
- *     opened, not an edit of it;
- *   - a content edit reports, since that is how the owner learns to save;
- *   - a *view* preference like zoom reports nothing, because where the reader
- *     has scrolled to is not a change to the music.
- *
- * One note for whoever edits `createDocument`: the explicit
- * `document.dirty = false` after the adopting `setScore` is currently
- * belt-and-braces, not load-bearing. Measured by deleting it — every test here
- * still passes, because `setScore` does not invoke `onChanged` at all, so the
- * flag was never set in the first place. It is worth keeping as insurance
- * should adoption ever start reporting, but do not read its presence as proof
- * that it is tested: what these tests actually pin is the *observable*
- * invariant (a new document is clean), which fails loudly if the flag is ever
- * left true.
+ * And that opening reads the web's project export, which is why the native
+ * `document-file.ts` could be deleted rather than taught a second shape.
  */
 import { describe, expect, it, vi } from 'vitest';
-import { createEmptyScore } from '@sudobility/music_types';
-import { createDocument, markSaved, setDocumentOrigin } from './document.js';
+import { serializeProjectFile } from '@sudobility/music_lib';
+import type { DocumentFileStorage } from '@sudobility/music_lib';
+import {
+  changeMetadataCommand,
+  createEmptyScore,
+} from '@sudobility/music_types';
+import { newDocument, openFile, sameOrigin } from './document.js';
+import type { DocumentServices } from './document.js';
 
-function open(overrides: Partial<Parameters<typeof createDocument>[0]> = {}) {
-  return createDocument({
-    id: 'doc-1',
-    title: 'Test',
-    score: createEmptyScore({ title: 'Test', measures: 4 }),
-    ...overrides,
-  });
+function services(files: Record<string, string> = {}) {
+  const written: Record<string, string> = { ...files };
+  const storage: DocumentFileStorage = {
+    readText: async uri => {
+      const text = written[uri];
+      if (text === undefined) throw new Error(`No such file: ${uri}`);
+      return text;
+    },
+    writeText: async (uri, text) => {
+      written[uri] = text;
+    },
+  };
+  const onSaved = vi.fn();
+  const value: DocumentServices = { context: {}, files: storage, onSaved };
+  return { services: value, written, onSaved, storage };
 }
 
-describe('createDocument', () => {
-  it('is clean on open, despite adopting a score through setScore', () => {
-    expect(open().dirty).toBe(false);
+function edit(document: ReturnType<typeof newDocument>) {
+  document.store
+    .getState()
+    .dispatchCommand(changeMetadataCommand({ title: 'Edited' }, 'Set title'));
+}
+
+describe('opening', () => {
+  it('reads a .moo into a clean document with a file origin', async () => {
+    const score = createEmptyScore({ title: 'Song' });
+    const { services: s } = services({
+      '/docs/Song.moo': serializeProjectFile({ title: 'Song', score }),
+    });
+    const document = await openFile(s, '/docs/Song.moo');
+    const state = document.store.getState();
+    expect(state.title).toBe('Song');
+    expect(state.origin).toEqual({ kind: 'file', uri: '/docs/Song.moo' });
+    expect(state.dirty).toBe(false);
   });
 
-  it('holds the score it was opened with', () => {
-    const document = open();
-    expect(document.store.getState().score).toBeDefined();
-    expect(document.id).toBe('doc-1');
-    expect(document.title).toBe('Test');
+  it("reads the web app's project export too", async () => {
+    // `{ name, schemaVersion, score }` — what the browser writes. A score
+    // exported there has to open on a phone.
+    const score = createEmptyScore({ title: 'From the web' });
+    const { services: s } = services({
+      '/docs/web.json': JSON.stringify({
+        name: 'Web Project',
+        schemaVersion: 1,
+        score,
+      }),
+    });
+    const document = await openFile(s, '/docs/web.json');
+    expect(document.store.getState().title).toBe('Web Project');
   });
 
-  it('defaults to an unsaved origin', () => {
-    // A document with nowhere to write to must say so, or "save" silently
-    // becomes "save somewhere arbitrary".
-    expect(open().origin).toEqual({ kind: 'unsaved' });
+  it('refuses a file from a newer format rather than reading it hopefully', async () => {
+    const { services: s } = services({
+      '/docs/new.moo': JSON.stringify({
+        version: 99,
+        title: 'Future',
+        score: createEmptyScore({ title: 'Future' }),
+      }),
+    });
+    await expect(openFile(s, '/docs/new.moo')).rejects.toThrow();
   });
 
-  it('gives each document its own store', () => {
-    // Per-document rather than app-wide is what lets the native app edit
-    // several at once; a shared store would make two tabs one score.
-    const a = open({ id: 'a' });
-    const b = open({ id: 'b' });
+  it('gives every document its own store and its own tab id', () => {
+    const { services: s } = services();
+    const score = createEmptyScore({ title: 'X' });
+    const a = newDocument(s, { score, title: 'A' });
+    const b = newDocument(s, { score, title: 'B' });
+    expect(a.id).not.toBe(b.id);
     expect(a.store).not.toBe(b.store);
   });
 });
 
-describe('change reporting', () => {
-  it('marks the document dirty once the score is edited', () => {
-    const document = open();
-    expect(document.dirty).toBe(false);
-    document.store
-      .getState()
-      .setScoreMetadata({ title: 'Edited' }, 'Rename score');
-    expect(document.dirty).toBe(true);
+describe('saving', () => {
+  it('writes a file document back to its file and says so', async () => {
+    const {
+      services: s,
+      written,
+      onSaved,
+    } = services({
+      '/docs/Song.moo': serializeProjectFile({
+        title: 'Song',
+        score: createEmptyScore({ title: 'Song' }),
+      }),
+    });
+    const document = await openFile(s, '/docs/Song.moo');
+    edit(document);
+    expect(document.store.getState().dirty).toBe(true);
+    await document.store.getState().saveNow();
+    expect(document.store.getState().dirty).toBe(false);
+    expect(JSON.parse(written['/docs/Song.moo']!).score.metadata.title).toBe(
+      'Edited',
+    );
+    // The recent list is fed from here, after the write and never before.
+    expect(onSaved).toHaveBeenCalledWith({
+      origin: { kind: 'file', uri: '/docs/Song.moo' },
+      title: 'Song',
+    });
+    document.store.getState().dispose();
   });
 
-  it('tells the owner, so a save can be scheduled', () => {
-    const onChanged = vi.fn();
-    const document = open({ onChanged });
-    // Opening reports nothing at all: adoption is not an edit.
-    expect(onChanged).not.toHaveBeenCalled();
-    document.store
-      .getState()
-      .setScoreMetadata({ title: 'Edited' }, 'Rename score');
-    expect(onChanged).toHaveBeenCalledTimes(1);
-    expect(onChanged).toHaveBeenLastCalledWith(document);
+  it('leaves the document dirty when the write fails', async () => {
+    const { services: s, storage } = services();
+    const document = newDocument(s, {
+      score: createEmptyScore({ title: 'X' }),
+      title: 'X',
+    });
+    storage.writeText = async () => {
+      throw new Error('disk full');
+    };
+    await expect(
+      document.store.getState().saveAs('/docs/X.moo'),
+    ).rejects.toThrow('disk full');
+    expect(document.store.getState().dirty).toBe(true);
+    document.store.getState().dispose();
   });
 
-  it('does not report adopting a score', () => {
-    // Replacing the score outright — opening a snapshot, taking a generation
-    // result — is an adoption. Reporting it would mark a document dirty for
-    // music it had just been handed.
-    const onChanged = vi.fn();
-    const document = open({ onChanged });
-    document.store
-      .getState()
-      .setScore(createEmptyScore({ title: 'Other', measures: 8 }));
-    expect(onChanged).not.toHaveBeenCalled();
-    expect(document.dirty).toBe(false);
-  });
-
-  it('does not report a view preference such as zoom', () => {
-    // Zoom is where the reader is looking, not what the music says; dirtying on
-    // it would have every scroll and pinch queue a save.
-    const onChanged = vi.fn();
-    const document = open({ onChanged });
-    document.store.getState().setZoom(2);
-    expect(onChanged).not.toHaveBeenCalled();
-    expect(document.dirty).toBe(false);
-  });
-});
-
-describe('markSaved', () => {
-  it('clears dirty', () => {
-    const document = open();
-    document.store
-      .getState()
-      .setScoreMetadata({ title: 'Edited' }, 'Rename score');
-    expect(document.dirty).toBe(true);
-    markSaved(document);
-    expect(document.dirty).toBe(false);
-  });
-
-  it('records where the bytes went, when given somewhere', () => {
-    const document = open();
-    markSaved(document, { kind: 'file', uri: 'file:///tmp/a.mid' });
-    expect(document.origin).toEqual({ kind: 'file', uri: 'file:///tmp/a.mid' });
-  });
-
-  it('leaves the origin alone when not given one', () => {
-    const document = open({ origin: { kind: 'file', uri: 'file:///a' } });
-    markSaved(document);
-    expect(document.origin).toEqual({ kind: 'file', uri: 'file:///a' });
+  it('never picks a place for a document that has never been saved', async () => {
+    // Choosing where a new score lives is the reader's decision.
+    const { services: s, written } = services();
+    const document = newDocument(s, {
+      score: createEmptyScore({ title: 'X' }),
+      title: 'X',
+    });
+    edit(document);
+    await document.store.getState().saveNow();
+    expect(written).toEqual({});
+    expect(document.store.getState().dirty).toBe(true);
+    document.store.getState().dispose();
   });
 });
 
-describe('setDocumentOrigin', () => {
-  it('changes the destination without disturbing the document', () => {
-    // "Sync to server" turns a local document into a project in place: the
-    // identity, the store and therefore the undo history all survive, because
-    // only where it writes to changed.
-    const document = open({ origin: { kind: 'file', uri: 'file:///a' } });
-    const store = document.store;
-    setDocumentOrigin(document, { kind: 'project', projectId: 'p1' });
-    expect(document.origin).toEqual({ kind: 'project', projectId: 'p1' });
-    expect(document.store).toBe(store);
-    expect(document.id).toBe('doc-1');
+describe('sameOrigin', () => {
+  it('matches files by uri and projects by id, and never two unsaved documents', () => {
+    expect(
+      sameOrigin({ kind: 'file', uri: '/a' }, { kind: 'file', uri: '/a' }),
+    ).toBe(true);
+    expect(
+      sameOrigin(
+        { kind: 'project', projectId: 'p' },
+        { kind: 'file', uri: 'p' },
+      ),
+    ).toBe(false);
+    expect(sameOrigin({ kind: 'unsaved' }, { kind: 'unsaved' })).toBe(false);
   });
 });

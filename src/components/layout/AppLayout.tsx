@@ -12,27 +12,19 @@
  * landscape has no room for a 280pt panel beside a system of music.
  */
 import { View } from 'react-native';
-import { soundingPitchForDrawn } from '@sudobility/music_lib';
-import type { Pitch } from '@sudobility/music_types';
+import type { NoteEvent } from '@sudobility/music_types';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import {
-  getMusicPosition,
-  noteIndexAtOrAfter,
-  trackNotesInOrder,
-} from '@sudobility/music_types';
-import {
-  canPasteInto,
-  clearSelected,
-  deleteSelected,
-  selectAll,
-  selectionKind,
-  selectMeasureRange,
-  selectNotes,
+  beginLyricEntry as beginLyricEntryAt,
+  routeScorePress,
+  runScoreContextAction,
+  scoreContextMenuModel,
+  selectForContextMenu,
   useClipboardPrompts,
-  writeNoteAtPoint,
 } from '@sudobility/music_editing';
+import type { ScoreCanvasHit } from '@sudobility/music_drawing';
 import { ClipboardPromptSheets } from '@/features/score-editor/ClipboardPromptSheets';
 import type { LayoutMode } from '@sudobility/music_drawing';
 import type { ReplaceScope } from '@sudobility/music_types';
@@ -42,19 +34,19 @@ import {
 } from '@sudobility/music_editing';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
 import { TransportBar } from '@/features/transport/TransportBar';
-import { useTransport } from '@/features/transport/useTransport';
+import { usePlayerBinding } from '@/features/transport/usePlayerBinding';
 import { KeyboardPanel } from '@/features/piano-keyboard/KeyboardPanel';
 import { InspectorPanel } from '@/features/inspector/InspectorPanel';
 import { ScoreActionsSheet } from '@/features/score-editor/ScoreActionsSheet';
-import type { ScoreAction } from '@/features/score-editor/ScoreActionsSheet';
 import { DocumentTabs } from '@/features/documents/DocumentTabs';
 import { useScoreSelection } from '@/features/score/useScoreSelection';
 import { EditorToolbar } from '@/features/score-editor/EditorToolbar';
 import { LyricEntryBar } from '@/features/score-editor/LyricEntryBar';
 import { TitleBar } from './TitleBar';
+import { devicePrefs, useDevicePrefs } from '@/config/useDevicePrefs';
+import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
 import { StatusBar } from './StatusBar';
 import { useContainerSize } from '@/features/layout/useContainerSize';
-import type { MeasureHit } from '@sudobility/music_drawing';
 import type { ReactNode } from 'react';
 import type { MusicDocument } from '@/documents/document';
 
@@ -71,8 +63,6 @@ export type AppLayoutProps = {
   document: MusicDocument;
   onSave: () => void;
   onExport: () => void;
-  onMeasureTap: (hit: MeasureHit, tick: number) => void;
-  saving?: boolean;
   /**
    * The export sheet, mounted here rather than built here.
    *
@@ -90,11 +80,10 @@ export type AppLayoutProps = {
    */
   overlay?: ReactNode;
   /**
-   * Asks the server for music. Absent for a document that is not a project:
-   * there is no row for a job to write back to, and offering it would be
-   * offering something that cannot work.
+   * Generate Again, for a project whose score came from a generation: shown on
+   * the property sheet's Score tab, where the web shows it. Absent otherwise.
    */
-  onGenerate?: () => void;
+  generation?: GenerationChoicesProps;
   /** Opens the snapshot history. Absent for a document with no project. */
   onSnapshots?: () => void;
   /**
@@ -117,11 +106,9 @@ export function AppLayout({
   document,
   onSave,
   onExport,
-  onMeasureTap,
-  saving,
   exportSheet,
   overlay,
-  onGenerate,
+  generation,
   onSnapshots,
   onReplace,
   onGenerateTrack,
@@ -129,9 +116,12 @@ export function AppLayout({
   printing,
 }: AppLayoutProps) {
   const { size, onLayout } = useContainerSize();
-  // Collapsed by default: the transport and the status strip must be reachable
-  // before an optional input surface is.
-  const [keyboardCollapsed, setKeyboardCollapsed] = useState(true);
+  /*
+    A device pref, expanded by default and remembered, as on the web. It was a
+    `useState(true)` here: collapsed on every launch and forgotten on every tab,
+    so a reader who played from the keyboard reopened it every time.
+  */
+  const keyboardCollapsed = useDevicePrefs(s => s.keyboardCollapsed);
   /*
     Page by default, matching the web app. Continuous is one wide system, which
     is the right shape for following a single line and the wrong one for reading
@@ -162,36 +152,30 @@ export function AppLayout({
   const zoom = useStore(document.store, s => s.zoom);
   const pitchDisplay = useStore(document.store, s => s.pitchDisplay);
   /*
-    Note input is a mode: with it on a tap on a stave writes a note there, and
-    with it off the tap aims the caret. Clicking to place a note and clicking to
-    aim are both needed, and the caret is what selection, insertion and "play
-    from here" are aimed with, so it stays the default.
+    music_editing's `bindPlayer`, bound to this document's store: loading each
+    score, mirroring the transport into the store, looping the selection and
+    reporting failures as toasts — the web adapter's rules, not a copy of them.
   */
-  const noteInput = useStore(document.store, s => s.noteInput);
-  const transport = useTransport(score ?? null);
+  const transport = usePlayerBinding(document.store);
 
   /**
-   * Lyric entry walks the *active track's* notes in tick order, starting at the
-   * one nearest the caret — so "start writing words here" means what it looks
-   * like.
+   * Lyric entry in progress: the *active track's* notes in tick order, as they
+   * were when entry began, and the note at or after the caret to start on — so
+   * "start writing words here" means what it looks like. `beginLyricEntry`
+   * (music_editing, the web editor's call) decides both, and answers null with
+   * nothing to write under or while the transport plays — this layout used to
+   * work the notes out itself and would open the bar mid-playback, where the
+   * store refused every syllable typed into it.
    */
-  const [lyricStart, setLyricStart] = useState<number | null>(null);
-  const lyricNotes = useMemo(
-    () =>
-      score && activeTrackId ? trackNotesInOrder(score, activeTrackId) : [],
-    [score, activeTrackId],
-  );
+  const [lyricEntry, setLyricEntry] = useState<{
+    notes: NoteEvent[];
+    startIndex: number;
+  } | null>(null);
   const beginLyricEntry = useCallback(() => {
-    if (lyricNotes.length === 0) return;
-    /*
-      The caret is one shared position rather than a store field, so a tap that
-      moves it and a playhead that advances it are the same number — the web
-      app reads it the same way, from the same singleton.
-    */
-    setLyricStart(
-      noteIndexAtOrAfter(lyricNotes, getMusicPosition().reportedTick),
-    );
-  }, [lyricNotes]);
+    const entry = beginLyricEntryAt(document.store);
+    if (entry)
+      setLyricEntry({ notes: entry.notes, startIndex: entry.startIndex });
+  }, [document]);
 
   /*
     The long-press menu. Held here rather than in `ScrollingScore` because the
@@ -204,31 +188,58 @@ export function AppLayout({
     The bar a measure-range selection extends from.
 
     A ref, not state: it is read inside the tap handler and must never cause a
-    render — the same reason the web app keeps it in one.
+    render — the same reason the web app keeps it in one. The rule for using it
+    is `routeScorePress`'s; this only holds it.
   */
   const measureAnchor = useRef<number | null>(null);
   const selection = useStore(document.store, s => s.selection);
   const clipboard = useStore(document.store, s => s.clipboard);
-  const contextKind = selectionKind(selection);
-  const contextCount =
-    contextKind === 'measures'
-      ? selection.measureIds.length
-      : selection.eventIds.length;
   const isPlaying = useStore(document.store, s => s.state) === 'playing';
   const clipboardPrompts = useClipboardPrompts(document.store);
 
-  const runScoreAction = useCallback(
-    (action: ScoreAction) => {
+  /*
+    A tap on the score, whatever it landed on. music_editing's `routeScorePress`
+    is the web's click handler — the gutter makes a track active, the bar band
+    selects a bar, a note selects its chord, a stave aims the caret or, with
+    note input on, writes the pressed pitch after taking the display lenses off.
+    This used to be five callbacks here, each choosing a store action, and the
+    native answers had drifted from the web's.
+
+    Touch has no Shift or Cmd, so both are false; a hardware keyboard's
+    modifiers are not reported to a touch on React Native.
+  */
+  const onScorePress = useCallback(
+    (hit: ScoreCanvasHit | null, pointTick: number | null) => {
       const store = document.store;
-      if (action === 'selectAll') selectAll(store);
-      else if (action === 'copy') store.getState().copySelection();
-      else if (isPlaying) return; // content is immutable mid-playback
-      else if (action === 'cut') clipboardPrompts.requestCut();
-      else if (action === 'paste') clipboardPrompts.requestPaste();
-      else if (action === 'clear') clearSelected(store);
-      else if (action === 'delete') deleteSelected(store);
+      measureAnchor.current = routeScorePress(store, hit, {
+        shift: false,
+        mod: false,
+        noteInput: store.getState().noteInput,
+        pitchDisplay: store.getState().pitchDisplay,
+        anchor: measureAnchor.current,
+        pointTick,
+      });
     },
-    [document, isPlaying, clipboardPrompts],
+    [document],
+  );
+
+  /*
+    A long press selects what it landed on and opens the menu on that —
+    `selectForContextMenu`, the web's right-click. **A press inside the existing
+    selection keeps it**, and a press on a bare stave selects nothing and moves
+    nothing: this used to aim the caret first, which cleared the very selection
+    the menu was then opened to act on.
+  */
+  const onScoreLongPress = useCallback(
+    (hit: ScoreCanvasHit | null) => {
+      measureAnchor.current = selectForContextMenu(
+        document.store,
+        hit,
+        measureAnchor.current,
+      );
+      setActionsOpen(true);
+    },
+    [document],
   );
 
   if (!score) return null;
@@ -238,11 +249,9 @@ export function AppLayout({
         document={document}
         onSave={onSave}
         onExport={onExport}
-        {...(onGenerate ? { onGenerate } : {})}
         {...(onSnapshots ? { onSnapshots } : {})}
         {...(onPrint ? { onPrint } : {})}
         {...(printing === undefined ? {} : { printing })}
-        {...(saving === undefined ? {} : { saving })}
       />
       <DocumentTabs />
       <EditorToolbar
@@ -276,83 +285,11 @@ export function AppLayout({
               activeTrackId={activeTrackId}
               trackIds={visibleTrackIds}
               selection={scoreSelection}
-              /*
-                Tapping a note selects it — the whole chord — and aims the caret
-                at it. `selectNotes` is music_editing's, so this and the web app
-                agree about what tapping a note means rather than each deciding.
-              */
-              onNoteTap={ids => selectNotes(document.store, ids)}
-              /*
-                A tap on a track's name makes it active — not a position in
-                time, so the caret stays where it is. `selectTrack` alongside,
-                because the property sheet follows the selection.
-              */
-              onTrackTap={trackId => {
-                document.store.getState().setActiveTrack(trackId);
-                document.store.getState().selectTrack(trackId);
-              }}
-              /*
-                A tap on the measure-number band selects that bar — the gesture
-                Replace Measures and regeneration are aimed with, and the one
-                thing that still selects measures now that a tap on the stave
-                moves the caret. `selectMeasureRange` is the shared rule; the
-                anchor lives in a ref because extending must not re-render.
-              */
-              /*
-                Note input on: a tap writes a note rather than aiming the caret.
-                The pitch arrives as drawn, so the display lenses come off here
-                — `soundingPitchForDrawn` — before it is stored; `pitchDisplay`
-                is the reader's own written/concert setting.
-              */
-              {...(noteInput
-                ? {
-                    onWriteNote: (at: {
-                      tick: number;
-                      trackId: string;
-                      drawnPitch: Pitch;
-                    }) => {
-                      const current = document.store.getState().score;
-                      if (!current) return;
-                      writeNoteAtPoint(document.store, {
-                        tick: at.tick,
-                        trackId: at.trackId,
-                        pitch: soundingPitchForDrawn(
-                          current,
-                          at.trackId,
-                          at.tick,
-                          at.drawnPitch,
-                          pitchDisplay,
-                        ),
-                      });
-                    },
-                  }
-                : {})}
-              onMeasureSelect={index => {
-                measureAnchor.current = selectMeasureRange(document.store, {
-                  index,
-                  anchor: measureAnchor.current,
-                  extend: false,
-                  allTracks: false,
-                });
-              }}
               zoom={zoom}
               layoutMode={layoutMode}
               pitchDisplay={pitchDisplay}
-              onMeasureTap={onMeasureTap}
-              onMeasureLongPress={(hit, tick) => {
-                // The press aims the caret first, so the menu acts where the
-                // reader pressed rather than wherever the caret happened to be.
-                onMeasureTap(hit, tick);
-                setActionsOpen(true);
-              }}
-              /*
-                A hold on a track's name or a bar number opens the menu too, on
-                that object — the view has already selected it by the time this
-                fires, exactly as the web's right-click does. Without this the
-                menu could only ever be opened over a note or a stave, which is
-                two of the three things it is about.
-              */
-              onContextGesture={() => setActionsOpen(true)}
+              onPress={onScorePress}
+              onLongPress={onScoreLongPress}
             />
           </View>
           {inspectorVisible ? (
@@ -382,6 +319,7 @@ export function AppLayout({
               <InspectorPanel
                 document={document}
                 {...(onReplace ? { onReplace } : {})}
+                {...(generation ? { generation } : {})}
               />
             </View>
           ) : null}
@@ -400,12 +338,12 @@ export function AppLayout({
         Above both bars: while writing words, the field is what the software
         keyboard must not cover.
       */}
-      {lyricStart !== null ? (
+      {lyricEntry !== null ? (
         <LyricEntryBar
           store={document.store}
-          notes={lyricNotes}
-          startIndex={lyricStart}
-          onClose={() => setLyricStart(null)}
+          notes={lyricEntry.notes}
+          startIndex={lyricEntry.startIndex}
+          onClose={() => setLyricEntry(null)}
         />
       ) : null}
 
@@ -422,17 +360,35 @@ export function AppLayout({
         transport={transport}
         store={document.store}
         keyboardCollapsed={keyboardCollapsed}
-        onToggleKeyboard={() => setKeyboardCollapsed(value => !value)}
+        onToggleKeyboard={() =>
+          devicePrefs.getState().setKeyboardCollapsed(!keyboardCollapsed)
+        }
       />
       <KeyboardPanel document={document} collapsed={keyboardCollapsed} />
       <StatusBar document={document} />
       <ScoreActionsSheet
         open={actionsOpen}
-        kind={contextKind}
-        count={contextCount}
-        canPaste={canPasteInto(selection, clipboard)}
-        canEdit={!isPlaying}
-        onAction={runScoreAction}
+        /*
+          music_editing's model — entries, enabled rules and the subject, bars
+          counted across tracks — the same one the web's right-click menu draws.
+        */
+        model={scoreContextMenuModel({
+          selection,
+          clipboard,
+          playing: isPlaying,
+          score,
+        })}
+        /*
+          Re-checked against the store as it is now, so an entry chosen after
+          the transport started is refused rather than trusted to the flag. Cut
+          and paste ask the same insert-or-replace question the shortcuts do.
+        */
+        onAction={action => {
+          runScoreContextAction(document.store, action, {
+            requestCut: clipboardPrompts.requestCut,
+            requestPaste: clipboardPrompts.requestPaste,
+          });
+        }}
         onClose={() => setActionsOpen(false)}
       />
       <ClipboardPromptSheets clipboard={clipboardPrompts} />

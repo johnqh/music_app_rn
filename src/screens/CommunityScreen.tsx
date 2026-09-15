@@ -17,7 +17,10 @@ import {
   Spinner,
   Text,
 } from '@sudobility/components-rn';
-import { filterCommunity } from '@sudobility/music_types';
+import {
+  communityItemTitle,
+  communityListState,
+} from '@sudobility/music_types';
 import { getMusicClient } from '@/config/server';
 import type { RootStackParamList } from '@/app/Navigation';
 import type { CommunityItem } from '@sudobility/music_types';
@@ -29,23 +32,22 @@ export function CommunityScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const client = getMusicClient();
   const [items, setItems] = useState<CommunityItem[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const [query, setQuery] = useState('');
 
   /*
-    Filtered on the client, over the list already fetched — honest at this size,
-    where the screen shows what one request returned. The predicate is
-    music_types', shared with the web page, so the same search finds the same
-    music in both apps.
+    Which state the list is in, and the rows it shows, are music_types'
+    `communityListState` — the web page's own call. Filtered on the client,
+    over the list already fetched, which is honest at this size.
   */
-  const visible = useMemo(
-    () => filterCommunity(items ?? [], query),
-    [items, query],
+  const list = useMemo(
+    () => communityListState(items, query, failed),
+    [items, query, failed],
   );
 
   const load = useCallback(async () => {
     if (!client) return;
-    setError(null);
+    setFailed(false);
     try {
       // No token: `music_api` mounts the public routes outside its auth
       // middleware precisely so this screen works signed out.
@@ -53,10 +55,10 @@ export function CommunityScreen() {
     } catch {
       // A message about *this list*, not a raw network string: "fetch failed"
       // tells a reader nothing they can act on.
-      setError(t('community.loadFailed'));
+      setFailed(true);
       setItems([]);
     }
-  }, [client, t]);
+  }, [client]);
 
   useEffect(() => {
     void load();
@@ -69,7 +71,7 @@ export function CommunityScreen() {
       </ScreenScaffold>
     );
   }
-  if (items === null) {
+  if (list.kind === 'loading') {
     return (
       <ScreenScaffold>
         <View className="items-center py-8">
@@ -83,7 +85,7 @@ export function CommunityScreen() {
     <FlatList<CommunityItem>
       className="bg-background flex-1"
       contentContainerClassName="p-4 gap-2"
-      data={visible}
+      data={[...list.visible]}
       keyExtractor={(item: CommunityItem) => item.publicId}
       ListHeaderComponent={
         <View className="gap-2 pb-2">
@@ -107,12 +109,13 @@ export function CommunityScreen() {
             that nobody has published anything.
           */}
           <Text className="text-muted-foreground text-center">
-            {error ??
-              (query.trim()
-                ? t('community.noMatch', { query })
-                : t('community.empty'))}
+            {list.kind === 'failed'
+              ? t('community.loadFailed')
+              : list.kind === 'noMatch'
+              ? t('community.noMatch', { query })
+              : t('community.empty')}
           </Text>
-          {!error && !query.trim() ? (
+          {list.kind === 'empty' ? (
             <Button
               variant="outline"
               onPress={() => navigation.navigate('Resources')}
@@ -125,15 +128,19 @@ export function CommunityScreen() {
       renderItem={({ item }: { item: CommunityItem }) => (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={item.publicName || item.name}
+          accessibilityLabel={communityItemTitle(item)}
           onPress={() =>
             navigation.navigate('Published', { publicId: item.publicId })
           }
           className="border-border bg-card rounded-lg border p-3"
           style={{ minHeight: MIN_TOUCH_TARGET }}
         >
+          {/*
+            `communityItemTitle`, not `publicName || name`: a public title of
+            spaces is truthy and printed an empty row.
+          */}
           <Text className="text-foreground font-medium">
-            {item.publicName || item.name}
+            {communityItemTitle(item)}
           </Text>
           {item.publisherName ? (
             // "Shared by X", not a bare name: on its own a name under a title

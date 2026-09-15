@@ -1,18 +1,19 @@
 /**
  * Jumping the caret to a bar by number.
  *
- * Two things worth pinning. Bars are numbered **from 1**, matching the gutter
- * and the status strip rather than the zero-based index the score stores — an
- * off-by-one here sends every jump to the wrong bar and looks like a rounding
- * error. And a bar that does not exist keeps the sheet open with a message
- * saying what the range is, rather than closing over a caret that did not move.
+ * The sheet hands over the text as typed; what a number means — bars counted
+ * from 1 as the gutter draws them, a pickup having no number at all — is
+ * music_editing's `goToBarFromInput`, tested there and wired in the toolbar
+ * test. What is pinned here is the sheet's half: a bar that does not exist
+ * keeps it open with a message saying what the range is, rather than closing
+ * over a caret that did not move.
  */
 import { jest } from '@jest/globals';
 import { fireEvent } from '@testing-library/react-native';
 import { renderWithApp } from '@/test/render';
 import { GoToBarSheet } from './GoToBarSheet';
 
-function setup(onGo: (bar: number) => boolean = () => true) {
+function setup(onGo: (text: string) => boolean = () => true) {
   const onClose = jest.fn();
   const view = renderWithApp(
     <GoToBarSheet open barCount={12} onClose={onClose} onGo={onGo} />,
@@ -21,12 +22,14 @@ function setup(onGo: (bar: number) => boolean = () => true) {
 }
 
 describe('GoToBarSheet', () => {
-  it('passes the number as typed, one-based', () => {
-    const onGo = jest.fn(() => true);
+  it('passes the text as typed', () => {
+    // Not parsed here: parsing in the sheet and again in the library is two
+    // rules for what "7 " means, and only the library knows about pickups.
+    const onGo = jest.fn((_text: string) => true);
     const { view } = setup(onGo);
     fireEvent.changeText(view.getByLabelText('Bar number'), '7');
     fireEvent.press(view.getByRole('button', { name: 'Go' }));
-    expect(onGo).toHaveBeenCalledWith(7);
+    expect(onGo).toHaveBeenCalledWith('7');
   });
 
   it('closes once the caret has moved', () => {
@@ -46,13 +49,12 @@ describe('GoToBarSheet', () => {
     expect(view.getByText(/1 to 12/)).toBeTruthy();
   });
 
-  it('refuses text that is not a number', () => {
-    const onGo = jest.fn(() => true);
-    const { view, onClose } = setup(onGo);
+  it('stays open when the text is refused', () => {
+    const { view, onClose } = setup(() => false);
     fireEvent.changeText(view.getByLabelText('Bar number'), 'chorus');
     fireEvent.press(view.getByRole('button', { name: 'Go' }));
-    expect(onGo).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
+    expect(view.getByText(/1 to 12/)).toBeTruthy();
   });
 
   it('clears the error once the reader starts typing again', () => {

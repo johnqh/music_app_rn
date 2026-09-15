@@ -7,13 +7,19 @@
  * cannot play were never marked, and the caret was a hardcoded red that
  * ignored the theme. Each is pinned against a recording canvas.
  *
+ * What a touch *means* is music_editing's (`routeScorePress`,
+ * `selectForContextMenu`) and is tested there; what is pinned here is that the
+ * view hands those the canvas's answer, and that it tells a tap from a long
+ * press from a scroll with music_drawing's `classifyPress` — a scroll that
+ * happened to end over a note must not select it.
+ *
  * And one thing about *when*: a new picture, cursor or scroll offset must not
  * re-render the score view. During playback those change on every note, and a
  * re-render per note was measured at 7% of the JavaScript thread.
  */
 import { jest } from '@jest/globals';
 import type { ReactNode } from 'react';
-import { act } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
 import { DARK_RENDER_THEME } from '@sudobility/music_drawing';
 import { createEmptyScore } from '@sudobility/music_types';
 import type { Pitch, Score } from '@sudobility/music_types';
@@ -24,6 +30,12 @@ type Call = { method: string; args: unknown[] };
 const mockCalls: Call[] = [];
 const mockCursorColors: string[] = [];
 const mockRenders = { count: 0 };
+/** What the canvas answers for a point: set per test. */
+const mockCanvasAnswers: {
+  hit: unknown;
+  tick: number | null;
+  points: unknown[];
+} = { hit: null, tick: null, points: [] };
 
 jest.mock('./useScoreCanvas', () => {
   const actual = jest.requireActual(
@@ -47,7 +59,11 @@ jest.mock('./useScoreCanvas', () => {
     animateCursor: record('animateCursor'),
     setPlayingNotes: record('setPlayingNotes'),
     contentSize: () => ({ width: 800, height: 600 }),
-    hitTest: () => null,
+    hitTest: (point: unknown) => {
+      mockCanvasAnswers.points.push(point);
+      return mockCanvasAnswers.hit;
+    },
+    tickAt: () => mockCanvasAnswers.tick,
   };
   const signals = {
     picture: actual.createSignal<unknown>(null),
@@ -146,6 +162,135 @@ beforeEach(() => {
   mockCalls.length = 0;
   mockCursorColors.length = 0;
   mockRenders.count = 0;
+  mockCanvasAnswers.hit = null;
+  mockCanvasAnswers.tick = null;
+  mockCanvasAnswers.points = [];
+});
+
+/**
+ * Press the touch surface: down at `from`, up at `to` after `heldMs`.
+ *
+ * `page` is where the finger is on screen and `location` where it is on the
+ * surface; they differ during a scroll, when the surface moves with the finger.
+ */
+function press(
+  view: ReturnType<typeof renderWithApp>,
+  {
+    location = { x: 40, y: 50 },
+    from = { x: 100, y: 100 },
+    to = from,
+    heldMs = 80,
+  }: {
+    location?: { x: number; y: number };
+    from?: { x: number; y: number };
+    to?: { x: number; y: number };
+    heldMs?: number;
+  } = {},
+) {
+  const surface = view.UNSAFE_root.findAll(
+    (node: { props: Record<string, unknown> }) =>
+      typeof node.props.onTouchEnd === 'function',
+  )[0]!;
+  const now = jest.spyOn(Date, 'now').mockReturnValue(1_000);
+  fireEvent(surface, 'touchStart', {
+    nativeEvent: {
+      locationX: location.x,
+      locationY: location.y,
+      pageX: from.x,
+      pageY: from.y,
+    },
+  });
+  now.mockReturnValue(1_000 + heldMs);
+  fireEvent(surface, 'touchEnd', {
+    nativeEvent: {
+      locationX: location.x,
+      locationY: location.y,
+      pageX: to.x,
+      pageY: to.y,
+    },
+  });
+  now.mockRestore();
+}
+
+describe('touches', () => {
+  const noteHit = {
+    kind: 'note',
+    eventIds: ['n1', 'n2'],
+    trackId: 't1',
+    tick: 480,
+    measureIndex: 0,
+  };
+
+  it('hands a tap the canvas hit and the tick under the point', () => {
+    const score = createEmptyScore({ title: 'Test', measures: 2 });
+    mockCanvasAnswers.hit = noteHit;
+    mockCanvasAnswers.tick = 512;
+    const onPress = jest.fn();
+    const view = renderWithApp(
+      <ScrollingScore score={score} onPress={onPress} />,
+    );
+    press(view);
+    expect(onPress).toHaveBeenCalledWith(noteHit, 512);
+    // The surface's touch is in content px and the canvas takes view px; at no
+    // scroll the two agree.
+    expect(mockCanvasAnswers.points.at(-1)).toEqual({ x: 40, y: 50 });
+  });
+
+  it('hands over a press that landed on nothing, so a Mod press can still select to the tick', () => {
+    const score = createEmptyScore({ title: 'Test', measures: 2 });
+    mockCanvasAnswers.tick = 960;
+    const onPress = jest.fn();
+    const view = renderWithApp(
+      <ScrollingScore score={score} onPress={onPress} />,
+    );
+    press(view);
+    expect(onPress).toHaveBeenCalledWith(null, 960);
+  });
+
+  it('reads a hold as a long press, not a tap', () => {
+    const score = createEmptyScore({ title: 'Test', measures: 2 });
+    mockCanvasAnswers.hit = noteHit;
+    const onPress = jest.fn();
+    const onLongPress = jest.fn();
+    const view = renderWithApp(
+      <ScrollingScore
+        score={score}
+        onPress={onPress}
+        onLongPress={onLongPress}
+      />,
+    );
+    press(view, { heldMs: 700 });
+    expect(onLongPress).toHaveBeenCalledWith(noteHit);
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it('ignores a scroll that ended over a note', () => {
+    /*
+      The surface scrolls with the finger, so its own coordinates barely move
+      during a scroll: travel is measured on screen. A tap that selected
+      whatever a scroll came to rest on would change the selection on every
+      flick through the score.
+    */
+    const score = createEmptyScore({ title: 'Test', measures: 2 });
+    mockCanvasAnswers.hit = noteHit;
+    const onPress = jest.fn();
+    const onLongPress = jest.fn();
+    const view = renderWithApp(
+      <ScrollingScore
+        score={score}
+        onPress={onPress}
+        onLongPress={onLongPress}
+      />,
+    );
+    press(view, { from: { x: 100, y: 300 }, to: { x: 100, y: 120 } });
+    press(view, {
+      from: { x: 100, y: 300 },
+      to: { x: 100, y: 120 },
+      heldMs: 900,
+    });
+    expect(onPress).not.toHaveBeenCalled();
+    expect(onLongPress).not.toHaveBeenCalled();
+  });
 });
 
 describe('ScrollingScore', () => {

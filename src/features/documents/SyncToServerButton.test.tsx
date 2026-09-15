@@ -7,30 +7,35 @@
  */
 import { jest } from '@jest/globals';
 import { act, fireEvent } from '@testing-library/react-native';
-import { createEmptyScore } from '@sudobility/music_types';
+import { createDocumentStore } from '@sudobility/music_lib';
+import type { MusicClient } from '@sudobility/music_client';
+import { createEmptyScore, MusicPosition } from '@sudobility/music_types';
 import { DocumentList } from '@/documents/document-list';
 import { DocumentsProvider } from '@/documents/DocumentsContext';
-import { createDocument } from '@/documents/document';
+import { asDocument } from '@/documents/document';
 import { renderWithApp } from '@/test/render';
 import type { MusicDocument } from '@/documents/document';
 
 const mockClient = jest.fn<() => unknown>();
 const mockUser = jest.fn<() => unknown>();
-const mockSync = jest.fn<() => Promise<string>>();
+const mockCreate = jest.fn<() => Promise<unknown>>();
 
 jest.mock('@/config/server', () => ({ getMusicClient: () => mockClient() }));
 jest.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({ user: mockUser(), getToken: async () => 'tok' }),
 }));
-jest.mock('@/documents/project-sync', () => ({
-  syncDocumentToServer: () => mockSync(),
-}));
+
+/** A store that can reach a server whose `createProject` is `mockCreate`. */
+const serverContext = {
+  client: { createProject: () => mockCreate() } as unknown as MusicClient,
+  getToken: async () => 'tok',
+};
 
 const { SyncToServerButton } =
   require('./SyncToServerButton') as typeof import('./SyncToServerButton');
 
 function setup(document: MusicDocument | null) {
-  const list = new DocumentList();
+  const list = new DocumentList({ position: () => new MusicPosition() });
   if (document) list.open(document);
   return renderWithApp(
     <DocumentsProvider list={list}>
@@ -40,27 +45,36 @@ function setup(document: MusicDocument | null) {
 }
 
 function localDoc() {
-  return createDocument({
-    id: 'local',
-    title: 'Local',
-    score: createEmptyScore({ title: 'Local' }),
-  });
+  return asDocument(
+    createDocumentStore({
+      title: 'Local',
+      score: createEmptyScore({ title: 'Local' }),
+      context: serverContext,
+    }),
+    'local',
+  );
 }
 
 function projectDoc() {
-  return createDocument({
-    id: 'p',
-    title: 'Project',
-    score: createEmptyScore({ title: 'Project' }),
-    origin: { kind: 'project', projectId: 'p1' },
-  });
+  return asDocument(
+    createDocumentStore({
+      title: 'Project',
+      score: createEmptyScore({ title: 'Project' }),
+      origin: { kind: 'project', projectId: 'p1' },
+      context: serverContext,
+    }),
+    'p',
+  );
 }
 
 beforeEach(() => {
   mockClient.mockReturnValue({});
   mockUser.mockReturnValue({ uid: 'u1' });
-  mockSync.mockReset();
-  mockSync.mockResolvedValue('new-1');
+  mockCreate.mockReset();
+  mockCreate.mockResolvedValue({
+    id: 'new-1',
+    updatedAt: '2026-09-15T00:00:00.000Z',
+  });
 });
 
 describe('SyncToServerButton', () => {
@@ -87,8 +101,22 @@ describe('SyncToServerButton', () => {
     expect(setup(null).queryByText('Save to the server')).toBeNull();
   });
 
+  it('moves the document to the project it made, keeping its store', async () => {
+    const document = localDoc();
+    const view = setup(document);
+    await act(async () => {
+      fireEvent.press(view.getByText('Save to the server'));
+    });
+    expect(document.store.getState().origin).toEqual({
+      kind: 'project',
+      projectId: 'new-1',
+    });
+    // Now a project, so there is nothing left to sync.
+    expect(view.queryByText('Save to the server')).toBeNull();
+  });
+
   it('reports a failure rather than swallowing it', async () => {
-    mockSync.mockRejectedValue(new Error('offline'));
+    mockCreate.mockRejectedValue(new Error('offline'));
     const view = setup(localDoc());
     await act(async () => {
       fireEvent.press(view.getByText('Save to the server'));

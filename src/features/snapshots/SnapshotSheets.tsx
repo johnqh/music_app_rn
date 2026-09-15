@@ -23,6 +23,10 @@ import {
   Text,
 } from '@sudobility/components-rn';
 import { Pressable, View } from 'react-native';
+import {
+  publishNamesProblem,
+  suggestedPublicName,
+} from '@sudobility/music_client';
 import { LIVE_NODE_ID } from '@sudobility/music_types';
 import type { TreeNode } from '@sudobility/music_types';
 
@@ -70,11 +74,17 @@ export function CreateSnapshotSheet({
   }, [open, suggested, defaultPublisherName]);
 
   // Suggested rather than stored, so editing the snapshot name keeps moving it
-  // until the reader types a public title of their own.
-  const publicName = publicNameOverride ?? `${projectName} — ${name}`;
+  // until the reader types a public title of their own. The suggestion is
+  // music_client's, the web's rule: "Song Version 2", with a blank half
+  // dropped — this sheet used to join them with an em dash and keep a blank
+  // half, which offered "Song — " for an unnamed snapshot.
+  const publicName =
+    publicNameOverride ?? suggestedPublicName(projectName, name);
   const canCreate =
     name.trim() !== '' &&
-    (!publish || (copyrightConfirmed && publisherName.trim() !== ''));
+    (!publish ||
+      (copyrightConfirmed &&
+        publishNamesProblem({ publisherName, publicName }) === null));
 
   return (
     <FormModal

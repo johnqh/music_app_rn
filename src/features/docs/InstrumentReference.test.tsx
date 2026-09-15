@@ -1,45 +1,61 @@
 /**
  * The instrument table in the documentation.
  *
- * The point of building it from `INSTRUMENT_OPTIONS` is that it cannot go
- * stale — prose about a table is a copy of that table, and the copy is wrong
- * the first time an instrument is renamed or regrouped. So the test worth
- * having is not "it renders" but "it renders *all* of them": a table that
- * quietly showed 120 of the 128 General MIDI programs would look completely
- * normal to a reader, who would simply conclude the missing instruments do not
- * exist.
+ * Its rows are music_types' `gmInstrumentRows`, the web reference's own call,
+ * so the formatting and the filter are tested there. What is worth pinning here
+ * is that the table renders *all* of them — a table that quietly showed 120 of
+ * the 128 General MIDI programs would look completely normal to a reader, who
+ * would conclude the missing instruments do not exist — and that it carries
+ * the cells the prose above it promises: the compass, and how far to trust it.
  *
- * Unlike the shortcut list this is a plain `View` map rather than a
- * `SectionList`, so nothing is virtualized away and every row really is in the
- * tree.
+ * A plain `View` map rather than a `SectionList`, so nothing is virtualized
+ * away and every row really is in the tree.
  */
-import { INSTRUMENT_OPTIONS } from '@sudobility/music_types';
+import i18next from 'i18next';
+import { fireEvent } from '@testing-library/react-native';
+import { gmInstrumentRows } from '@sudobility/music_types';
 import { renderWithApp } from '@/test/render';
 import { InstrumentReference } from './InstrumentReference';
 
 describe('InstrumentReference', () => {
   it('lists every General MIDI program', () => {
     const view = renderWithApp(<InstrumentReference />);
-    const missing = INSTRUMENT_OPTIONS.filter(
-      option => view.queryAllByText(option.label).length === 0,
-    ).map(option => option.label);
+    const rows = gmInstrumentRows('');
+    expect(rows).toHaveLength(128);
+    const missing = rows
+      .filter(
+        row => view.queryAllByText(`${row.program}  ${row.name}`).length === 0,
+      )
+      .map(row => row.name);
     expect(missing).toEqual([]);
-    expect(INSTRUMENT_OPTIONS).toHaveLength(128);
   });
 
-  it('shows the family beside each instrument', () => {
-    // The family is the column that makes the table navigable; a row rendering
-    // only its name loses the grouping the catalogue exists to express.
+  it('shows the compass and how far to trust it, in words', () => {
     const view = renderWithApp(<InstrumentReference />);
-    // `group` is optional on an InstrumentOption, and the component renders
-    // nothing for an entry without one — so only the named families are
-    // assertable here.
-    const families = [...new Set(INSTRUMENT_OPTIONS.map(o => o.group))].filter(
-      (family): family is string => family !== undefined,
+    const first = gmInstrumentRows('')[0]!;
+    expect(view.queryAllByText(new RegExp(first.range)).length).toBeGreaterThan(
+      0,
     );
-    expect(families.length).toBeGreaterThan(1);
-    for (const family of families) {
-      expect(view.queryAllByText(family).length).toBeGreaterThan(0);
-    }
+    // The basis through its key, never printed as the key itself.
+    expect(
+      view.queryAllByText(i18next.t(first.basisKey)).length,
+    ).toBeGreaterThan(0);
+    expect(view.queryAllByText(first.basisKey)).toHaveLength(0);
+  });
+
+  it('narrows to what was searched for', () => {
+    const view = renderWithApp(<InstrumentReference />);
+    fireEvent.changeText(
+      view.getByLabelText(i18next.t('docs.instruments.search')),
+      'trumpet',
+    );
+    const expected = gmInstrumentRows('trumpet');
+    expect(expected.length).toBeGreaterThan(0);
+    expect(expected.length).toBeLessThan(128);
+    expect(
+      view.getByText(
+        i18next.t('docs.instruments.showing', { count: expected.length }),
+      ),
+    ).toBeTruthy();
   });
 });

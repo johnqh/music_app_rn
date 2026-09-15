@@ -2,11 +2,11 @@
  * Choosing what to export to.
  *
  * The web app has a menu on its title bar; a phone has no menu bar, so this is
- * a sheet — the same five destinations in the same order, which is what makes
- * the two the same product. Notation first (MIDI, MusicXML), then the tracker
- * module, then audio, because that is the order of how much the format keeps:
- * MusicXML round-trips the page, MIDI keeps the performance, XM keeps the notes
- * on a grid, and a WAV keeps only the sound.
+ * a sheet — the same destinations in the same order and under the same words,
+ * because both read music_editing's `WRITABLE_EXPORT_FORMATS`. This sheet had
+ * its own list of five with its own labels, and so never offered the project
+ * file the web's menu did. Notation first (MIDI, MusicXML), then the tracker
+ * module, then audio, then the project itself.
  *
  * A tracker export is the one that can ask a question. `prepareTrackerExport`
  * builds the module and reports what a write would cost, and the numbers are
@@ -21,18 +21,10 @@ import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
 import { isCleanFit, trackerFitLosses } from '@sudobility/music_lib';
 import type { TrackerFitReport } from '@sudobility/music_lib';
+import { WRITABLE_EXPORT_FORMATS } from '@sudobility/music_editing';
 import type { ExportFormat } from '@/documents/export';
 import { prepareTrackerExport } from '@/documents/export';
 import type { MusicDocument } from '@/documents/document';
-
-/** In order of how much of the music the format keeps. */
-const OFFERED: readonly { format: ExportFormat; labelKey: string }[] = [
-  { format: 'midi', labelKey: 'editor.midi' },
-  { format: 'musicxml', labelKey: 'editor.musicXml' },
-  { format: 'xm', labelKey: 'export.xm' },
-  { format: 'wav', labelKey: 'export.wav' },
-  { format: 'mp3', labelKey: 'export.mp3' },
-];
 
 export type ExportSheetProps = {
   open: boolean;
@@ -77,9 +69,9 @@ export function ExportSheet({
         title={t('editor.export')}
         onClose={onClose}
         closeAriaLabel={t('common.closeDialog')}
-        actions={OFFERED.map(o => ({
-          label: t(o.labelKey),
-          onPress: () => choose(o.format),
+        actions={WRITABLE_EXPORT_FORMATS.map(format => ({
+          label: t(format.labelKey),
+          onPress: () => choose(format.id),
           variant: 'secondary' as const,
         }))}
       >

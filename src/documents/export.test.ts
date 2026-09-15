@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createDocument } from './document.js';
-import { exportDocument, exportFilename } from './export.js';
+import { createDocumentStore } from '@sudobility/music_lib';
+import { asDocument } from './document.js';
+import { parseProjectFile } from '@sudobility/music_lib';
+import { exportDocument } from './export.js';
 import type { ScoreExporter } from './export.js';
 import {
   changeMetadataCommand,
@@ -8,11 +10,12 @@ import {
 } from '@sudobility/music_types';
 
 function doc(title: string) {
-  return createDocument({
-    id: 'd',
-    title: 'file name',
-    score: createEmptyScore({ title }),
-  });
+  return asDocument(
+    createDocumentStore({
+      title: 'file name',
+      score: createEmptyScore({ title }),
+    }),
+  );
 }
 
 type Recorded = {
@@ -20,6 +23,7 @@ type Recorded = {
   xml: string[];
   tracker: string[];
   audio: string[];
+  files: { name: string; data: string; mime: string }[];
 };
 
 function exporter(): ScoreExporter & Recorded {
@@ -27,11 +31,18 @@ function exporter(): ScoreExporter & Recorded {
   const xml: string[] = [];
   const tracker: string[] = [];
   const audio: string[] = [];
+  const files: Recorded['files'] = [];
   return {
     midi,
     xml,
     tracker,
     audio,
+    files,
+    fileExporter: {
+      save: vi.fn(async (name: string, data: Uint8Array | string, mime) => {
+        files.push({ name, data: String(data), mime });
+      }),
+    },
     saveMidi: vi.fn(async (_s, f: string) => void midi.push(f)),
     saveMusicXml: vi.fn(async (_s, f: string) => void xml.push(f)),
     saveTracker: vi.fn(async (_m, f: string) => void tracker.push(f)),
@@ -60,12 +71,14 @@ describe('exporting', () => {
     expect(e.xml).toEqual(['Wedding March.musicxml']);
   });
 
-  it('makes a filename safe, and never empty', () => {
-    const score = createEmptyScore({ title: 'A/B:C' });
-    expect(exportFilename(score, 'midi')).toBe('A-B-C.mid');
-    expect(exportFilename(createEmptyScore({ title: '  ' }), 'midi')).toBe(
-      'Untitled.mid',
-    );
+  it('keeps the title, replacing only reserved characters, never empty', async () => {
+    // music_codecs' keep-the-title rule, shared with the web: no slugging.
+    const e = exporter();
+    await exportDocument(doc('Café / Night: Two'), e, 'midi');
+    expect(e.midi).toEqual(['Café - Night- Two.mid']);
+    const blank = exporter();
+    await exportDocument(doc('  '), blank, 'midi');
+    expect(blank.midi).toEqual(['Untitled.mid']);
   });
 });
 
@@ -99,5 +112,33 @@ describe('the formats beyond notation', () => {
     await exportDocument(d, e, 'wav', render);
     expect(render).toHaveBeenCalled();
     expect(e.audio).toEqual(['Jig.wav']);
+  });
+});
+
+describe('the project file', () => {
+  /*
+    The web's export menu offers it and this app's did not: the formats are
+    music_editing's list now. It is the `.moo` document this app opens, not the
+    `json` the shared list still names, and it carries the document's title.
+  */
+  it('writes a .moo that opens back as the same document', async () => {
+    const d = doc('Jig');
+    const e = exporter();
+    await exportDocument(d, e, 'project');
+    expect(e.files).toHaveLength(1);
+    expect(e.files[0]!.name).toBe('Jig.moo');
+    const parsed = parseProjectFile(e.files[0]!.data);
+    expect(parsed.title).toBe('file name');
+    expect(parsed.score.metadata.title).toBe('Jig');
+  });
+
+  it('keeps hidden tracks, which only the other formats may leave out', async () => {
+    const d = doc('Jig');
+    const trackCount = d.store.getState().score!.tracks.length;
+    const e = exporter();
+    await exportDocument(d, e, 'project', undefined, 'visible');
+    expect(parseProjectFile(e.files[0]!.data).score.tracks).toHaveLength(
+      trackCount,
+    );
   });
 });

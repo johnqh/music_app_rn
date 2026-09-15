@@ -22,8 +22,11 @@ import type { MenuCommand } from '@/app/menu-commands';
 import type { NativeUploadFile } from '@sudobility/music_client';
 import { useAuth } from '@/auth/AuthContext';
 import { getMusicClient } from '@/config/server';
-import { openProjectDocument } from '@/documents/project-sync';
-import { useDocumentList } from '@/documents/DocumentsContext';
+import { openProjectInto } from '@/documents/document';
+import {
+  useDocumentList,
+  useDocumentServices,
+} from '@/documents/DocumentsContext';
 import { ImportFeedback, useImport } from './useImport';
 import { useOpenLink } from '@/app/useOpenLink';
 import { AudioImportSheet } from './AudioImportSheet';
@@ -38,6 +41,7 @@ export function MenuImportCommands() {
   const importer = useImport();
   const { run, importFile } = importer;
   const list = useDocumentList();
+  const services = useDocumentServices();
   const { getToken } = useAuth();
   const [audioOpen, setAudioOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -58,9 +62,9 @@ export function MenuImportCommands() {
       // this is the same check a moment later, since a token can expire.
       if (!client || !token) return;
       const saved = await client.transcribeAudio(file, file.name, token);
-      await openProjectDocument(list, client, getToken, saved.id);
+      await openProjectInto(list, services, saved.id);
     },
-    [getToken, list],
+    [getToken, list, services],
   );
 
   useMenuCommand(

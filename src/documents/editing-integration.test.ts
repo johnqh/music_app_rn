@@ -7,7 +7,8 @@
  * from the fact that it compiles.
  */
 import { describe, expect, it } from 'vitest';
-import { createDocument } from './document.js';
+import { createDocumentStore } from '@sudobility/music_lib';
+import { asDocument } from './document.js';
 import {
   defaultInsertPitch,
   insertNoteAtCaret,
@@ -17,11 +18,12 @@ import { allNotes, createEmptyScore } from '@sudobility/music_types';
 import type { PitchStep } from '@sudobility/music_types';
 
 function doc() {
-  return createDocument({
-    id: 'd',
-    title: 'T',
-    score: createEmptyScore({ title: 'T', measures: 4 }),
-  });
+  return asDocument(
+    createDocumentStore({
+      title: 'T',
+      score: createEmptyScore({ title: 'T', measures: 4 }),
+    }),
+  );
 }
 
 function write(document: ReturnType<typeof doc>, step: PitchStep) {
@@ -39,7 +41,7 @@ describe('note entry against a document store', () => {
     expect(allNotes(d.store.getState().score!)).toHaveLength(0);
     write(d, 'C');
     expect(allNotes(d.store.getState().score!)).toHaveLength(1);
-    expect(d.dirty).toBe(true);
+    expect(d.store.getState().dirty).toBe(true);
   });
 
   it('advances the caret so a run of taps lays out a melody', () => {
@@ -69,11 +71,12 @@ describe('note entry against a document store', () => {
 
   it('undoes an edit, and the undo is per document', () => {
     const a = doc();
-    const b = createDocument({
-      id: 'd2',
-      title: 'T2',
-      score: createEmptyScore({ title: 'T2', measures: 4 }),
-    });
+    const b = asDocument(
+      createDocumentStore({
+        title: 'T2',
+        score: createEmptyScore({ title: 'T2', measures: 4 }),
+      }),
+    );
     write(a, 'C');
     write(b, 'G');
     a.store.getState().undo();

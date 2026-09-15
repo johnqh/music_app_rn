@@ -22,11 +22,21 @@
  *
  * **Tempo is the one control that edits the score.** Loop, metronome, speed,
  * volume and seeking are real-time device control and go to the player; the BPM
- * field is persisted with the score and goes through `setOpeningTempo`, which
- * is why this bar takes the document's store as well as its score.
+ * field is persisted with the score and goes through `commitOpeningTempoText`
+ * (music_editing, the web field's own rule: blank is no change, the rest rounded
+ * and bounded to the tempos the validator accepts).
+ *
+ * **Every control reaches the player through the binding, and every setting is
+ * read back from the store.** `bindPlayer` writes loop, metronome, speed, volume
+ * and the load state into the document store as it tells the player, the way
+ * the web adapter writes them into the app store — so this bar holds none of
+ * them in `useState` any more. It used to, which meant a second document's bar
+ * showed the metronome off while the one player still ticked, and the loop it
+ * set was always the whole score even with bars selected.
  */
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
+import { useStore } from 'zustand';
 
 import { useTranslation } from 'react-i18next';
 import { Input, Text } from '@sudobility/components-rn';
@@ -38,33 +48,34 @@ import {
 } from 'react-native-heroicons/solid';
 import {
   barBeatForTick,
-  barCount,
   formatBarBeat,
+  formatTimecode,
+  PLAYBACK_SPEEDS,
   TempoMap,
+  transportExtent,
 } from '@sudobility/music_types';
-import { setOpeningTempo } from '@sudobility/music_editing';
-import type { EditingStoreApi } from '@sudobility/music_editing';
+import {
+  commitOpeningTempoText,
+  openingTempoBpm,
+} from '@sudobility/music_editing';
 import type { Score } from '@sudobility/music_types';
-import { getAppServices } from '@/config/initialize';
 import { NotationIcon } from '@/components/icons/NotationIcon';
 import { useNotationInk } from '@/components/icons/notation-ink';
 import { LevelSlider } from '@/components/controls/LevelSlider';
 import { ToolbarSelect } from '@/components/controls/ToolbarSelect';
 import { SynthLoadIndicator, useSynthLoad } from './SynthLoadIndicator';
 import { IconButton } from '@/components/layout/IconButton';
-import { usePositionReadout } from './useTransport';
-import type { TransportApi } from './useTransport';
+import { usePositionReadout } from './usePositionReadout';
+import type { PositionSource } from './usePositionReadout';
+import type { TransportBinding, TransportStoreApi } from './usePlayerBinding';
 
 const ICON_SIZE = 18;
 
-/** Spec §22: "Speeds: 0.5x, 0.75x, 1x, 1.25x, 1.5x, 2x." */
-const SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2] as const;
-
 export type TransportBarProps = {
   score: Score;
-  transport: TransportApi;
-  /** The document's store. Only the tempo field writes to it. */
-  store: EditingStoreApi;
+  transport: TransportBinding;
+  /** The document's store: settings are read from it, the tempo written to it. */
+  store: TransportStoreApi;
   /**
    * Whether the piano keyboard below is collapsed, and how to toggle it.
    *
@@ -76,16 +87,6 @@ export type TransportBarProps = {
   onToggleKeyboard?: () => void;
 };
 
-/** `M:SS.d` — tenths make the actual playback rate visible against a wall clock. */
-function formatTimecode(seconds: number): string {
-  const clamped = Math.max(0, seconds);
-  const minutes = Math.floor(clamped / 60);
-  const rest = clamped - minutes * 60;
-  const whole = Math.floor(rest);
-  const tenths = Math.floor((rest - whole) * 10);
-  return `${minutes}:${String(whole).padStart(2, '0')}.${tenths}`;
-}
-
 export function TransportBar({
   score,
   transport,
@@ -95,26 +96,29 @@ export function TransportBar({
 }: TransportBarProps) {
   const { t } = useTranslation();
   const ink = useNotationInk();
-  const [loop, setLoop] = useState(false);
-  const [metronome, setMetronome] = useState(false);
-  const [speed, setSpeed] = useState(1);
-  const [volume, setVolume] = useState(1);
+  const loop = useStore(store, s => s.loopRange !== null);
+  const metronome = useStore(store, s => s.metronome);
+  const speed = useStore(store, s => s.tempoMultiplier);
+  const masterVolume = useStore(store, s => s.masterVolume);
+  const playing = useStore(store, s => s.state) === 'playing';
   const [tempoDraft, setTempoDraft] = useState('');
   const [editingTempo, setEditingTempo] = useState(false);
-  const playing = transport.state === 'playing';
 
-  const lastMeasure = score.tracks[0]?.measures.at(-1);
-  const endTick = lastMeasure
-    ? lastMeasure.startTick + lastMeasure.durationTicks
-    : 0;
-  const measureCount = barCount(score);
-
+  /*
+    To the end of the *longest* track, floored at one tick — music_types' rule,
+    shared with the web bar. This one measured the first track only, so a score
+    whose first part stopped early could not be scrubbed to its last notes.
+  */
+  const { maxTick, totalSeconds } = useMemo(
+    () => transportExtent(score),
+    [score],
+  );
   /*
     Rounded for display as well as on commit: a score can arrive carrying a
     fractional tempo from a MIDI file or a detected one from audio import, and
     "119.87421 BPM" in the transport is noise, not precision.
   */
-  const currentBpm = Math.round(score.tempoMap[0]?.bpm ?? 120);
+  const currentBpm = openingTempoBpm(score);
 
   // Score-time seconds via the same TempoMap the playback engine schedules
   // with, so this readout advances exactly 1 second per wall-clock second at
@@ -123,45 +127,19 @@ export function TransportBar({
     () => new TempoMap([...score.tempoMap], score.ppq),
     [score],
   );
-  const totalSeconds = tempoMap.ticksToSeconds(endTick);
 
   /*
-    The playhead's tick, held in a ref rather than state: prev/next-bar need to
-    read it, and nothing renders from it — putting it in state would re-render
-    the whole bar thirty times a second, which is the thing this file is
-    organised to avoid.
+    Drawn from a draft so the fill follows the finger, as the web's does; the
+    gain itself is set on every movement, since a master fader that only took
+    effect on release would be useless.
   */
-  const positionTick = useRef(0);
-  useEffect(
-    () => transport.onPosition(tick => (positionTick.current = tick)),
-    [transport],
-  );
+  const [volumeDraft, setVolumeDraft] = useState(masterVolume);
+  useEffect(() => setVolumeDraft(masterVolume), [masterVolume]);
 
-  const stepMeasure = useCallback(
-    (delta: number) => {
-      const measures = score.tracks[0]?.measures ?? [];
-      if (measures.length === 0) return;
-      // The bar the playhead is in: the last one that has started.
-      let index = 0;
-      for (let i = 0; i < measures.length; i += 1) {
-        const measure = measures[i];
-        if (measure && measure.startTick <= positionTick.current) index = i;
-      }
-      const target =
-        measures[Math.max(0, Math.min(measures.length - 1, index + delta))];
-      if (target) transport.seek(target.startTick);
-    },
-    [score, transport],
-  );
-
-  const commitTempo = useCallback((): void => {
+  const commitTempo = (): void => {
     setEditingTempo(false);
-    // Whole numbers only. A paste or a stepper can put "104.5" in the field,
-    // and a tempo the transport rounds for display but stores unrounded reads
-    // back differently the next time it is opened.
-    const next = Math.round(Number(tempoDraft));
-    if (Number.isFinite(next) && next > 0) setOpeningTempo(store, next);
-  }, [store, tempoDraft]);
+    commitOpeningTempoText(store, tempoDraft);
+  };
 
   return (
     <View
@@ -171,26 +149,31 @@ export function TransportBar({
     >
       <IconButton
         label={t('transport.goToStart')}
-        onPress={() => transport.seek(0)}
+        onPress={transport.goToStart}
       >
         <NotationIcon name="GoToStartIcon" color={ink.foreground} />
       </IconButton>
+      {/*
+        Bar stepping is the binding's: it steps from the one shared caret
+        rather than from a tick this bar tracked for itself.
+      */}
       <IconButton
         label={t('transport.previousMeasure')}
-        onPress={() => stepMeasure(-1)}
+        onPress={transport.previousMeasure}
       >
         <NotationIcon name="PreviousMeasureIcon" color={ink.foreground} />
       </IconButton>
       <PlayPauseButton
+        store={store}
         playing={playing}
-        onPress={() => (playing ? transport.pause() : void transport.play())}
+        onPress={() => void transport.togglePlay()}
       />
       <IconButton label={t('transport.stop')} onPress={transport.stop}>
         <StopIcon size={ICON_SIZE} className="text-foreground" />
       </IconButton>
       <IconButton
         label={t('transport.nextMeasure')}
-        onPress={() => stepMeasure(1)}
+        onPress={transport.nextMeasure}
       >
         <NotationIcon name="NextMeasureIcon" color={ink.foreground} />
       </IconButton>
@@ -200,21 +183,15 @@ export function TransportBar({
         toggle in this app does — a filled chip and `selected` reported to the
         accessibility layer. Tinting the glyph alone said it only to somebody
         looking at it.
+
+        The loop is the web's rule, through the binding: the selection when
+        there is one, else the whole score. This bar always looped the whole
+        score, so looping four selected bars could not be done here.
       */}
       <IconButton
         label={t('transport.toggleLoop')}
         selected={loop}
-        onPress={() => {
-          const next = !loop;
-          setLoop(next);
-          // Every track: a loop over one part and not the others would play
-          // a different piece each time round.
-          getAppServices().player.setLoop(
-            next
-              ? { startTick: 0, endTick, trackIds: score.tracks.map(t => t.id) }
-              : null,
-          );
-        }}
+        onPress={transport.toggleLoop}
       >
         <ArrowPathRoundedSquareIcon
           size={ICON_SIZE}
@@ -224,11 +201,7 @@ export function TransportBar({
       <IconButton
         label={t('transport.toggleMetronome')}
         selected={metronome}
-        onPress={() => {
-          const next = !metronome;
-          setMetronome(next);
-          getAppServices().player.setMetronome(next);
-        }}
+        onPress={() => transport.setMetronome(!metronome)}
       >
         {/*
           The accent when it is on, not `onPrimary` — that was white, and it
@@ -277,16 +250,12 @@ export function TransportBar({
       <ToolbarSelect
         label={t('transport.speed')}
         hint={t('transport.speedMultiplier')}
-        options={SPEEDS.map(value => ({
+        options={PLAYBACK_SPEEDS.map(value => ({
           value: String(value),
           label: `${value}x`,
         }))}
         value={String(speed)}
-        onChange={value => {
-          const next = Number(value);
-          setSpeed(next);
-          getAppServices().player.setTempoMultiplier(next);
-        }}
+        onChange={value => transport.setTempoMultiplier(Number(value))}
       >
         <Text className="text-foreground text-sm">{`${speed}x`}</Text>
       </ToolbarSelect>
@@ -302,24 +271,20 @@ export function TransportBar({
         <LevelSlider
           className="flex-1"
           label={t('transport.masterVolume')}
-          value={volume}
+          value={volumeDraft}
           onChange={next => {
-            setVolume(next);
+            setVolumeDraft(next);
             // Continuous: a gain must be audible while the finger moves.
-            getAppServices().player.setMasterVolume(next);
+            transport.setMasterVolume(next);
           }}
         />
       </View>
 
-      <PositionScrubber
-        endTick={endTick}
-        transport={transport}
-        measureCount={measureCount}
-      />
+      <PositionScrubber maxTick={maxTick} transport={transport} />
       <Timecode
         transport={transport}
         tempoMap={tempoMap}
-        maxTick={endTick}
+        maxTick={maxTick}
         totalSeconds={totalSeconds}
       />
       {/*
@@ -362,7 +327,7 @@ export function TransportBar({
         Last, and self-effacing: it renders nothing once the engine is ready,
         which is every press of Play after the first.
       */}
-      <SynthLoadIndicator />
+      <SynthLoadIndicator store={store} />
     </View>
   );
 }
@@ -375,14 +340,16 @@ export function TransportBar({
  * re-render every control in the row. Here it touches one button.
  */
 function PlayPauseButton({
+  store,
   playing,
   onPress,
 }: {
+  store: TransportStoreApi;
   playing: boolean;
   onPress: () => void;
 }) {
   const { t } = useTranslation();
-  const load = useSynthLoad();
+  const load = useSynthLoad(store);
   // Only the *first* load blocks: once the synth is up the engine reports
   // `ready` and stays there, so this is disabled for seconds once per session
   // rather than on every press.
@@ -411,7 +378,7 @@ export const MeasureBeatReadout = memo(function MeasureBeatReadout({
   transport,
 }: {
   score: Score;
-  transport: TransportApi;
+  transport: PositionSource;
 }) {
   const { t } = useTranslation();
   const readout = usePositionReadout(transport, tick =>
@@ -438,7 +405,7 @@ const Timecode = memo(function Timecode({
   maxTick,
   totalSeconds,
 }: {
-  transport: TransportApi;
+  transport: PositionSource;
   tempoMap: TempoMap;
   maxTick: number;
   totalSeconds: number;
@@ -468,13 +435,11 @@ const Timecode = memo(function Timecode({
  * rather than waiting for the engine's next position report.
  */
 const PositionScrubber = memo(function PositionScrubber({
-  endTick,
+  maxTick,
   transport,
-  measureCount,
 }: {
-  endTick: number;
-  transport: TransportApi;
-  measureCount: number;
+  maxTick: number;
+  transport: PositionSource & Pick<TransportBinding, 'seek'>;
 }) {
   const { t } = useTranslation();
   const [tick, setTick] = useState(0);
@@ -485,11 +450,10 @@ const PositionScrubber = memo(function PositionScrubber({
     <View className="min-w-24 flex-1">
       <LevelSlider
         label={t('transport.position')}
-        value={dragging ?? tick}
+        value={dragging ?? Math.min(tick, maxTick)}
         min={0}
-        max={Math.max(1, endTick)}
+        max={maxTick}
         step={1}
-        disabled={measureCount === 0}
         onChange={setDragging}
         onSlidingComplete={next => {
           setDragging(null);

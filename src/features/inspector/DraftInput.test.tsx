@@ -9,7 +9,7 @@
 import { jest } from '@jest/globals';
 import { fireEvent } from '@testing-library/react-native';
 import { renderWithApp } from '@/test/render';
-import { DraftInput } from './DraftInput';
+import { DraftInput, NumberDraftInput } from './DraftInput';
 
 function setup(value = 'C7') {
   const onCommit = jest.fn();
@@ -58,5 +58,53 @@ describe('DraftInput', () => {
       <DraftInput value="Fm" onCommit={onCommit} accessibilityLabel="Chord" />,
     );
     expect(view.getByLabelText('Chord').props.value).toBe('Fm');
+  });
+});
+
+describe('NumberDraftInput', () => {
+  function numberSetup(value: number | null = 80) {
+    const onCommit = jest.fn();
+    const view = renderWithApp(
+      <NumberDraftInput
+        value={value}
+        min={0}
+        max={127}
+        integer
+        mixedPlaceholder="Mixed"
+        onCommit={onCommit}
+        accessibilityLabel="Velocity"
+      />,
+    );
+    return { view, onCommit, field: view.getByLabelText('Velocity') };
+  }
+
+  it('commits the parsed number once, on blur', () => {
+    // Typing 100 must not write 1 and then 10 on the way there.
+    const { field, onCommit } = numberSetup();
+    fireEvent.changeText(field, '100');
+    expect(onCommit).not.toHaveBeenCalled();
+    fireEvent(field, 'blur');
+    expect(onCommit).toHaveBeenCalledWith(100);
+  });
+
+  it('treats a cleared field as no change, never as zero', () => {
+    const { field, onCommit } = numberSetup();
+    fireEvent.changeText(field, '');
+    fireEvent(field, 'blur');
+    expect(onCommit).not.toHaveBeenCalled();
+    expect(field.props.value).toBe('80');
+  });
+
+  it('clamps to its bounds', () => {
+    const { field, onCommit } = numberSetup();
+    fireEvent.changeText(field, '400');
+    fireEvent(field, 'blur');
+    expect(onCommit).toHaveBeenCalledWith(127);
+  });
+
+  it('shows a disagreeing selection as Mixed, not as a number', () => {
+    const { field } = numberSetup(null);
+    expect(field.props.value).toBe('');
+    expect(field.props.placeholder).toBe('Mixed');
   });
 });

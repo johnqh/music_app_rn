@@ -7,32 +7,25 @@
 import { fireEvent } from '@testing-library/react-native';
 import { DocumentList } from '@/documents/document-list';
 import { DocumentsProvider } from '@/documents/DocumentsContext';
-import { createEmptyScore } from '@sudobility/music_types';
-import { createDocument } from '@/documents/document';
+import { createDocumentStore } from '@sudobility/music_lib';
+import { createEmptyScore, MusicPosition } from '@sudobility/music_types';
+import { asDocument } from '@/documents/document';
 import { renderWithApp } from '@/test/render';
 import { DocumentActions } from './DocumentActions';
 
-/** The filesystem seam, which a component test has none of. */
-function storage() {
-  return {
-    readText: async () => '',
-    writeText: async () => undefined,
-    defaultDirectory: () => '/documents',
-    join: (d: string, f: string) => `${d}/${f}`,
-  };
-}
-
 function setup() {
-  const list = new DocumentList();
-  const document = createDocument({
-    id: 'd',
-    title: 'Quartet',
-    score: createEmptyScore({ title: 'Quartet' }),
-  });
+  const list = new DocumentList({ position: () => new MusicPosition() });
+  const document = asDocument(
+    createDocumentStore({
+      title: 'Quartet',
+      score: createEmptyScore({ title: 'Quartet' }),
+    }),
+    'd',
+  );
   list.open(document);
   const view = renderWithApp(
     <DocumentsProvider list={list}>
-      <DocumentActions document={document} storage={storage() as never} />
+      <DocumentActions document={document} />
     </DocumentsProvider>,
   );
   return { view, list, document };

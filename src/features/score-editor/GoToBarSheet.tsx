@@ -9,8 +9,12 @@
  * matters more here than on the web, where a scroll wheel covers ground faster
  * than a finger does.
  *
- * Bars are numbered from 1, matching the numbers drawn in the gutter and the
- * status strip's readout — not the zero-based index the score stores.
+ * Bars are numbered as the gutter draws them — from 1, with a pickup having no
+ * number at all — which is not the zero-based index the score stores. That
+ * rule is music_editing's `goToBarFromInput`, so the sheet hands over the text
+ * as typed rather than parsing it: it used to turn the text into a number and
+ * hand that to `caretToBar`, which counted `index + 1` and so landed one bar
+ * early on every score with an anacrusis.
  */
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
@@ -22,8 +26,12 @@ export type GoToBarSheetProps = {
   /** How many bars there are, so the prompt can say the range. */
   barCount: number;
   onClose: () => void;
-  /** Returns false when the bar does not exist, which keeps the sheet open. */
-  onGo: (bar: number) => boolean;
+  /**
+   * Goes to the bar the text names — `goToBarFromInput`. Returns false for
+   * blank text, a non-number or a bar that does not exist, which keeps the
+   * sheet open.
+   */
+  onGo: (text: string) => boolean;
 };
 
 export function GoToBarSheet({
@@ -44,8 +52,7 @@ export function GoToBarSheet({
   }, [open]);
 
   const submit = (): void => {
-    const bar = Number(value);
-    if (!Number.isFinite(bar) || !onGo(Math.round(bar))) {
+    if (!onGo(value)) {
       setError(true);
       return;
     }

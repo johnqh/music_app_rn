@@ -15,7 +15,8 @@ import {
   createId,
 } from '@sudobility/music_types';
 import type { NoteEvent } from '@sudobility/music_types';
-import { createDocument } from '@/documents/document';
+import { createDocumentStore } from '@sudobility/music_lib';
+import { asDocument } from '@/documents/document';
 import { renderWithApp } from '@/test/render';
 import { ExportSheet } from './ExportSheet';
 
@@ -52,7 +53,10 @@ function outOfRangeDocument() {
       },
     ],
   };
-  return createDocument({ id: 'd', title: 'Deep', score: withNote });
+  return asDocument(
+    createDocumentStore({ title: 'Deep', score: withNote }),
+    'd',
+  );
 }
 
 describe('ExportSheet — tracker fit', () => {
@@ -66,7 +70,7 @@ describe('ExportSheet — tracker fit', () => {
         onExport={onExport}
       />,
     );
-    fireEvent.press(view.getByText('Tracker module (XM)'));
+    fireEvent.press(view.getByText('XM Module'));
     // Not written yet: the numbers come first.
     expect(onExport).not.toHaveBeenCalled();
     expect(view.getByText(/moved into range|octave|range/i)).toBeTruthy();
@@ -82,7 +86,7 @@ describe('ExportSheet — tracker fit', () => {
         onExport={onExport}
       />,
     );
-    fireEvent.press(view.getByText('Tracker module (XM)'));
+    fireEvent.press(view.getByText('XM Module'));
     fireEvent.press(view.getByRole('button', { name: 'Export anyway' }));
     expect(onExport).toHaveBeenCalledWith('xm');
   });
@@ -97,7 +101,7 @@ describe('ExportSheet — tracker fit', () => {
         onExport={onExport}
       />,
     );
-    fireEvent.press(view.getByText('Tracker module (XM)'));
+    fireEvent.press(view.getByText('XM Module'));
     fireEvent.press(view.getByRole('button', { name: 'Cancel' }));
     expect(onExport).not.toHaveBeenCalled();
   });

@@ -18,6 +18,7 @@ import { CheckableSelect } from '@sudobility/components-rn';
 import {
   selectActiveTrackId,
   selectVisibleTrackIds,
+  trackPickerVisible,
 } from '@sudobility/music_editing';
 import type { MusicDocument } from '@/documents/document';
 
@@ -30,6 +31,13 @@ export function TrackVisibilitySelect({
   const store = document.store;
   const tracks = useStore(store, s => s.score?.tracks ?? []);
   const activeTrackId = useStore(store, selectActiveTrackId);
+  /*
+    Whether to offer the picker at all is music_editing's
+    `trackPickerVisible`, the web picker's own rule: with fewer than two tracks
+    there is nothing to choose between and nothing that could be hidden, so the
+    control would be a permanently-disabled no-op taking toolbar width.
+  */
+  const visible = useStore(store, trackPickerVisible);
   /*
     Through the selector, never `state.visibleTrackIds` raw. The raw field is
     `null` for "all of them" and can still name a track that has since been
@@ -44,10 +52,7 @@ export function TrackVisibilitySelect({
     [store],
   );
 
-  // With fewer than two tracks there is nothing to choose between and nothing
-  // that could be hidden, so the control would be a permanently-disabled no-op
-  // taking up toolbar width. The web's rule.
-  if (tracks.length < 2 || !activeTrackId) return null;
+  if (!visible || !activeTrackId) return null;
 
   return (
     <CheckableSelect

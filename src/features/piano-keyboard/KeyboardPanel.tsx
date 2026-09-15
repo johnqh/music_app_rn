@@ -13,32 +13,39 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { chordSelection, pitchToMidi } from '@sudobility/music_types';
+import type { SoundingNote, UUID } from '@sudobility/music_types';
 import { View } from 'react-native';
 import { useStore } from 'zustand';
-import { selectActiveTrackId } from '@sudobility/music_editing';
 import {
   EMPTY_GROUP,
+  litKeys,
   playKeyGroup,
   playingPitchesForTrack,
   samePitchSet,
   pressKey,
   releaseKey,
+  selectActiveTrackId,
   selectSelectedNotes,
 } from '@sudobility/music_editing';
 import { midiIsInRange } from '@sudobility/music_types';
 import {
-  FULL_RANGE,
-  snapToWhiteKeys,
-  trackKeyboardSpan,
+  DARK_RENDER_THEME,
+  LIGHT_RENDER_THEME,
+  keyboardKeys,
 } from '@sudobility/music_drawing';
 import { getAppServices } from '@/config/initialize';
+import { useTheme } from '@/config/ThemeContext';
 import type { MusicDocument } from '@/documents/document';
 import { PianoKeyboard } from './PianoKeyboard';
 import { useContainerSize } from '@/features/layout/useContainerSize';
 
 import type { KeyGroup } from '@sudobility/music_editing';
 
-/** The keyboard's own height; the container states it so it can be measured. */
+/**
+ * The keyboard's whole height, label gutter included — `keyboardKeys` takes the
+ * gutter out of it, as the web's does. The container states it so it can be
+ * measured.
+ */
 const KEYBOARD_HEIGHT = 120;
 
 export type KeyboardPanelProps = {
@@ -55,10 +62,14 @@ export type KeyboardPanelProps = {
 
 export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
   const { size, onLayout, measured } = useContainerSize();
-  const [sounding, setSounding] = useState<ReadonlySet<number>>(new Set());
+  const [sounding, setSounding] = useState<ReadonlySet<number>>(NO_PITCHES);
   /** What `sounding` holds, readable from the player's callback without a render. */
   const shownSounding = useRef(sounding);
   const activeTrackId = useStore(document.store, selectActiveTrackId);
+  const transportState = useStore(document.store, s => s.state);
+  const pitchDisplay = useStore(document.store, s => s.pitchDisplay);
+  const { resolved } = useTheme();
+  const theme = resolved === 'dark' ? DARK_RENDER_THEME : LIGHT_RENDER_THEME;
 
   /**
    * The group being played. A ref, not state: it changes on every touch and
@@ -66,6 +77,12 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
    * keyboard on each press.
    */
   const group = useRef<KeyGroup>(EMPTY_GROUP);
+  /**
+   * The keys a finger is holding, drawn pressed. State rather than the group
+   * ref because this *is* drawn — the native keyboard showed no held key at
+   * all, where the web's always has.
+   */
+  const [held, setHeld] = useState<ReadonlySet<number>>(NO_PITCHES);
 
   useEffect(() => {
     const player = getAppServices().player;
@@ -90,6 +107,27 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
   }, [activeTrackId]);
 
   /*
+    What is drawn pressed is music_editing's `litKeys`, the web keyboard's rule:
+    the active track's sounding pitches **only while playing** — the engine
+    clears sounding notes on stop but not on pause, so without the gate a paused
+    chord stayed lit here — plus the keys held down.
+
+    Fed from the kept set rather than the raw notes, and memoized on it: the
+    kept set only changes identity when one of this track's keys does, so the
+    lit set does too, and a note on another part still renders nothing.
+  */
+  const lit = useMemo(
+    () =>
+      litKeys(
+        asSounding(sounding, activeTrackId),
+        activeTrackId,
+        transportState,
+        held,
+      ),
+    [sounding, activeTrackId, transportState, held],
+  );
+
+  /*
     The pitches of the one selected chord, so the keys can show what is in it.
 
     `chordSelection` is the same rule `playKeyGroup` applies when deciding
@@ -105,50 +143,60 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
     );
   }, [selectedNotes]);
 
-  const program = useStore(document.store, s => {
-    const track = s.score?.tracks.find(t => t.id === activeTrackId);
-    return track?.midiProgram ?? 0;
-  });
-  const isPercussion = useStore(document.store, s => {
-    const track = s.score?.tracks.find(t => t.id === activeTrackId);
-    return track?.clef === 'percussion';
-  });
-
-  /**
-   * The instrument's compass, widened to reach every note the track holds, with
-   * the keys outside the compass marked — `trackKeyboardSpan`, the same call
-   * the web keyboard makes.
-   *
-   * Widened because an import can hold notes the instrument cannot play (a
-   * sub-octave bass layer is the usual one), and a keyboard that stopped at the
-   * compass lit no key for them. Through the track, never `midiProgram` alone:
-   * on a percussion track that number is a drum kit.
-   */
   const track = useStore(document.store, s =>
     s.score?.tracks.find(t => t.id === activeTrackId),
   );
-  const span = useMemo(
+  const program = track?.midiProgram ?? 0;
+  const isPercussion = track?.clef === 'percussion';
+
+  /**
+   * The keys, their size, names and label rows — music_drawing's
+   * `keyboardKeys`, the web keyboard's own call.
+   *
+   * It folds in the range (the instrument's compass widened to every note the
+   * track holds, keys outside the compass marked, through the track rather
+   * than `midiProgram` alone since a percussion track's program is a kit), the
+   * naming, the label gutter, and the lettering of a transposing part read in
+   * written pitch. `fit: 'width'` is the one native difference, and the
+   * library's own option for it: the whole range always fits, because a
+   * keyboard you have to scroll is one you cannot play a two-handed chord on.
+   */
+  const keyboard = useMemo(
     () =>
-      track
-        ? trackKeyboardSpan(track)
-        : { range: snapToWhiteKeys(FULL_RANGE), playable: null },
-    [track],
+      keyboardKeys({
+        width: size.width,
+        height: KEYBOARD_HEIGHT,
+        track,
+        pitchDisplay,
+        fit: 'width',
+      }),
+    [size.width, track, pitchDisplay],
   );
+  const { playable } = keyboard;
 
   const onKeyDown = useCallback(
     (midi: number) => {
       // Out of the instrument's compass: neither sounded nor written.
-      if (span.playable && !midiIsInRange(midi, span.playable)) return;
+      if (playable && !midiIsInRange(midi, playable)) return;
       group.current = pressKey(group.current, midi, Date.now());
-      // Audition only: `noteOn` touches no transport state.
+      setHeld(current => new Set(current).add(midi));
+      // Audition only: `noteOn` touches no transport state. The clef is as
+      // load-bearing as the program — it decides whether that number is an
+      // instrument or a drum kit.
       getAppServices().player.noteOn(midi, program, isPercussion);
     },
-    [program, isPercussion, span.playable],
+    [program, isPercussion, playable],
   );
 
   const onKeyUp = useCallback(
     (midi: number) => {
       getAppServices().player.noteOff(midi);
+      setHeld(current => {
+        if (!current.has(midi)) return current;
+        const next = new Set(current);
+        next.delete(midi);
+        return next;
+      });
       const { group: next, finished } = releaseKey(
         group.current,
         midi,
@@ -182,12 +230,11 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
       <View onLayout={onLayout} style={{ height: KEYBOARD_HEIGHT }}>
         {measured ? (
           <PianoKeyboard
-            width={size.width}
+            keys={keyboard.keys}
+            width={keyboard.width}
             height={KEYBOARD_HEIGHT}
-            range={span.range}
-            playable={span.playable}
-            naming={isPercussion ? 'percussion' : 'pitch'}
-            sounding={sounding}
+            theme={theme}
+            lit={lit}
             selected={selectedMidis}
             onKeyDown={onKeyDown}
             onKeyUp={onKeyUp}
@@ -196,4 +243,15 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
       </View>
     </View>
   );
+}
+
+const NO_PITCHES: ReadonlySet<number> = new Set();
+
+/** The kept pitch set, in the shape `litKeys` reads: already this track's. */
+function asSounding(
+  pitches: ReadonlySet<number>,
+  trackId: UUID | null,
+): SoundingNote[] {
+  if (!trackId) return [];
+  return [...pitches].map(midi => ({ noteId: '', trackId, midi }));
 }

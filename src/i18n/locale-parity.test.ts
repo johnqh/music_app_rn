@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import en from './locales/en.json';
 import zh from './locales/zh.json';
-import { resolveLanguage } from './index.js';
+import { languageFor, resolveLanguage } from './index.js';
 
 function flatten(o: unknown, prefix = ''): Record<string, string> {
   const out: Record<string, string> = {};
@@ -35,6 +35,8 @@ const SHARED_BY_DESIGN = new Set([
   'docs.formats.name.musicxml',
   'editor.midi',
   'editor.musicXml',
+  // A paper size's name; the web's locale lists it as shared by design too.
+  'print.paperA4',
   'settings.language_en',
   'settings.language_zh',
 ]);
@@ -61,5 +63,16 @@ describe('resolveLanguage', () => {
     expect(resolveLanguage(['en-GB'])).toBe('en');
     expect(resolveLanguage(['fr-FR'])).toBe('en');
     expect(resolveLanguage([])).toBe('en');
+  });
+});
+
+describe('languageFor', () => {
+  it("follows the device until the reader chooses, then keeps the reader's choice", () => {
+    expect(languageFor(null, ['zh-Hans-CN'])).toBe('zh');
+    expect(languageFor('en', ['zh-Hans-CN'])).toBe('en');
+  });
+
+  it('ignores a stored language this build does not ship', () => {
+    expect(languageFor('fr', ['zh-TW'])).toBe('zh');
   });
 });

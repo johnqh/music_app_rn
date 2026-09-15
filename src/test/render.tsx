@@ -11,7 +11,8 @@ import { render } from '@testing-library/react-native';
 import { PortalHost } from '@sudobility/components-rn';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createEmptyScore } from '@sudobility/music_types';
-import { createDocument } from '@/documents/document';
+import { createDocumentStore } from '@sudobility/music_lib';
+import { asDocument } from '@/documents/document';
 import type { MusicDocument } from '@/documents/document';
 import { initializeI18n } from '@/i18n';
 import {
@@ -25,14 +26,16 @@ let started = false;
 export function testDocument(
   options: { measures?: number; title?: string } = {},
 ): MusicDocument {
-  return createDocument({
-    id: 'test',
-    title: options.title ?? 'Test',
-    score: createEmptyScore({
+  return asDocument(
+    createDocumentStore({
       title: options.title ?? 'Test',
-      measures: options.measures ?? 8,
+      score: createEmptyScore({
+        title: options.title ?? 'Test',
+        measures: options.measures ?? 8,
+      }),
     }),
-  });
+    'test',
+  );
 }
 
 /** Renders with i18n started. */

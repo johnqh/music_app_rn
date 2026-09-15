@@ -15,7 +15,7 @@
  * Anything else is refused rather than guessed at, because a link is something
  * another program can send.
  */
-import { DOCUMENT_EXTENSIONS } from '@/documents/document-file';
+import { DOCUMENT_EXTENSIONS } from '@sudobility/music_lib';
 import { IMPORT_EXTENSIONS, IMPORT_FORMATS } from '@/documents/import';
 import type { ImportFormat } from '@/documents/import';
 

@@ -13,7 +13,8 @@
  * disagreed with the web — its viewport and hit tests mixed logical and zoomed
  * units, so they were right only at 100%, and a touch on the spacer (already
  * in content coordinates) had the scroll offset added a second time. What is
- * left here is wiring: touches, scroll views, and which callback a hit means.
+ * left here is wiring: touches and scroll views. Which store action a hit means
+ * is music_editing's, and the editor asks it.
  */
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useTheme } from '@/config/ThemeContext';
@@ -27,14 +28,15 @@ import {
   DARK_RENDER_THEME,
   LIGHT_RENDER_THEME,
   bindPlaybackToCanvas,
+  classifyPress,
 } from '@sudobility/music_drawing';
 import type {
   LayoutMode,
-  MeasureHit,
   RenderTheme,
+  ScoreCanvasHit,
 } from '@sudobility/music_drawing';
 import { getMusicPosition } from '@sudobility/music_types';
-import type { Pitch, PitchDisplay, Score } from '@sudobility/music_types';
+import type { PitchDisplay, Score } from '@sudobility/music_types';
 import { getAppServices } from '@/config/initialize';
 import { ScoreView } from './ScoreView';
 import { PlaybackCursor } from './PlaybackCursor';
@@ -63,74 +65,35 @@ export type ScrollingScoreProps = {
    */
   pitchDisplay?: PitchDisplay;
   /**
-   * A tap landed on the sheet. Carries the exact tick, not a box fraction.
+   * A tap: what the canvas says is under it, and the tick at that point.
    *
-   * The tick comes from the canvas, which interpolates between the drawn
-   * noteheads and holds flat across the clef and time signature, so tapping
-   * them puts the caret at the start of the bar rather than a fifth of the way
-   * into it.
+   * One callback for every kind of hit — the track gutter, the bar-number band,
+   * a note, a stave, or nothing — because what a tap *means* is not this view's
+   * to decide. It used to be: five per-kind callbacks, each wired to a
+   * different store action by the editor, and the native routing had quietly
+   * parted from the web's (a long press on a stave aimed the caret, which
+   * cleared the selection the menu was about to act on). The editor hands both
+   * to music_editing's `routeScorePress`, which is the web's click handler.
+   *
+   * The tick is `ScoreCanvas.tickAt` for the point, not the hit's own: a hit
+   * exists only inside a measure, and a Mod press between systems still means
+   * "select to here". A press on nothing is still reported, for that reason.
+   *
+   * Absent on the read-only published view, which has nothing to select.
    */
-  onMeasureTap?: (hit: MeasureHit, tick: number) => void;
+  onPress?: (hit: ScoreCanvasHit | null, pointTick: number | null) => void;
   /**
-   * A tap landed on a note. Carries the whole chord at that point.
+   * A press held in place — where the web reads a right-click. The editor
+   * selects what it landed on (`selectForContextMenu`, which keeps a selection
+   * the press falls inside) and opens the menu on it.
    *
-   * Absent on the published-score view, which is read-only: there is no
-   * selection to make there, so a tap falls through to the measure as before.
-   */
-  onNoteTap?: (eventIds: string[]) => void;
-  /** A tap on a track's name in the gutter: make it the active track. */
-  onTrackTap?: (trackId: string) => void;
-  /** A tap on the measure-number band: select that bar. */
-  onMeasureSelect?: (measureIndex: number) => void;
-  /**
-   * A tap on a stave while note input is on.
-   *
-   * Carries the pitch **as drawn**; inverting the display lenses is the
-   * caller's job, because only the store knows the score behind the drawing.
-   * Absent when the mode is off, which is how the tap falls through to the
-   * caret.
-   */
-  onWriteNote?: (at: {
-    tick: number;
-    trackId: string;
-    drawnPitch: Pitch;
-  }) => void;
-  /**
-   * A press held in place — where the web reads a right-click.
-   *
-   * Distinguished from a tap by *time and travel*, not by a gesture library:
+   * Distinguished from a tap and from a scroll by music_drawing's
+   * `classifyPress`, on time and travel rather than through a gesture library:
    * the touch surface is a plain spacer inside a `ScrollView`, and anything
-   * that claims the responder here would take the scroll with it. A press that
-   * wandered more than a thumb's width was a scroll that happened to end where
-   * it started, and must not open a menu.
+   * that claims the responder here would take the scroll with it.
    */
-  onMeasureLongPress?: (hit: MeasureHit, tick: number) => void;
-  /**
-   * A hold resolved to what it was over, after that thing has been selected.
-   *
-   * Separate from `onMeasureLongPress`, which aims the caret at a point on a
-   * stave: this says *what kind of object* the menu should be about, which is
-   * the one thing the menu cannot work out for itself once it is open.
-   */
-  onContextGesture?: (
-    target:
-      | { kind: 'track'; trackId: string }
-      | { kind: 'measure'; index: number }
-      | { kind: 'notes' },
-  ) => void;
+  onLongPress?: (hit: ScoreCanvasHit | null) => void;
 };
-
-/**
- * How long a press must be held to read as a long press, and how far it may
- * wander while doing so.
- *
- * 500ms is the platform's own long-press threshold on both iOS and Android, so
- * this agrees with every other long press the reader has ever made. The slop is
- * about a thumb's width: a press that travelled further was a scroll that
- * happened to end where it started.
- */
-const LONG_PRESS_MS = 500;
-const LONG_PRESS_SLOP = 12;
 
 /** How often a scroll reports back. 16ms is one frame; more is wasted repaint. */
 const SCROLL_EVENT_THROTTLE = 16;
@@ -146,13 +109,8 @@ export function ScrollingScore({
   trackIds,
   selection,
   pitchDisplay = 'concert',
-  onMeasureTap,
-  onNoteTap,
-  onTrackTap,
-  onMeasureSelect,
-  onWriteNote,
-  onMeasureLongPress,
-  onContextGesture,
+  onPress,
+  onLongPress,
 }: ScrollingScoreProps) {
   /*
     The canvas draws in literal colours, so it has to be told the scheme.
@@ -288,106 +246,51 @@ export function ScrollingScore({
    * Where and when the current press began.
    *
    * A ref, not state: it changes on every touch and nothing renders from it.
+   * Travel is measured in **page** coordinates, never the surface's own: the
+   * surface scrolls with the finger, so during a scroll its `location` barely
+   * moves and a flick that came to rest over a note would read as a tap on it.
    */
   const pressStart = useRef<{ x: number; y: number; at: number } | null>(null);
 
   const onTouchStart = useCallback((e: GestureResponderEvent) => {
-    const { locationX, locationY } = e.nativeEvent;
-    pressStart.current = { x: locationX, y: locationY, at: Date.now() };
+    const { pageX, pageY } = e.nativeEvent;
+    pressStart.current = { x: pageX, y: pageY, at: Date.now() };
   }, []);
 
   const onTouchEnd = useCallback(
     (e: GestureResponderEvent) => {
-      const { locationX, locationY } = e.nativeEvent;
+      const { locationX, locationY, pageX, pageY } = e.nativeEvent;
       const start = pressStart.current;
       pressStart.current = null;
+      if (!start || (!onPress && !onLongPress)) return;
 
       /*
-        Decided before any branch returns, so holding a track's name or a bar
-        number opens the menu on it just as holding a note does.
+        Decided before anything is hit-tested, so holding a track's name or a
+        bar number opens the menu on it just as holding a note does. A drag is
+        a scroll, and does nothing here.
       */
-      const travelled =
-        start === null
-          ? 0
-          : Math.hypot(locationX - start.x, locationY - start.y);
-      const held = start === null ? 0 : Date.now() - start.at;
-      const isLongPress = held >= LONG_PRESS_MS && travelled <= LONG_PRESS_SLOP;
+      const kind = classifyPress({
+        dx: pageX - start.x,
+        dy: pageY - start.y,
+        heldMs: Date.now() - start.at,
+        pointer: 'touch',
+      });
+      if (kind === 'drag') return;
 
       /*
         The spacer scrolls with the sheet, so its touch is in content px; the
         canvas takes view px. Its own hit order is the spec's: the gutter, the
         bar-number band, a note, a stave.
       */
-      const hit = canvas.hitTest({
+      const point = {
         x: locationX - scrollRef.current.left,
         y: locationY - scrollRef.current.top,
-      });
-      if (!hit) return;
-
-      switch (hit.kind) {
-        case 'trackGutter':
-          // Not a position in time, so the caret stays put.
-          if (!onTrackTap) return;
-          onTrackTap(hit.trackId);
-          if (isLongPress) {
-            onContextGesture?.({ kind: 'track', trackId: hit.trackId });
-          }
-          return;
-
-        case 'measureNumber':
-          // Selects a bar rather than moving the caret — the gesture Replace
-          // Measures and regeneration are aimed with.
-          if (!onMeasureSelect) return;
-          onMeasureSelect(hit.measureIndex);
-          if (isLongPress) {
-            onContextGesture?.({ kind: 'measure', index: hit.measureIndex });
-          }
-          return;
-
-        case 'note':
-          /*
-            A note under the press wins over the bar under it, and the whole
-            chord is the target: every note of a chord shares one bounding box.
-            A hold selects it first, so the menu is about what was pressed.
-          */
-          if (onNoteTap) {
-            onNoteTap(hit.eventIds);
-            if (isLongPress) onContextGesture?.({ kind: 'notes' });
-            return;
-          }
-          break;
-
-        case 'stave':
-          /*
-            Note input: a tap on a stave writes a note there instead of moving
-            the caret. The pitch is what is drawn; inverting the display lenses
-            is the caller's job.
-          */
-          if (!isLongPress && onWriteNote && hit.pitch) {
-            onWriteNote({
-              tick: hit.tick,
-              trackId: hit.trackId,
-              drawnPitch: hit.pitch,
-            });
-            return;
-          }
-          break;
-      }
-
-      const measure = { trackId: hit.trackId, measureIndex: hit.measureIndex };
-      if (isLongPress) onMeasureLongPress?.(measure, hit.tick);
-      else onMeasureTap?.(measure, hit.tick);
+      };
+      const hit = canvas.hitTest(point);
+      if (kind === 'longPress') onLongPress?.(hit);
+      else onPress?.(hit, canvas.tickAt(point));
     },
-    [
-      canvas,
-      onMeasureTap,
-      onMeasureLongPress,
-      onNoteTap,
-      onTrackTap,
-      onMeasureSelect,
-      onWriteNote,
-      onContextGesture,
-    ],
+    [canvas, onPress, onLongPress],
   );
 
   return (
@@ -395,7 +298,13 @@ export function ScrollingScore({
       {/* Pinned under the scroll view: the canvas is viewport-sized and never
           moves, because what changes on a scroll is which systems it draws. */}
       {measured ? (
-        <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        /*
+          Clipped: the cursor is a system tall and placed in content
+          coordinates, so without it the line ran past the bottom of the score
+          and across whatever sits below it — the piano keyboard, once that
+          started expanded. A view does not clip its children by default here.
+        */
+        <View style={styles.pinned} pointerEvents="none">
           <ScoreView picture={picture} height={height} />
           <PlaybackCursor
             cursor={cursor}
@@ -444,4 +353,7 @@ export function ScrollingScore({
   );
 }
 
-const styles = StyleSheet.create({ fill: { flex: 1 } });
+const styles = StyleSheet.create({
+  fill: { flex: 1 },
+  pinned: { ...StyleSheet.absoluteFillObject, overflow: 'hidden' },
+});

@@ -12,7 +12,9 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
+import { COMMAND_LABEL_KEYS } from '@sudobility/music_editing';
 import en from './locales/en.json';
+import zh from './locales/zh.json';
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap(entry => {
@@ -54,11 +56,30 @@ describe('translation keys', () => {
       defined.has(`${key}_one`) ||
       defined.has(`${key}_other`);
 
-    // `command.*` comes from music_editing's own key list, which this app
-    // forwards wholesale rather than enumerating; it is checked upstream.
+    // `command.*` is built at runtime from music_editing's key list, so a
+    // source scan cannot see it; the test below checks it against that list.
     const missing = [...used].filter(
       key => !definedOrPlural(key) && !key.startsWith('command.'),
     );
     expect(missing.sort()).toEqual([]);
   });
+
+  /*
+    The undo labels. This used to be waved through as "checked upstream", and
+    nothing upstream checked it: the locales held four of the forty-nine, so
+    the undo menu showed `command.addNote` for nearly every edit.
+  */
+  it.each([
+    ['en', en],
+    ['zh', zh],
+  ] as const)(
+    'name every command in the undo history (%s)',
+    (_lang, locale) => {
+      const defined = flatten(locale);
+      const missing = COMMAND_LABEL_KEYS.filter(
+        key => !defined.has(`command.${key}`),
+      );
+      expect(missing).toEqual([]);
+    },
+  );
 });

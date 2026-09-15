@@ -29,29 +29,24 @@ import {
   GENERATE_SCORE_COMPLEXITY_OPTIONS,
   GENERATE_SCORE_MOOD_OPTIONS,
   GENERATE_SCORE_STYLE_OPTIONS,
+  NO_MARK,
+  REPLACE_PRESET_KEYS,
+  buildReplaceSubmission,
+  complexityLabelKey,
+  defaultReplaceSubmission,
+  labelledOptions,
+  moodLabelKey,
+  optionalFromPicker,
+  optionalToPicker,
+  replacePresetLabelKey,
+  styleLabelKey,
+} from '@sudobility/music_lib';
+import type {
+  GenerateScoreComplexity,
+  ReplaceDraft,
 } from '@sudobility/music_lib';
 import type { ReplaceSubmission } from '@sudobility/music_editing';
 import type { ReplaceScope } from '@sudobility/music_types';
-
-/** A select needs a value for "none"; the submission omits the field instead. */
-const NONE = 'none';
-
-/**
- * Preset instructions, as the spec lists them.
- *
- * English on purpose, and this is the one place that is right: they are not
- * labels, they are the **prompt text** sent to the model, which reads English.
- * Translating them would change what is asked for.
- */
-const PRESET_INSTRUCTIONS: readonly string[] = [
-  'Make this more dramatic',
-  'Simplify this passage',
-  'Add rhythmic variation',
-  'Make the melody more memorable',
-  'Create a stronger transition',
-  'Add harmonic tension',
-  'Resolve the phrase',
-];
 
 export type ReplaceMusicSheetProps = {
   open: boolean;
@@ -78,30 +73,39 @@ export function ReplaceMusicSheet({
   onSubmit,
   estimatedCredits = 0,
 }: ReplaceMusicSheetProps) {
-  const { t } = useTranslation();
-  const [instruction, setInstruction] = useState('');
-  const [style, setStyle] = useState(NONE);
-  const [mood, setMood] = useState(NONE);
-  const [complexity, setComplexity] = useState(NONE);
-  const [preserveBoundaryNotes, setBoundary] = useState(true);
-  const [preserveHarmony, setHarmony] = useState(false);
-  const [preserveRhythm, setRhythm] = useState(false);
-  const [preserveMelody, setMelody] = useState(false);
+  const { t, i18n } = useTranslation();
+  /*
+    The form, and what it opens with, are music_lib's: the web's defaults —
+    nothing preserved, `moderate` complexity, the default backend — so the same
+    instruction over the same bars sends the same request from either device.
+    This sheet used to open on "keep complexity" with boundary notes preserved,
+    and offered half the preset list.
+  */
+  const [draft, setDraft] = useState<ReplaceDraft>(defaultReplaceSubmission);
+  const patch = (next: Partial<ReplaceDraft>): void =>
+    setDraft(current => ({ ...current, ...next }));
+  const setConstraint = (
+    key: keyof ReplaceDraft['constraints'],
+    value: boolean,
+  ): void =>
+    setDraft(current => ({
+      ...current,
+      constraints: { ...current.constraints, [key]: value },
+    }));
 
   useEffect(() => {
     if (!open) return;
     // Reset per opening, and per scope: "simplify this passage" carried over
     // from a Replace Notes into a Replace Track is a different request than it
     // looks like.
-    setInstruction('');
-    setStyle(NONE);
-    setMood(NONE);
-    setComplexity(NONE);
-    setBoundary(true);
-    setHarmony(false);
-    setRhythm(false);
-    setMelody(false);
+    setDraft(defaultReplaceSubmission());
   }, [open, scope]);
+
+  /*
+    Null while the instruction is blank — which is also the rule for disabling
+    Replace, so the button and the submission cannot disagree.
+  */
+  const submission = buildReplaceSubmission(draft);
 
   return (
     <FormModal
@@ -114,24 +118,10 @@ export function ReplaceMusicSheet({
         { label: t('common.cancel'), onPress: onClose, variant: 'ghost' },
         {
           label: t('replace.action'),
-          disabled: !canSubmit || instruction.trim() === '',
-          onPress: () =>
-            onSubmit({
-              instruction: instruction.trim(),
-              ...(style === NONE ? {} : { style }),
-              ...(mood === NONE ? {} : { mood }),
-              ...(complexity === NONE
-                ? {}
-                : {
-                    complexity: complexity as 'simple' | 'moderate' | 'complex',
-                  }),
-              constraints: {
-                preserveBoundaryNotes,
-                preserveHarmony,
-                preserveRhythm,
-                preserveMelody,
-              },
-            }),
+          disabled: !canSubmit || submission === null,
+          onPress: () => {
+            if (canSubmit && submission) onSubmit(submission);
+          },
         },
       ]}
     >
@@ -143,95 +133,107 @@ export function ReplaceMusicSheet({
         ) : null}
         <Field label={t('generate.prompt')}>
           <Input
-            value={instruction}
-            onChangeText={setInstruction}
+            value={draft.instruction}
+            onChangeText={instruction => patch({ instruction })}
             multiline
             numberOfLines={3}
             accessibilityLabel={t('generate.prompt')}
           />
         </Field>
 
+        {/*
+          Choosing a preset fills the instruction with its text in the reader's
+          language, which is then what the model is asked. Keys from music_lib,
+          words from this app's locale — the same model New Project's briefs
+          use. They were English literals, so a Chinese reader prompted in a
+          language the rest of the form was not in.
+        */}
         <Field label={t('replace.presetInstructions')}>
           <Select
-            value={NONE}
+            value={NO_MARK}
             accessibilityLabel={t('replace.presetInstructions')}
             options={[
-              { value: NONE, label: t('replace.presetInstructions') },
-              ...PRESET_INSTRUCTIONS.map(value => ({ value, label: value })),
+              { value: NO_MARK, label: t('replace.presetInstructions') },
+              ...REPLACE_PRESET_KEYS.map(key => ({
+                value: key,
+                label: t(replacePresetLabelKey(key)),
+              })),
             ]}
             onValueChange={value => {
-              if (value !== NONE) setInstruction(value);
+              const key = REPLACE_PRESET_KEYS.find(k => k === value);
+              if (key) patch({ instruction: t(replacePresetLabelKey(key)) });
             }}
           />
         </Field>
 
+        {/* Translated and sorted, with "none" pinned above — the raw values
+            (`electroSwing`) were what this picker used to show. */}
         <Field label={t('generateScore.style')}>
           <Select
-            value={style}
+            value={optionalToPicker(draft.style)}
             accessibilityLabel={t('generateScore.style')}
-            options={[
-              { value: NONE, label: t('generateScore.noStyle') },
-              ...GENERATE_SCORE_STYLE_OPTIONS.map(v => ({
-                value: v,
-                label: v,
-              })),
-            ]}
-            onValueChange={setStyle}
+            options={labelledOptions(
+              GENERATE_SCORE_STYLE_OPTIONS,
+              value => t(styleLabelKey(value)),
+              i18n.language,
+              t('generateScore.noStyle'),
+            )}
+            onValueChange={value => patch({ style: optionalFromPicker(value) })}
           />
         </Field>
 
         <Field label={t('generateScore.mood')}>
           <Select
-            value={mood}
+            value={optionalToPicker(draft.mood)}
             accessibilityLabel={t('generateScore.mood')}
-            options={[
-              { value: NONE, label: t('generateScore.noMood') },
-              ...GENERATE_SCORE_MOOD_OPTIONS.map(v => ({ value: v, label: v })),
-            ]}
-            onValueChange={setMood}
+            options={labelledOptions(
+              GENERATE_SCORE_MOOD_OPTIONS,
+              value => t(moodLabelKey(value)),
+              i18n.language,
+              t('generateScore.noMood'),
+            )}
+            onValueChange={value => patch({ mood: optionalFromPicker(value) })}
           />
         </Field>
 
         <Field label={t('generateScore.complexity')}>
           <Select
-            value={complexity}
+            value={draft.complexity}
             accessibilityLabel={t('generateScore.complexity')}
-            options={[
-              { value: NONE, label: t('replace.keepComplexity') },
-              ...GENERATE_SCORE_COMPLEXITY_OPTIONS.map(v => ({
-                value: v,
-                label: v,
-              })),
-            ]}
-            onValueChange={setComplexity}
+            options={GENERATE_SCORE_COMPLEXITY_OPTIONS.map(value => ({
+              value,
+              label: t(complexityLabelKey(value)),
+            }))}
+            onValueChange={value =>
+              patch({ complexity: value as GenerateScoreComplexity })
+            }
           />
         </Field>
 
         {/*
-          Boundary notes default on and the rest default off: keeping the notes
-          at the edges is what makes a replacement join up with the music around
-          it, where the others each remove a whole dimension the model was asked
-          to work in.
+          All four start off, boundary notes included: each constraint removes
+          a dimension the model was asked to work in, and a reader opting in is
+          clearer than discovering one was on.
         */}
         <Toggle
           label={t('replace.preserveBoundary')}
-          checked={preserveBoundaryNotes}
-          onChange={setBoundary}
+          checked={draft.constraints.preserveBoundaryNotes}
+          onChange={value => setConstraint('preserveBoundaryNotes', value)}
         />
         <Toggle
           label={t('replace.preserveHarmony')}
-          checked={preserveHarmony}
-          onChange={setHarmony}
+          checked={draft.constraints.preserveHarmony}
+          onChange={value => setConstraint('preserveHarmony', value)}
         />
         <Toggle
           label={t('replace.preserveRhythm')}
-          checked={preserveRhythm}
-          onChange={setRhythm}
+          checked={draft.constraints.preserveRhythm}
+          onChange={value => setConstraint('preserveRhythm', value)}
         />
         <Toggle
           label={t('replace.preserveMelody')}
-          checked={preserveMelody}
-          onChange={setMelody}
+          checked={draft.constraints.preserveMelody}
+          onChange={value => setConstraint('preserveMelody', value)}
         />
 
         {!canSubmit ? (

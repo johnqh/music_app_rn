@@ -34,3 +34,41 @@ export function initializeI18n(deviceTags: readonly string[]): typeof i18next {
   }
   return i18next;
 }
+
+/** The part of the device prefs store the language follows. */
+type LanguagePref = {
+  getState(): { language: string | null };
+  subscribe(listener: () => void): () => void;
+};
+
+/**
+ * The language in force: the reader's choice, else the device's.
+ *
+ * `null` means "follow the device", which is the default and is what a reader
+ * who never opened Settings gets — so a phone set to Chinese opens in Chinese.
+ * A choice made in Settings is a device pref, remembered across launches; it
+ * used to be `i18n.changeLanguage` alone, which lasted until the app was next
+ * killed. A stored language this build does not ship is ignored rather than
+ * applied, since i18next would silently fall back to English for it.
+ */
+export function languageFor(
+  language: string | null,
+  deviceTags: readonly string[],
+): Language {
+  return SUPPORTED_LANGUAGES.includes(language as Language)
+    ? (language as Language)
+    : resolveLanguage(deviceTags);
+}
+
+/** Keeps i18next on the language the prefs store says. Returns an unsubscribe. */
+export function followLanguagePref(
+  prefs: LanguagePref,
+  deviceTags: readonly string[],
+): () => void {
+  const apply = () => {
+    const next = languageFor(prefs.getState().language, deviceTags);
+    if (i18next.language !== next) void i18next.changeLanguage(next);
+  };
+  apply();
+  return prefs.subscribe(apply);
+}

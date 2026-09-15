@@ -20,102 +20,45 @@
  * **Entries follow the selection, and an action that would do nothing is
  * disabled rather than hidden** — so the list keeps the same shape and reading
  * order every time it opens, and nobody has to hunt for an entry that moved.
+ * Those rules are music_editing's `scoreContextMenuModel`, which the web's
+ * right-click menu draws too; this sheet only draws it.
  */
 import { View } from 'react-native';
 import { Button, FormModal, Text } from '@sudobility/components-rn';
 import { useTranslation } from 'react-i18next';
-import type { SelectionKind } from '@sudobility/music_editing';
-
-export type ScoreAction =
-  | 'copy'
-  | 'cut'
-  | 'clear'
-  | 'paste'
-  | 'delete'
-  | 'selectAll';
+import type {
+  ScoreContextAction,
+  ScoreContextMenuModel,
+} from '@sudobility/music_editing';
 
 export type ScoreActionsSheetProps = {
   open: boolean;
   /**
-   * What the menu is about, or null when nothing is selected.
+   * What to show: `scoreContextMenuModel` over the selection as it is now.
    *
-   * `music_editing`'s own vocabulary, so the sheet and the actions cannot
-   * disagree about whether a selection is a track or a run of notes.
+   * The entries, their order, which are live and the subject header used to be
+   * written out here and again in the web's `ScoreContextMenu`. Both counted a
+   * bar selected across four tracks as "4 bars", because a count of measure ids
+   * is not a count of bars; the model counts bars once, for both.
    */
-  kind: SelectionKind | null;
-  /** How many bars or notes, for the header's singular/plural. */
-  count: number;
-  /** Whether the clipboard holds something of the same kind. */
-  canPaste: boolean;
-  /** False while the transport plays: content is immutable then. */
-  canEdit: boolean;
-  onAction: (action: ScoreAction) => void;
+  model: ScoreContextMenuModel;
+  onAction: (action: ScoreContextAction) => void;
   onClose: () => void;
 };
 
 export function ScoreActionsSheet({
   open,
-  kind,
-  count,
-  canPaste,
-  canEdit,
+  model,
   onAction,
   onClose,
 }: ScoreActionsSheetProps) {
   const { t } = useTranslation();
-  const hasSelection = kind !== null;
-
-  /** "Track", "Bar"/"Bars", "Note"/"Notes" — what every entry below acts on. */
-  const subject =
-    kind === null
-      ? null
-      : kind === 'track'
-      ? t('editor.subjectTrack')
-      : kind === 'measures'
-      ? t('editor.subjectBars', { count })
-      : t('editor.subjectNotes', { count });
-
-  const items: Array<{ action: ScoreAction; label: string; enabled: boolean }> =
-    [
-      // Copy only reads, so it survives playback — the same exemption the
-      // toolbar makes.
-      { action: 'copy', label: t('editor.copy'), enabled: hasSelection },
-      {
-        action: 'cut',
-        label: t('editor.cut'),
-        enabled: canEdit && hasSelection,
-      },
-      /*
-        Clear and Delete are different edits, so they are different entries
-        rather than one entry and a question. Clear keeps the container and
-        empties it — a cleared bar keeps its number and its repeats, a cleared
-        track keeps its instrument. Delete removes the container and everything
-        behind it moves up.
-      */
-      {
-        action: 'clear',
-        label: t('editor.clear'),
-        enabled: canEdit && hasSelection,
-      },
-      {
-        action: 'delete',
-        label: t('editor.deleteSelection'),
-        enabled: canEdit && hasSelection,
-      },
-      // Only when the clipboard holds the same kind of thing: pasting a track
-      // over a run of notes has no meaning anybody could predict.
-      {
-        action: 'paste',
-        label: t('editor.paste'),
-        enabled: canEdit && canPaste,
-      },
-      { action: 'selectAll', label: t('editor.selectAllNotes'), enabled: true },
-    ];
+  const { subject, entries } = model;
 
   return (
     <FormModal
       visible={open}
-      title={t('editor.scoreActions')}
+      title={t(model.titleKey)}
       onClose={onClose}
       /*
         No bottom bar: every row acts, so a Save would be a second way to do
@@ -129,25 +72,27 @@ export function ScoreActionsSheet({
         {/*
           The subject, before the verbs — it says what the list is about, which
           is exactly what "Delete" cannot say on its own when it means three
-          different edits.
+          different edits. Clear and Delete are separate entries because they
+          are different edits: Clear keeps the container and empties it, Delete
+          removes it and everything behind moves up.
         */}
         {subject === null ? null : (
           <Text className="text-muted-foreground text-sm font-medium">
-            {subject}
+            {t(subject.key, { count: subject.count })}
           </Text>
         )}
-        {items.map(item => (
+        {entries.map(entry => (
           <Button
-            key={item.action}
+            key={entry.action}
             variant="secondary"
-            disabled={!item.enabled}
+            disabled={!entry.enabled}
             onPress={() => {
               onClose();
-              onAction(item.action);
+              onAction(entry.action);
             }}
-            accessibilityLabel={item.label}
+            accessibilityLabel={t(entry.labelKey)}
           >
-            {item.label}
+            {t(entry.labelKey)}
           </Button>
         ))}
         <Text className="text-muted-foreground text-sm">

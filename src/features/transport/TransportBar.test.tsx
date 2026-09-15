@@ -10,8 +10,9 @@ import { act, fireEvent } from '@testing-library/react-native';
 import { installTestAppServices } from '@/config/initialize';
 import type { IMusicPlayer } from '@sudobility/music_player';
 import type { PlaybackLoadState } from '@sudobility/music_types';
+import { selectMeasureRange } from '@sudobility/music_editing';
 import { renderWithApp, testDocument } from '@/test/render';
-import { useTransport } from './useTransport';
+import { usePlayerBinding } from './usePlayerBinding';
 import { TransportBar } from './TransportBar';
 
 /** Records what the transport asked the engine to do. */
@@ -52,7 +53,9 @@ function recordingPlayer() {
       onLoadState: () => unsubscribe,
       noteOn: () => {},
       noteOff: () => {},
-      setLoop: () => void calls.push('setLoop'),
+      setLoop: (range: unknown) =>
+        void calls.push(range ? `setLoop:${JSON.stringify(range)}` : 'setLoop'),
+      setVisibleTracks: () => {},
       setMetronome: () => void calls.push('setMetronome'),
       setTempoMultiplier: () => void calls.push('setTempoMultiplier'),
       setMasterVolume: () => void calls.push('setMasterVolume'),
@@ -74,7 +77,7 @@ function Harness({
   keyboard?: { collapsed: boolean; onToggle: () => void };
 }) {
   const score = document.store.getState().score!;
-  const transport = useTransport(score);
+  const transport = usePlayerBinding(document.store);
   return (
     <TransportBar
       score={score}
@@ -159,7 +162,63 @@ describe('TransportBar', () => {
   it('sends looping to the engine', () => {
     const { view, calls } = setup();
     fireEvent.press(view.getByLabelText(/loop/i));
-    expect(calls).toContain('setLoop');
+    expect(calls.some(c => c.startsWith('setLoop'))).toBe(true);
+  });
+
+  /*
+    The binder's rule, shared with the web: loop the selection when there is
+    one. This bar used to loop the whole score whatever was selected, and held
+    the toggle in its own state.
+  */
+  it('loops the selected bars rather than the whole score', () => {
+    const { view, calls, document } = setup();
+    const score = document.store.getState().score!;
+    const second = score.tracks[0]!.measures[1]!;
+    act(() => {
+      selectMeasureRange(document.store, {
+        index: 1,
+        anchor: null,
+        extend: false,
+        allTracks: false,
+      });
+    });
+    fireEvent.press(view.getByLabelText(/loop/i));
+    const loop = calls.find(c => c.startsWith('setLoop:'));
+    expect(loop).toBeDefined();
+    const range = JSON.parse(loop!.slice('setLoop:'.length));
+    expect(range.startTick).toBe(second.startTick);
+    expect(document.store.getState().loopRange).not.toBeNull();
+  });
+
+  it('shows the metronome as the store has it', () => {
+    // A setting read back from the store the binding writes, so a second tab
+    // over the same player cannot show it off while it ticks.
+    const { view, document } = setup();
+    fireEvent.press(view.getByLabelText(/metronome/i));
+    expect(document.store.getState().metronome).toBe(true);
+    expect(
+      view.getByLabelText(/metronome/i).props.accessibilityState.selected,
+    ).toBe(true);
+  });
+
+  it('reports a failed play as a toast in the library words', async () => {
+    const { player } = recordingPlayer();
+    installTestAppServices({
+      player: {
+        ...player,
+        play: async () => {
+          throw new Error('no audio device');
+        },
+      } as unknown as IMusicPlayer,
+    });
+    const document = testDocument();
+    const view = renderWithApp(<Harness document={document} />);
+    await act(async () => {
+      fireEvent.press(view.getByLabelText(/^play$/i));
+    });
+    const toasts = document.store.getState().toasts;
+    expect(toasts.at(-1)?.severity).toBe('error');
+    expect(toasts.at(-1)?.message).toMatch(/no audio device/);
   });
 
   it('stops through the engine', () => {

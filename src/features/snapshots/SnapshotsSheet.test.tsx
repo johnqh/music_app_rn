@@ -7,35 +7,34 @@
  * concluding something is broken.
  */
 import { jest } from '@jest/globals';
+import { createDocumentStore } from '@sudobility/music_lib';
 import { createEmptyScore } from '@sudobility/music_types';
-import { createDocument } from '@/documents/document';
+import { asDocument } from '@/documents/document';
 import { renderWithApp } from '@/test/render';
 
-const mockClient = jest.fn<() => unknown>();
-jest.mock('@/config/server', () => ({ getMusicClient: () => mockClient() }));
+const mockContext = jest.fn<() => unknown>();
+jest.mock('@/config/useServerContext', () => ({
+  useServerContext: () => mockContext(),
+}));
 
 const { SnapshotsSheet } =
   require('./SnapshotsSheet') as typeof import('./SnapshotsSheet');
 
 function projectDoc() {
-  return createDocument({
-    id: 'p',
-    title: 'Quartet',
-    score: createEmptyScore({ title: 'Quartet' }),
-    origin: { kind: 'project', projectId: 'p1' },
-  });
+  return asDocument(
+    createDocumentStore({
+      title: 'Quartet',
+      score: createEmptyScore({ title: 'Quartet' }),
+      origin: { kind: 'project', projectId: 'p1' },
+    }),
+  );
 }
 
 describe('SnapshotsSheet', () => {
   it('explains itself when this build has no server', () => {
-    mockClient.mockReturnValue(null);
+    mockContext.mockReturnValue(null);
     const view = renderWithApp(
-      <SnapshotsSheet
-        open
-        document={projectDoc()}
-        getToken={async () => 'tok'}
-        onClose={jest.fn()}
-      />,
+      <SnapshotsSheet open document={projectDoc()} onClose={jest.fn()} />,
     );
     expect(view.getByText(/server/i)).toBeTruthy();
     expect(view.queryByText('New snapshot')).toBeNull();
@@ -43,14 +42,9 @@ describe('SnapshotsSheet', () => {
 
   it('has no bottom bar, because everything here acts immediately', () => {
     // A Save button over controls that have already saved does nothing.
-    mockClient.mockReturnValue(null);
+    mockContext.mockReturnValue(null);
     const view = renderWithApp(
-      <SnapshotsSheet
-        open
-        document={projectDoc()}
-        getToken={async () => 'tok'}
-        onClose={jest.fn()}
-      />,
+      <SnapshotsSheet open document={projectDoc()} onClose={jest.fn()} />,
     );
     expect(view.queryByText('Save')).toBeNull();
   });

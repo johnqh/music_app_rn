@@ -7,8 +7,11 @@
  * None of them wants a PDF *from* the app. What they want is a drawing.
  *
  * So this produces one PNG per page with the renderer the editor already draws
- * with. What goes on which page is `print-plan.ts`'s, and every rule it
- * applies is `music_drawing`'s — shared with the web app.
+ * with. What goes on which page — and which score, a part written for its
+ * instrument or the marked full score — is music_drawing's `printPlan`, the
+ * one the web print view uses. This app had its own `print-plan.ts`, which
+ * printed every track in concert pitch with no rehearsal marks and laid page
+ * turns out for the first track even across a whole score.
  *
  * A page is drawn by rendering the score with that page's band at the top.
  * `viewport` keeps it cheap: the renderer draws only the systems intersecting
@@ -25,24 +28,13 @@ import {
   PRINT_WIDTH,
 } from '@sudobility/music_drawing';
 import { createSkiaContext2D } from '@sudobility/music_drawing/skia';
-import type { Score } from '@sudobility/music_types';
-import { printPlan } from './print-plan';
-import type { PrintOptions } from './print-plan';
-
-export type { PrintOptions } from './print-plan';
-export { printPageCount } from './print-plan';
+import type { PrintPlan } from '@sudobility/music_drawing';
 
 /** One rendered page, as base64 PNG — which is what the native side wants. */
 export type RenderedPage = { base64: string; width: number; height: number };
 
-export function renderPrintPages(
-  score: Score,
-  options: PrintOptions = {},
-): RenderedPage[] {
-  const { slices, pages, pageHeight, renderOptions } = printPlan(
-    score,
-    options,
-  );
+export function renderPrintPages(plan: PrintPlan): RenderedPage[] {
+  const { score, slices, pages, pageHeight, renderOptions } = plan;
   const height = Math.round(pageHeight);
 
   return pages.map(page => {
@@ -70,6 +62,8 @@ export function renderPrintPages(
       height,
     });
     ctx.translate(0, -first.top);
+    // The plan's score — the part or the marked full score, lenses applied —
+    // never the stored one: slices were measured from it.
     new CanvasScoreRenderer().render(score, ctx, {
       ...renderOptions,
       viewport: { top: first.top, bottom: last.bottom },

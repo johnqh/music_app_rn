@@ -23,13 +23,15 @@ import {
   SoundfontPlaybackEngine,
 } from '@sudobility/music_player';
 import type { IMusicPlayer } from '@sudobility/music_player';
-import {
-  initializeMusicSelection,
-  setEditingCopy,
-} from '@sudobility/music_editing';
+import i18next from 'i18next';
+import { initializeMusicSelection } from '@sudobility/music_editing';
 import { initializeMusicPosition } from '@sudobility/music_types';
-import { setErrorLogging, setLibraryMessages } from '@sudobility/music_lib';
-import { buildEditingCopy, libraryMessages } from '@/i18n/lib-copy';
+import {
+  createLibraryCopy,
+  installLibraryCopy,
+  setErrorLogging,
+} from '@sudobility/music_lib';
+import type { LibraryCopy } from '@sudobility/music_lib';
 import { BUNDLED_SOUNDFONT, readBundledPack } from './soundfont-packs';
 import { bundledSoundfontPath, nativeSynthApi } from '@moosiac/synth';
 
@@ -92,6 +94,25 @@ export type SoundfontOptions = {
 
 let services: AppServices | null = null;
 
+/**
+ * The words the libraries need — undo labels, editing refusals, the selection
+ * readout, MusicXML warnings, autosave failures — built by music_lib from this
+ * app's `t`.
+ *
+ * The keys are music_lib's and the sentences are this app's locale files. The
+ * table used to be written out here by hand (`i18n/lib-copy.ts`), a second copy
+ * of the web's that agreed with it only until one of them changed, and it
+ * captured three strings at start-up — so a reader who switched to Chinese went
+ * on being told in English why a bar could not be deleted. Every entry here is
+ * read when it is used.
+ *
+ * `i18next.t` is wrapped rather than passed: the typed `t` accepts only known
+ * keys, and these are built from vocabularies at runtime.
+ */
+export const libraryCopy: LibraryCopy = createLibraryCopy((key, options) =>
+  i18next.t(key, options),
+);
+
 export type InitializeOptions = {
   /**
    * Where the instrument packs are served from.
@@ -112,8 +133,7 @@ export function initializeApp(options: InitializeOptions = {}): AppServices {
   // The library reads no `import.meta.env` of its own — that is syntax React
   // Native's parser rejects outright, so the host says what it knows.
   setErrorLogging(options.dev ?? false);
-  setEditingCopy(buildEditingCopy());
-  setLibraryMessages(libraryMessages());
+  installLibraryCopy(libraryCopy);
 
   /*
     The playhead and the selection are singletons in music_types/music_editing,

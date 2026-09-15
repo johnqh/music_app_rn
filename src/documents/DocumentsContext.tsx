@@ -1,10 +1,15 @@
 /**
- * The open documents, shared with the tree.
+ * The open documents, and what a new one is built with, shared with the tree.
  *
  * `useSyncExternalStore` rather than React state: `DocumentList` is the source
- * of truth and is mutated from menus, file handlers and the document's own
- * change callback. Mirroring it into state would give two answers to "what is
- * open" and let them disagree.
+ * of truth and is mutated from menus, file handlers and screens. Mirroring it
+ * into state would give two answers to "what is open" and let them disagree.
+ *
+ * The services travel with the list. A document created from the File menu, an
+ * import or the dashboard has to be built with the same server context, file
+ * storage, toast sink and recents hook as the scratch document the app opens
+ * with — otherwise it is a document that never saves, or never reports a
+ * failure. So they are provided once, from the composition root.
  */
 import {
   createContext,
@@ -14,52 +19,36 @@ import {
 } from 'react';
 import type { ReactNode } from 'react';
 import { DocumentList } from './document-list';
-import type { MusicDocument } from './document';
+import { OFFLINE_DOCUMENT_SERVICES } from './document';
+import type { DocumentServices, MusicDocument } from './document';
 
 const DocumentsContext = createContext<DocumentList | null>(null);
-
-/**
- * What to do when a document's score changes.
- *
- * The autosaver is built in the composition root, so nothing below it could
- * reach it — a document created from the File menu would register no change
- * callback and never autosave. Passed through the provider rather than
- * imported, because *who writes the bytes* is the app's business and a test
- * hands in a fake.
- */
-const ChangedContext = createContext<
-  ((document: MusicDocument) => void) | undefined
->(undefined);
+const ServicesContext = createContext<DocumentServices>(
+  OFFLINE_DOCUMENT_SERVICES,
+);
 
 export function DocumentsProvider({
   list,
-  onDocumentChanged,
+  services,
   children,
 }: {
   list: DocumentList;
-  onDocumentChanged?: (document: MusicDocument) => void;
+  /** Defaults to no server and no filesystem — what a component test wants. */
+  services?: DocumentServices;
   children: ReactNode;
 }) {
   return (
     <DocumentsContext.Provider value={list}>
-      <ChangedContext.Provider value={onDocumentChanged}>
+      <ServicesContext.Provider value={services ?? OFFLINE_DOCUMENT_SERVICES}>
         {children}
-      </ChangedContext.Provider>
+      </ServicesContext.Provider>
     </DocumentsContext.Provider>
   );
 }
 
-/**
- * The change callback a newly created document should register.
- *
- * Undefined outside a provider that supplies one, which is every test that does
- * not care about saving — `createDocument` takes it as optional for exactly
- * that reason.
- */
-export function useDocumentChanged():
-  | ((document: MusicDocument) => void)
-  | undefined {
-  return useContext(ChangedContext);
+/** What a document made below the provider is built with. */
+export function useDocumentServices(): DocumentServices {
+  return useContext(ServicesContext);
 }
 
 export function useDocumentList(): DocumentList {

@@ -1,90 +1,125 @@
 /**
- * The lists the score-setup pickers are handed.
+ * The New Project fields draw the draft they are handed, and address rows by id.
  *
- * Asserted directly rather than through the controls: a native `Select` opens a
- * modal, which a test environment does not mount, so reaching for the options
- * on screen would assert nothing at all. What can go wrong here is the order
- * and the labels, and both are in the list.
+ * The rules live in music_lib's `reduceNewProjectDraft` and are tested there;
+ * what can go wrong *here* is the drawing. The native form used to keep its
+ * own copy of the draft as a hook, and four of its bugs were a field showing
+ * something other than what would be sent — a style's drawn tempo and bars, a
+ * key that was never set, sixteen bars where the web opened at eight, a lock on
+ * the wrong kit. So each test builds a draft through the shared reducer and
+ * asserts that the screen says the same thing.
+ *
+ * The pickers are asserted on their triggers, which print the chosen option's
+ * label: a native `Select` opens a modal a test environment does not mount, so
+ * the trigger is the one honest place to read a picker's value.
  */
+import { useReducer } from 'react';
+import { fireEvent } from '@testing-library/react-native';
 import {
-  GENERATION_INSTRUMENT_OPTIONS,
-  moodSelectOptions,
-  styleSelectOptions,
-} from './ScoreSetupFields';
+  DEFAULT_GENERATE_SCORE_MEASURES,
+  GENERATE_SCORE_KEY_FIFTHS_OPTIONS,
+  initialNewProjectDraft,
+  reduceNewProjectDraft,
+} from '@sudobility/music_lib';
+import type {
+  NewProjectDraftAction,
+  NewProjectFormDraft,
+} from '@sudobility/music_lib';
+import { renderWithApp } from '@/test/render';
+import { ScoreSetupFields } from './ScoreSetupFields';
 
-/** Enough of `t` to tell a key from a label: the real one is i18next's. */
-const t = (key: string): string =>
-  key.startsWith('generateScore.styleName.') ||
-  key.startsWith('generateScore.moodName.')
-    ? key
-        .split('.')
-        .pop()!
-        .replace(/([a-z])([A-Z])/g, '$1 $2')
-        .replace(/^./, c => c.toUpperCase())
-    : {
-        'generateScore.noStyle': 'No style',
-        'generateScore.noMood': 'No mood',
-      }[key] ?? key;
+/** A fixed draw, so a style's tempo, key and roster are the same every run. */
+const rng = () => 0.5;
 
-describe('the instrument picker', () => {
-  it('offers the voices ahead of the kits and the families', () => {
-    // GM files them under Ensemble, between String Ensemble and Orchestra Hit,
-    // which is where nobody setting out to write a song looks for a singer.
-    expect(GENERATION_INSTRUMENT_OPTIONS.slice(0, 3).map(o => o.label)).toEqual(
-      ['Voice Oohs', 'Choir Aahs', 'Synth Voice'],
+function reduce(
+  draft: NewProjectFormDraft,
+  ...actions: NewProjectDraftAction[]
+): NewProjectFormDraft {
+  return actions.reduce((d, a) => reduceNewProjectDraft(d, a, rng), draft);
+}
+
+let latest: NewProjectFormDraft;
+
+function Harness({ initial }: { initial: NewProjectFormDraft }) {
+  const [draft, dispatch] = useReducer(
+    (d: NewProjectFormDraft, a: NewProjectDraftAction) =>
+      reduceNewProjectDraft(d, a, rng),
+    initial,
+  );
+  latest = draft;
+  return <ScoreSetupFields draft={draft} dispatch={dispatch} />;
+}
+
+function setup(initial: NewProjectFormDraft = initialNewProjectDraft()) {
+  return renderWithApp(<Harness initial={initial} />);
+}
+
+const reggae = () =>
+  reduce(
+    initialNewProjectDraft(),
+    { type: 'setGenerating', generating: true },
+    { type: 'applyStyle', style: 'reggae' },
+  );
+
+describe('ScoreSetupFields', () => {
+  it('opens at the shared default length, not a bar count of its own', () => {
+    const view = setup();
+    expect(view.getByLabelText('Bars').props.value).toBe(
+      String(DEFAULT_GENERATE_SCORE_MEASURES),
     );
   });
 
-  it('puts the kits next, ahead of the melodic programs', () => {
-    const kit = GENERATION_INSTRUMENT_OPTIONS.findIndex(o =>
-      o.value.startsWith('kit:'),
+  it('draws the tempo, bars and key a style chose', () => {
+    // The preset's own tempo and bars used to be drawn while a different draw
+    // was what the style meant, and the key was never set at all.
+    const draft = reggae();
+    const view = setup(draft);
+    expect(view.getByLabelText('Bars').props.value).toBe(draft.measuresText);
+    expect(view.getByLabelText('Tempo').props.value).toBe(draft.tempoText);
+    const key = GENERATE_SCORE_KEY_FIFTHS_OPTIONS.find(
+      option => option.fifths === draft.keySignature.fifths,
     );
-    const melodic = GENERATION_INSTRUMENT_OPTIONS.findIndex(o =>
-      o.label.includes(' · '),
+    expect(view.getAllByText(key!.label).length).toBeGreaterThan(0);
+  });
+
+  it('labels the style and the complexity rather than printing their values', () => {
+    const view = setup(reggae());
+    expect(view.getByText('Reggae')).toBeTruthy();
+    expect(view.getByText('Moderate')).toBeTruthy();
+    expect(view.queryByText('moderate')).toBeNull();
+  });
+
+  it('locks exactly the rows the style made essential', () => {
+    const draft = reggae();
+    const essentials = draft.ensemble.filter(e => e.tier === 'essential');
+    expect(essentials.length).toBeGreaterThan(0);
+    const view = setup(draft);
+    expect(view.getAllByText('(essential)')).toHaveLength(essentials.length);
+  });
+
+  it('never locks a second copy of an essential instrument added by hand', () => {
+    // The old hook locked "the first entry with an essential value", so which
+    // row locked depended on order rather than on who put it there.
+    const draft = reggae();
+    const essential = draft.ensemble.find(e => e.tier === 'essential')!;
+    const view = setup(
+      reduce(draft, { type: 'addInstrument', value: essential.value }),
     );
-    expect(kit).toBeLessThan(melodic);
+    expect(view.getAllByText('(essential)')).toHaveLength(
+      draft.ensemble.filter(e => e.tier === 'essential').length,
+    );
   });
 
-  it('lists each voice once, not again under the family GM filed it in', () => {
-    expect(
-      GENERATION_INSTRUMENT_OPTIONS.filter(o => o.value === '53'),
-    ).toHaveLength(1);
-  });
-
-  it('offers the same catalogue the web picker does', () => {
-    // 128 melodic programs and eight kits, with the three voices lifted out of
-    // the families rather than removed from the app.
-    expect(GENERATION_INSTRUMENT_OPTIONS).toHaveLength(136);
-  });
-});
-
-describe('the style and mood pickers', () => {
-  it('lists the styles alphabetically, with No style pinned above them', () => {
-    const [first, ...styles] = styleSelectOptions(t).map(o => o.label);
-    expect(first).toBe('No style');
-    expect(styles).toEqual([...styles].sort((a, b) => a.localeCompare(b)));
-    expect(styles[0]).toBe('Ambient');
-  });
-
-  it('lists the moods alphabetically, with No mood pinned above them', () => {
-    const [first, ...moods] = moodSelectOptions(t).map(o => o.label);
-    expect(first).toBe('No mood');
-    expect(moods).toEqual([...moods].sort((a, b) => a.localeCompare(b)));
-  });
-
-  it('labels a mood rather than showing its value', () => {
-    // They rendered as their own raw values, so a Chinese reader chose a mood
-    // in English from a list with no key to be missing from — the one gap
-    // `locale-parity` cannot see.
-    const labels = moodSelectOptions(t).map(o => o.label);
-    expect(labels).toContain('Upbeat');
-    expect(labels).not.toContain('upbeat');
-  });
-
-  it('keeps every value it offers a label for', () => {
-    for (const option of [...styleSelectOptions(t), ...moodSelectOptions(t)]) {
-      expect(option.value).not.toBe('');
-      expect(option.label).not.toBe('');
-    }
+  it('removes the row that was pressed, by id, when two rows match', () => {
+    // Two pianos: removing the second must leave the first, which a list of
+    // bare values cannot tell apart.
+    const draft = reduce(initialNewProjectDraft(), {
+      type: 'addInstrument',
+      value: initialNewProjectDraft().ensemble[0]!.value,
+    });
+    const view = setup(draft);
+    const removes = view.getAllByLabelText(/^Remove /);
+    fireEvent.press(removes[1]!);
+    expect(latest.ensemble.map(e => e.id)).toEqual([draft.ensemble[0]!.id]);
   });
 });

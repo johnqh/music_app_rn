@@ -1,10 +1,10 @@
 /**
  * New, Save, and what to do when a save fails.
  *
- * The storage is a prop rather than an import, so this renders against a fake
- * in a test and against the filesystem in the app — the same split
- * `DocumentStorage` exists for. A failure is shown rather than swallowed: a
- * save that silently did nothing is how work is lost.
+ * New builds a store with the app's document services and Save writes through
+ * the document's own store (`saveNow`), so both behave exactly as the File
+ * menu's do. A failure is shown rather than swallowed: a save that silently did
+ * nothing is how work is lost.
  */
 import { useState } from 'react';
 import {
@@ -17,22 +17,25 @@ import {
 import { useTranslation } from 'react-i18next';
 import { MIN_TOUCH_TARGET } from '@sudobility/components-rn';
 import { newProjectScore } from '@sudobility/music_lib';
-import { newDocument, saveDocument } from '@/documents/document-storage';
-import { EXPORT_FORMATS, exportDocument } from '@/documents/export';
+import { WRITABLE_EXPORT_FORMATS } from '@sudobility/music_editing';
+import { exportDocument } from '@/documents/export';
+import type { ExportFormat } from '@/documents/export';
 import { getAppServices } from '@/config/initialize';
-import type { DocumentStorage } from '@/documents/document-storage';
-import { useDocumentList } from '@/documents/DocumentsContext';
+import {
+  useDocumentList,
+  useDocumentServices,
+} from '@/documents/DocumentsContext';
+import { newDocument } from '@/documents/document';
 import type { MusicDocument } from '@/documents/document';
 
 export function DocumentActions({
   document,
-  storage,
 }: {
   document: MusicDocument | null;
-  storage: DocumentStorage;
 }) {
   const { t } = useTranslation();
   const list = useDocumentList();
+  const services = useDocumentServices();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +44,7 @@ export function DocumentActions({
     setSaving(true);
     setError(null);
     try {
-      await saveDocument(document, storage);
+      await document.store.getState().saveNow();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -49,7 +52,7 @@ export function DocumentActions({
     }
   }
 
-  async function exportAs(format: (typeof EXPORT_FORMATS)[number]) {
+  async function exportAs(format: ExportFormat) {
     if (!document) return;
     setError(null);
     try {
@@ -67,7 +70,9 @@ export function DocumentActions({
         style={styles.button}
         onPress={() => {
           const title = t('document.untitled');
-          newDocument(list, newProjectScore(title), title);
+          list.open(
+            newDocument(services, { score: newProjectScore(title), title }),
+          );
         }}
       >
         <Text style={styles.label}>{t('document.new')}</Text>
@@ -85,16 +90,18 @@ export function DocumentActions({
           <Text style={styles.label}>{t('document.save')}</Text>
         )}
       </Pressable>
-      {EXPORT_FORMATS.map(format => (
+      {/* music_editing's format list, the one the export sheet and the web's
+          menu read, so this row cannot offer a different set. */}
+      {WRITABLE_EXPORT_FORMATS.map(({ id: format, labelKey }) => (
         <Pressable
           key={format}
           accessibilityRole="button"
-          accessibilityLabel={t('document.exportAs', { format })}
+          accessibilityLabel={t('document.exportAs', { format: t(labelKey) })}
           disabled={!document}
           style={[styles.button, !document && styles.off]}
           onPress={() => void exportAs(format)}
         >
-          <Text style={styles.label}>{format.toUpperCase()}</Text>
+          <Text style={styles.label}>{t(labelKey)}</Text>
         </Pressable>
       ))}
       {error ? (

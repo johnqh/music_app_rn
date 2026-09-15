@@ -1,17 +1,25 @@
 /**
  * The property sheet's four tabs.
  *
- * Track is first because it is the only tab that always has something to show:
- * there is always an active track, where the note and measure tabs are an empty
- * state until something is selected. A tab order that opens on an empty panel
- * reads as a broken inspector.
+ * The order and the opening tab are music_editing's (`INSPECTOR_TABS`,
+ * `defaultInspectorTab`), shared with the web: Score, Track, Note, Bar — and a
+ * fresh selection opens the tab it is *of*, Track when nothing is selected,
+ * because the Note and Bar tabs are an empty state until something is. This
+ * panel listed Track, Note, Bar, Score and always opened on Track, so a reader
+ * moving between the apps found the tabs in a different place and tapped a note
+ * to find its properties one tab away.
  *
  * The tabs are driven through the control rather than by pressing their labels.
  * `SegmentedTabs` is a real `UISegmentedControl` on iOS — which is the platform
  * jest simulates — and its labels are a `values` prop on a native view, not
  * `Text` a query can find or a `Pressable` a test can press.
  */
-import { fireEvent } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
+import {
+  defaultInsertPitch,
+  insertNoteAtCaret,
+} from '@sudobility/music_editing';
+import { isNoteEvent } from '@sudobility/music_types';
 import { renderWithApp, testDocument } from '@/test/render';
 import { InspectorPanel } from './InspectorPanel';
 
@@ -23,25 +31,41 @@ function selectTab(view: ReturnType<typeof renderWithApp>, index: number) {
 }
 
 describe('InspectorPanel', () => {
-  it('opens on the track, which always has something to say', () => {
+  it('opens on the track when nothing is selected', () => {
     const view = renderWithApp(<InspectorPanel document={testDocument()} />);
     /*
       The track tab's Name field, which exists for every score — by its
-      accessible name, not by the word on the tab. This used to assert
-      `getByText('Track')`, which the *tab label* satisfied, so it would have
-      passed just as happily with an empty panel behind it.
+      accessible name, not by the word on the tab, which an empty panel would
+      satisfy just as happily.
     */
     expect(view.getByLabelText('Name')).toBeTruthy();
+    expect(view.getByTestId('inspector-tabs').props.selectedIndex).toBe(1);
   });
 
-  it('offers all four tabs', () => {
+  it("offers the four tabs in the web's order", () => {
     const view = renderWithApp(<InspectorPanel document={testDocument()} />);
     expect(view.getByTestId('inspector-tabs').props.values).toEqual([
+      'Score',
       'Track',
       'Note',
       'Bar',
-      'Score',
     ]);
+  });
+
+  it('opens the Note tab when a note is selected', () => {
+    const document = testDocument();
+    const view = renderWithApp(<InspectorPanel document={document} />);
+    act(() => {
+      insertNoteAtCaret(document.store, defaultInsertPitch(document.store));
+      const note = document.store
+        .getState()
+        .score!.tracks[0].measures[0].voices[0].events.find(isNoteEvent)!;
+      document.store
+        .getState()
+        .setSelection({ eventIds: [note.id], measureIds: [], trackIds: [] });
+    });
+    expect(view.getByTestId('inspector-tabs').props.selectedIndex).toBe(2);
+    expect(view.getByLabelText('Velocity')).toBeTruthy();
   });
 
   it('shows an empty state rather than nothing when no note is selected', () => {
@@ -51,7 +75,7 @@ describe('InspectorPanel', () => {
       return.
     */
     const view = renderWithApp(<InspectorPanel document={testDocument()} />);
-    selectTab(view, 1);
+    selectTab(view, 2);
     expect(view.getByText(/select/i)).toBeTruthy();
   });
 });

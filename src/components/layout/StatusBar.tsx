@@ -23,7 +23,7 @@ import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { Text, touchSlop } from '@sudobility/components-rn';
 import { selectionSummaryLabel } from '@sudobility/music_types';
-import { selectionSummaryCopy } from '@/i18n/lib-copy';
+import { libraryCopy } from '@/config/initialize';
 import { Pressable } from 'react-native';
 import { useState } from 'react';
 import { IssuesSheet } from '@/features/score-editor/IssuesSheet';
@@ -40,7 +40,7 @@ export function StatusBar({ document }: { document: MusicDocument }) {
   return (
     <View className="border-border bg-card flex-row items-center gap-3 border-t px-3 py-1">
       <Text className="text-muted-foreground text-sm" numberOfLines={1}>
-        {selectionSummaryLabel(selection, selectionSummaryCopy(), regenerated)}
+        {selectionSummaryLabel(selection, libraryCopy.selection(), regenerated)}
       </Text>
       <View className="flex-1" />
       {issues.length > 0 ? (

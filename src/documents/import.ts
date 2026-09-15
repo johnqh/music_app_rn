@@ -13,15 +13,23 @@
  * Framework, or an `NSOpenPanel`. On a sandboxed build that panel is where the
  * *permission* comes from, not just the path.
  *
- * The imported document has no file origin. It came from a `.mid`, and writing
- * a Moosiac document back over a MIDI file would destroy everything the format
- * cannot hold — so it is unsaved until somebody says where it goes.
+ * Signed in, the import becomes a new server project; signed out or offline, a
+ * local document with no file origin. It came from a `.mid`, and writing a
+ * Moosiac document back over a MIDI file would destroy everything the format
+ * cannot hold — so a local import is unsaved until somebody says where it goes.
  */
-import { defaultMidiImportOptions } from '@sudobility/music_lib';
+import { ApiError } from '@sudobility/music_client';
+import {
+  authorizedServer,
+  AuthRequiredError,
+  defaultMidiImportOptions,
+  hasServer,
+  importedTitle,
+} from '@sudobility/music_lib';
 import type { MidiImportOptions, MidiSummary } from '@sudobility/music_lib';
 import type { Score } from '@sudobility/music_types';
-import { createDocument } from './document';
-import type { MusicDocument } from './document';
+import { newDocument } from './document';
+import type { DocumentServices, MusicDocument } from './document';
 import type { DocumentList } from './document-list';
 
 export const IMPORT_FORMATS = ['midi', 'musicxml', 'tracker'] as const;
@@ -76,26 +84,63 @@ export type ImportResult = {
   warnings: readonly string[];
 };
 
-/** Reads the bytes an import needs; the same seam `DocumentStorage` uses. */
+/** Reads the bytes an import needs; the same seam `DocumentFileStorage` is. */
 export type ImportSource = {
   readText(uri: string): Promise<string>;
   readBytes(uri: string): Promise<ArrayBuffer>;
 };
 
-function titleFor(score: Score, uri: string): string {
-  const stored = score.metadata.title?.trim();
-  if (stored) return stored;
-  // Falling back to the filename, minus its extension — a MIDI file often
-  // carries no title at all, and "Untitled" tells the reader less than the
-  // name they picked the file by.
-  const base = uri.split('/').pop() ?? 'Untitled';
-  return base.replace(/\.[^.]+$/, '') || 'Untitled';
+/**
+ * Where an import lands: a new server project when somebody is signed in, a
+ * local document otherwise (decision 2 of the parity plan, shared with the
+ * web, where every import already ends in a new project).
+ *
+ * **Offline falls back to local rather than failing.** A phone on a train is
+ * signed in and has no server, and refusing to open a file it can decode
+ * perfectly well would be the app punishing somebody for the network. The
+ * fall-back is taken for a failure to *reach* the server; a server that answers
+ * and refuses (an `ApiError`) is reported, because that is a real answer and
+ * quietly keeping the score local would hide it.
+ *
+ * A project is built from the create response rather than re-read: writes
+ * return metadata about the score, the score is the one just sent, and a
+ * second request would download it straight back.
+ */
+async function place(
+  services: DocumentServices,
+  score: Score,
+  title: string,
+): Promise<MusicDocument> {
+  const { context } = services;
+  if (hasServer(context) && (await context.getToken()) !== null) {
+    try {
+      const { client, token } = await authorizedServer(context);
+      const saved = await client.createProject({ name: title, score }, token);
+      return newDocument(services, {
+        score,
+        title,
+        origin: { kind: 'project', projectId: saved.id },
+        serverUpdatedAt: saved.updatedAt,
+      });
+    } catch (error) {
+      if (error instanceof ApiError || error instanceof AuthRequiredError) {
+        throw error;
+      }
+      // Unreachable: keep the work, locally.
+    }
+  }
+  return newDocument(services, {
+    score,
+    title,
+    // Deliberately unsaved: this came from a .mid, .musicxml or a tracker
+    // module, and writing a Moosiac document back over it would lose
+    // everything that format cannot hold.
+  });
 }
-
-let nextId = 0;
 
 export async function importDocument(
   list: DocumentList,
+  services: DocumentServices,
   source: ImportSource,
   importer: ScoreImporter,
   format: ImportFormat,
@@ -131,17 +176,9 @@ export async function importDocument(
     warnings = result.warnings;
   }
 
-  nextId += 1;
+  const fileName = uri.split('/').pop() ?? '';
   const document = list.open(
-    createDocument({
-      id: `import-${nextId}`,
-      title: titleFor(score, uri),
-      score,
-      // Deliberately unsaved: this came from a .mid, .musicxml or a tracker
-      // module, and writing a Moosiac document back over it would lose
-      // everything that format cannot hold.
-      origin: { kind: 'unsaved' },
-    }),
+    await place(services, score, importedTitle(score, fileName)),
   );
   return { document, warnings };
 }

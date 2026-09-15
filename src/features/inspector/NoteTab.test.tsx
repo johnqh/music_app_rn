@@ -10,6 +10,7 @@
  */
 import { act, fireEvent } from '@testing-library/react-native';
 import {
+  changeDuration,
   insertNoteAtCaret,
   defaultInsertPitch,
 } from '@sudobility/music_editing';
@@ -29,6 +30,25 @@ function withSelectedNote() {
     document.store
       .getState()
       .setSelection({ eventIds: [note.id], measureIds: [], trackIds: [] });
+  });
+  return document;
+}
+
+/** Two notes in a row on the first track, both selected. */
+function withTwoSelectedNotes() {
+  const document = testDocument();
+  act(() => {
+    insertNoteAtCaret(document.store, defaultInsertPitch(document.store), {
+      advanceCaret: true,
+    });
+    insertNoteAtCaret(document.store, defaultInsertPitch(document.store));
+    const score = document.store.getState().score!;
+    const ids = score.tracks[0].measures[0].voices[0].events
+      .filter(isNoteEvent)
+      .map(n => n.id);
+    document.store
+      .getState()
+      .setSelection({ eventIds: ids, measureIds: [], trackIds: [] });
   });
   return document;
 }
@@ -107,7 +127,11 @@ describe('NoteTab', () => {
     const view = renderWithApp(<NoteTab document={document} />);
     const before = document.store.getState().score;
 
-    fireEvent.changeText(view.getByDisplayValue('1'), '2');
+    const field = view.getByLabelText('Voice');
+    fireEvent.changeText(field, '2');
+    // A draft: nothing moves until the field is left.
+    expect(document.store.getState().score).toBe(before);
+    fireEvent(field, 'blur');
 
     expect(document.store.getState().score).not.toBe(before);
   });
@@ -168,5 +192,65 @@ describe('NoteTab', () => {
     fireEvent.changeText(field, 'Bb7#11');
     fireEvent(field, 'blur');
     expect(selectedNote(document).chordSymbol).toBe('Bb7#11');
+  });
+
+  it('commits velocity once, on blur, rather than per keystroke', () => {
+    /*
+      `NumberInput` committed on every change, so typing 100 wrote 1, then 10,
+      then 100 — three undo entries and two velocities nobody asked for.
+    */
+    const document = withSelectedNote();
+    const view = renderWithApp(<NoteTab document={document} />);
+    const field = view.getByLabelText('Velocity');
+    fireEvent.changeText(field, '100');
+    expect(selectedNote(document).velocity).not.toBe(100);
+    fireEvent(field, 'blur');
+    expect(selectedNote(document).velocity).toBe(100);
+  });
+
+  it('offers chord symbol and fingering for exactly one note', () => {
+    /*
+      Both are free text belonging to one notehead: a draft seeded from the
+      first of two notes would overwrite the second with it on blur.
+    */
+    const document = withTwoSelectedNotes();
+    const view = renderWithApp(<NoteTab document={document} />);
+    expect(view.queryByLabelText('Chord symbol')).toBeNull();
+    expect(view.queryByLabelText('Fingering')).toBeNull();
+  });
+
+  it('reads a disagreeing duration as Mixed', () => {
+    const document = withTwoSelectedNotes();
+    act(() => {
+      const [a] = document.store.getState().selection.eventIds;
+      document.store.getState().setSelection({
+        eventIds: [a!],
+        measureIds: [],
+        trackIds: [],
+      });
+      changeDuration(document.store, 'eighth');
+      const score = document.store.getState().score!;
+      const ids = score.tracks[0].measures[0].voices[0].events
+        .filter(isNoteEvent)
+        .map(n => n.id);
+      document.store
+        .getState()
+        .setSelection({ eventIds: ids, measureIds: [], trackIds: [] });
+    });
+    const view = renderWithApp(<NoteTab document={document} />);
+    expect(view.getAllByText('Mixed').length).toBeGreaterThan(0);
+  });
+
+  it('locks every field while the transport plays', () => {
+    // Decision 4 of the parity plan: the whole Note tab, as on the web.
+    const document = withSelectedNote();
+    act(() => {
+      document.store.setState({ state: 'playing' });
+    });
+    const view = renderWithApp(<NoteTab document={document} />);
+    expect(view.getByLabelText('Velocity').props.editable).toBe(false);
+    expect(
+      view.getByLabelText(/grace note/i).props.accessibilityState.disabled,
+    ).toBe(true);
   });
 });

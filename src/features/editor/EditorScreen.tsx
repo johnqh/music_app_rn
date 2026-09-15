@@ -13,12 +13,10 @@ import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@sudobility/components-rn';
-import { placeCaret } from '@sudobility/music_editing';
 import { AppLayout } from '@/components/layout/AppLayout';
-import { saveDocument } from '@/documents/document-storage';
-import { createFileStorage } from '@/documents/rn-storage';
 import { createKeyValueStore } from '@/documents/rn-key-value';
-import { useRecentTracking } from '@/documents/useRecentTracking';
+import { defaultDocumentUri } from '@/documents/rn-storage';
+import { createFilePicker } from '@/documents/file-picker';
 import { RecentDocuments } from '@/features/documents/RecentDocuments';
 import { ImportButtons } from '@/features/documents/ImportButtons';
 import { exportDocument } from '@/documents/export';
@@ -27,7 +25,8 @@ import { ExportSheet } from '@/features/documents/ExportSheet';
 import { useMenuCommand } from '@/app/menu-commands';
 import type { MenuCommand } from '@/app/menu-commands';
 import { canPrint, printScore } from '@/features/print/print-service';
-import { GenerateScoreSheet } from '@/features/generation/GenerateScoreSheet';
+import { PrintSheet } from '@/features/print/PrintSheet';
+import type { PrintPlanOptions } from '@sudobility/music_drawing';
 import { ReplaceMusicSheet } from '@/features/generation/ReplaceMusicSheet';
 import { GenerateTrackSheet } from '@/features/generation/GenerateTrackSheet';
 import { prepareReplacement } from '@sudobility/music_editing';
@@ -40,38 +39,40 @@ import { useCreditBalance } from '@/features/credits/useCreditBalance';
 import { ExportScopeSheet } from '@/features/documents/ExportScopeSheet';
 import {
   exportScopeNeedsPrompt,
-  exportTargetScore,
   hiddenTrackCount,
   selectActiveTrackId,
+  selectVisibleTrackIds,
 } from '@sudobility/music_editing';
-import type { Score } from '@sudobility/music_types';
+import type { ExportScope } from '@sudobility/music_editing';
 import { renderEvents, renderSamples } from '@sudobility/music_player';
 import {
+  DOCUMENT_EXTENSION,
   estimateReplacementCredits,
+  exportFilename as documentFilename,
+  isOutOfCredits,
+  regenerateWithLocks,
   replacementRegion,
   reportError,
 } from '@sudobility/music_lib';
 import { getAppServices } from '@/config/initialize';
 import { getMusicClient } from '@/config/server';
 import { useAuth } from '@/auth/AuthContext';
-import { reloadProjectDocument } from '@/documents/project-sync';
 import {
   useActiveDocument,
   useDocumentList,
+  useDocumentServices,
 } from '@/documents/DocumentsContext';
-import { openProjectDocument } from '@/documents/project-sync';
+import { openProject } from '@/documents/document';
 import type { RootStackParamList } from '@/app/Navigation';
-import type { MeasureHit } from '@sudobility/music_drawing';
 import type { MusicDocument } from '@/documents/document';
 
-const storage = createFileStorage();
 const keyValue = createKeyValueStore();
 
 export function EditorScreen() {
   const { t } = useTranslation();
   const document = useActiveDocument();
   const list = useDocumentList();
-  const { getToken } = useAuth();
+  const services = useDocumentServices();
   const route = useRoute<RouteProp<RootStackParamList, 'Editor'>>();
   const projectParam = route.params?.projectId ?? null;
   const [openError, setOpenError] = useState<string | null>(null);
@@ -79,26 +80,36 @@ export function EditorScreen() {
   /*
     Opening a project the dashboard sent us to.
 
-    Through `openProjectDocument`, which raises the document already open rather
-    than fetching a second copy — two documents over one project would diverge
-    the moment either was edited, and both would claim to be the project.
+    The document already open is raised rather than a second copy fetched —
+    two documents over one project would diverge the moment either was edited,
+    and both would claim to be the project. The store is music_lib's
+    `openProjectDocument`, built clean from the record as read, with its server
+    version, its last generation and its view prefs.
   */
   useEffect(() => {
     if (!projectParam) return;
-    const client = getMusicClient();
-    if (!client) return;
+    if (!getMusicClient()) return;
+    const origin = { kind: 'project' as const, projectId: projectParam };
+    const existing = list.findOpen(origin);
+    if (existing) {
+      list.activate(existing.id);
+      return;
+    }
     let cancelled = false;
-    void openProjectDocument(list, client, getToken, projectParam).catch(
-      error => {
+    void openProject(services, projectParam)
+      .then(opened => {
+        if (cancelled) opened.store.getState().dispose();
+        else list.open(opened);
+      })
+      .catch(error => {
         if (!cancelled) {
           setOpenError(error instanceof Error ? error.message : String(error));
         }
-      },
-    );
+      });
     return () => {
       cancelled = true;
     };
-  }, [projectParam, list, getToken]);
+  }, [projectParam, list, services]);
 
   if (openError) return <EmptyState message={openError} />;
   if (!document) {
@@ -113,7 +124,7 @@ export function EditorScreen() {
         */}
         <ImportButtons />
         {/* The way back to something you were working on. */}
-        <RecentDocuments storage={storage} keyValue={keyValue} />
+        <RecentDocuments keyValue={keyValue} />
       </View>
     );
   }
@@ -124,20 +135,38 @@ export function EditorScreen() {
 
 function DocumentEditor({ document }: { document: MusicDocument }) {
   const { t } = useTranslation();
-  const [saving, setSaving] = useState(false);
   const { user, getToken, siteAdmin } = useAuth();
   const score = useStore(document.store, s => s.score);
-  const recordRecent = useRecentTracking(keyValue);
+  const origin = useStore(document.store, s => s.origin);
+  const lastGeneration = useStore(document.store, s => s.lastGeneration);
 
+  /**
+   * The Save button: write what is pending, to wherever the document lives.
+   *
+   * Through the store — `saveNow` for a file or a project, which is a no-op when
+   * nothing is dirty, and the one save state the title bar reads. A document
+   * that has never been written has nowhere to go, so it is asked about: a save
+   * panel where the platform has one (macOS), and the app's documents folder
+   * under the score's title where it does not (iOS and Android, which have no
+   * save panel to raise). A failure is reported by the store's own toast.
+   */
   const onSave = useCallback(() => {
-    setSaving(true);
-    void saveDocument(document, storage, recordRecent).finally(() =>
-      setSaving(false),
-    );
-  }, [document, recordRecent]);
+    const state = document.store.getState();
+    void (async () => {
+      if (state.origin.kind !== 'unsaved') {
+        await state.saveNow();
+        return;
+      }
+      const picker = createFilePicker();
+      const suggested = documentFilename(state.title, DOCUMENT_EXTENSION);
+      const chosen = picker.isSupported()
+        ? await picker.pickSaveLocation(suggested)
+        : null;
+      await state.saveAs(chosen ?? defaultDocumentUri(state.title));
+    })().catch(error => reportError(error, { context: 'save' }));
+  }, [document]);
 
   const [exportOpen, setExportOpen] = useState(false);
-  const [generateOpen, setGenerateOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
   /*
     Which Replace is being asked for, or null when none is. One sheet serves all
@@ -166,8 +195,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     back to — offering Generate there would be offering something that cannot
     work.
   */
-  const projectId =
-    document.origin.kind === 'project' ? document.origin.projectId : null;
+  const projectId = origin.kind === 'project' ? origin.projectId : null;
 
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -180,9 +208,8 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     // The job reads the *stored* score, so anything still unwritten has to go
     // first — otherwise it is invisible to the job and then overwritten by its
     // result.
-    flush: () => saveDocument(document, storage, recordRecent),
+    flush: () => document.store.getState().saveNow(),
     onApplied: async () => {
-      const client = getMusicClient();
       /*
         Stop first, then adopt — the invariant the web app keeps too.
 
@@ -194,10 +221,10 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
         an edit reloads the player on every note written and resetting there
         sent the caret back to bar 1 each time somebody wrote a note. `stop()`
         is what distinguishes "the same piece, edited" from "a different
-        piece".
+        piece". `reloadFromServer` stops the transport it is handed before it
+        adopts, resets the history and leaves the document clean.
       */
-      getAppServices().player.stop();
-      if (client) await reloadProjectDocument(document, client, getToken);
+      await document.store.getState().reloadFromServer(getAppServices().player);
     },
   });
 
@@ -211,7 +238,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
    * which is what keeps the two platform packages independent of each other.
    */
   const writeExport = useCallback(
-    (format: ExportFormat, target?: Score) => {
+    (format: ExportFormat, scope: ExportScope = 'all') => {
       void exportDocument(
         document,
         getAppServices().io,
@@ -221,7 +248,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
           const audio = await renderSamples(getAppServices().soundfont)(plan);
           return { samples: audio.samples, sampleRate: audio.sampleRate };
         },
-        target,
+        scope,
       ).catch(error => reportError(error, { context: 'export' }));
     },
     [document],
@@ -237,17 +264,19 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
   const [pendingScope, setPendingScope] = useState<ExportFormat | null>(null);
 
   /*
-    A courtesy gate on Generate, decided here because this screen has the auth
-    context and the sheet must not import it.
+    A courtesy gate on Generate Again, decided here because this screen has the
+    auth context and the panel must not import it. The rule is music_lib's
+    `isOutOfCredits`, the one the New Project gate uses too.
 
     A **site administrator is never gated**: `music_api` grants them free
     generation — no quota, no balance check, no charge — so they sit at a
     balance of zero forever, and this would refuse work the server would have
-    accepted. Unknown is not zero either, which is why the check is on a real
-    number rather than on a falsy one.
+    accepted. Unknown is not zero either: a balance still loading is not an
+    empty wallet. A job refused anyway (the balance ran out in another tab)
+    still reaches the paywall through the 402.
   */
   const { balance } = useCreditBalance(getToken, user !== null);
-  const outOfCredits = !siteAdmin && balance !== null && balance <= 0;
+  const outOfCredits = isOutOfCredits(balance, siteAdmin);
 
   const runExport = useCallback(
     (format: ExportFormat) => {
@@ -294,26 +323,22 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
    * and the print dialog appearing.
    */
   const [printing, setPrinting] = useState(false);
-  const onPrint = useCallback(() => {
-    setPrinting(true);
-    void printScore(score!)
-      .catch(error => reportError(error, { context: 'print' }))
-      .finally(() => setPrinting(false));
-  }, [score]);
-
-  /**
-   * A tap moves the caret and makes that track active.
-   *
-   * `placeCaret` does all three writes together — playhead, active track,
-   * cleared selection. Doing them separately is how you get two of the three
-   * right, which reads as "the caret jumped but the track did not".
-   */
-  const onMeasureTap = useCallback(
-    (hit: MeasureHit, tick: number) => {
-      if (!score) return;
-      placeCaret(document.store, { tick, trackId: hit.trackId });
+  /*
+    The title bar opens the print sheet — what to print, the paper, the
+    orientation, as the web print view asks — and the sheet's answer prints.
+  */
+  const [printOpen, setPrintOpen] = useState(false);
+  const visibleTrackIds = useStore(document.store, selectVisibleTrackIds);
+  const onPrint = useCallback(() => setPrintOpen(true), []);
+  const runPrint = useCallback(
+    (options: PrintPlanOptions) => {
+      setPrintOpen(false);
+      setPrinting(true);
+      void printScore(score!, options)
+        .catch(error => reportError(error, { context: 'print' }))
+        .finally(() => setPrinting(false));
     },
-    [document, score],
+    [score],
   );
 
   if (!score) return <EmptyState message={t('editor.noScore')} />;
@@ -323,9 +348,23 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       onSave={onSave}
       onExport={onExport}
       {...(canPrint() ? { onPrint, printing } : {})}
-      onMeasureTap={onMeasureTap}
-      saving={saving}
-      onGenerate={projectId ? () => setGenerateOpen(true) : undefined}
+      {...(projectId && lastGeneration
+        ? {
+            generation: {
+              record: lastGeneration,
+              // Nothing starts while a job owns the project, and a spent
+              // balance gates it like every other generation here.
+              generating: generation.generating || outOfCredits,
+              // The same request, with only the locked choices kept and the
+              // rest rolled again by the server.
+              onGenerateAgain: lockedKeys =>
+                void generation.start(
+                  'generate-score',
+                  regenerateWithLocks(lastGeneration, lockedKeys),
+                ),
+            },
+          }
+        : {})}
       onSnapshots={projectId ? () => setSnapshotsOpen(true) : undefined}
       onReplace={projectId ? setReplaceScope : undefined}
       onGenerateTrack={projectId ? () => setGenerateTrackOpen(true) : undefined}
@@ -338,14 +377,12 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       }
       exportSheet={
         <>
-          <GenerateScoreSheet
-            open={generateOpen}
-            outOfCredits={outOfCredits}
-            onClose={() => setGenerateOpen(false)}
-            onSubmit={request => {
-              setGenerateOpen(false);
-              void generation.start('generate-score', request);
-            }}
+          <PrintSheet
+            open={printOpen}
+            score={score}
+            visibleTrackIds={visibleTrackIds}
+            onClose={() => setPrintOpen(false)}
+            onPrint={runPrint}
           />
           <GenerateTrackSheet
             open={generateTrackOpen}
@@ -367,8 +404,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
               const format = pendingScope;
               setPendingScope(null);
               if (!format) return;
-              const target = exportTargetScore(document.store, scope);
-              writeExport(format, target ?? undefined);
+              writeExport(format, scope);
             }}
           />
           <CreditPaywallSheet
@@ -406,7 +442,6 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
           <SnapshotsSheet
             open={snapshotsOpen}
             document={document}
-            getToken={getToken}
             onClose={() => setSnapshotsOpen(false)}
           />
           <ExportSheet

@@ -2,19 +2,19 @@
  * A position readout renders when its text changes, not on every report.
  */
 import { act, renderHook } from '@testing-library/react-native';
-import type { TransportApi } from './useTransport';
-import { usePositionReadout } from './useTransport';
+import type { PositionSource } from './usePositionReadout';
+import { usePositionReadout } from './usePositionReadout';
 
 function fakeTransport() {
   const listeners = new Set<(tick: number) => void>();
-  const transport = {
+  const transport: PositionSource = {
     onPosition: (fn: (tick: number) => void) => {
       listeners.add(fn);
       return () => {
         listeners.delete(fn);
       };
     },
-  } as unknown as TransportApi;
+  };
   const report = (tick: number) => listeners.forEach(fn => fn(tick));
   return { transport, report };
 }

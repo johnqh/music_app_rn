@@ -2,54 +2,114 @@
  * The open documents, as tabs.
  *
  * Rendered from `useDocuments`, which re-renders on open, close and activate —
- * never on an edit. The dirty mark is deliberately read from the document
- * object rather than its store: it flips on the first edit after a save and
- * then not again, so subscribing per tab to a score would cost a render per
- * keystroke to learn nothing new.
+ * never on an edit. Each tab subscribes to its own store for the two things
+ * that change without the list changing: the title and whether there is
+ * unwritten work. Per tab, and only those two fields, so an edit re-renders the
+ * one tab whose dot it flips rather than the bar. They used to be read off a
+ * mutable record beside the store, which is how a tab kept showing "clean" for
+ * a document that had been edited until something unrelated re-rendered it.
+ *
+ * **Closing asks first when work would be lost.** `decideClose` is
+ * music_editing's, shared with the web app, and reads the store's `dirty` —
+ * which music_lib clears only once a write has succeeded *and* the score saved
+ * is still the one open, so a save that raced an edit still asks. The question
+ * names the document, because a tab bar is exactly where somebody closes the
+ * wrong one.
  *
  * Hidden below two documents, because a single tab is a label, not a choice.
  */
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
+import { decideClose } from '@sudobility/music_editing';
+import { ConfirmSheet } from '@/components/controls/ConfirmSheet';
 import { useDocumentList, useDocuments } from '@/documents/DocumentsContext';
+import type { MusicDocument } from '@/documents/document';
 
 export function DocumentTabs() {
   const { t } = useTranslation();
   const list = useDocumentList();
   const { documents, activeId } = useDocuments();
+  const [closing, setClosing] = useState<MusicDocument | null>(null);
   if (documents.length < 2) return null;
+
+  const requestClose = (document: MusicDocument): void => {
+    const decision = decideClose(document.store.getState());
+    if (decision.kind === 'close') list.close(document.id);
+    else setClosing(document);
+  };
 
   return (
     <View style={styles.bar}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        {documents.map(document => {
-          const active = document.id === activeId;
-          return (
-            <Pressable
-              key={document.id}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-              onPress={() => list.activate(document.id)}
-              style={[styles.tab, active && styles.tabOn]}
-            >
-              <Text numberOfLines={1} style={styles.title}>
-                {document.dirty ? `• ${document.title}` : document.title}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t('document.closeDocument', {
-                  title: document.title,
-                })}
-                hitSlop={8}
-                onPress={() => list.close(document.id)}
-              >
-                <Text style={styles.close}>×</Text>
-              </Pressable>
-            </Pressable>
-          );
-        })}
+        {documents.map(document => (
+          <DocumentTab
+            key={document.id}
+            document={document}
+            active={document.id === activeId}
+            onActivate={() => list.activate(document.id)}
+            onClose={() => requestClose(document)}
+          />
+        ))}
       </ScrollView>
+      <ConfirmSheet
+        open={closing !== null}
+        title={t('document.unsavedTitle')}
+        message={t('document.unsavedBody', {
+          title: closing?.store.getState().title ?? '',
+        })}
+        confirmLabel={t('document.closeWithoutSaving')}
+        destructive
+        onCancel={() => setClosing(null)}
+        onConfirm={() => {
+          if (closing) list.close(closing.id);
+          setClosing(null);
+        }}
+      />
     </View>
+  );
+}
+
+function DocumentTab({
+  document,
+  active,
+  onActivate,
+  onClose,
+}: {
+  document: MusicDocument;
+  active: boolean;
+  onActivate: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useTranslation();
+  const title = useStore(document.store, s => s.title);
+  const dirty = useStore(document.store, s => s.dirty);
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      // Named by the document, since the visible text is decorated with the
+      // unsaved dot; and pressable by assistive technology, which on macOS
+      // reaches a Pressable only through `onAccessibilityTap`. The tab had
+      // neither, so a screen reader found its close button and not the tab.
+      accessibilityLabel={title}
+      accessibilityState={{ selected: active }}
+      onAccessibilityTap={onActivate}
+      onPress={onActivate}
+      style={[styles.tab, active && styles.tabOn]}
+    >
+      <Text numberOfLines={1} style={styles.title}>
+        {dirty ? `• ${title}` : title}
+      </Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t('document.closeDocument', { title })}
+        hitSlop={8}
+        onPress={onClose}
+      >
+        <Text style={styles.close}>×</Text>
+      </Pressable>
+    </Pressable>
   );
 }
 

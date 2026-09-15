@@ -19,14 +19,19 @@ import { IMPORT_EXTENSIONS, importDocument } from '@/documents/import';
 import type { ImportFormat } from '@/documents/import';
 import { createFilePicker } from '@/documents/file-picker';
 import { createImportSource } from '@/documents/rn-storage';
-import { getAppServices } from '@/config/initialize';
-import { useDocumentList } from '@/documents/DocumentsContext';
-import { musicXmlWarningCopy } from '@/i18n/lib-copy';
+import {
+  useDocumentList,
+  useDocumentServices,
+} from '@/documents/DocumentsContext';
+import { getAppServices, libraryCopy } from '@/config/initialize';
 import { MidiImportSheet } from './MidiImportSheet';
 
 export function useImport() {
   const { t } = useTranslation();
   const list = useDocumentList();
+  // Signed in, an import becomes a server project; the services say whether
+  // there is a server and an account to make one with.
+  const services = useDocumentServices();
   const [warnings, setWarnings] = useState<readonly string[] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
 
@@ -52,11 +57,12 @@ export function useImport() {
       try {
         const result = await importDocument(
           list,
+          services,
           createImportSource(),
           getAppServices().io,
           format,
           uri,
-          musicXmlWarningCopy(),
+          libraryCopy.musicXmlWarnings(),
           midiOptions,
         );
         if (result.warnings.length > 0) setWarnings(result.warnings);
@@ -64,7 +70,7 @@ export function useImport() {
         setFailure(error instanceof Error ? error.message : String(error));
       }
     },
-    [list],
+    [list, services],
   );
 
   /**

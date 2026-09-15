@@ -11,7 +11,7 @@ import { createEmptyScore } from '@sudobility/music_types';
 
 const printPages =
   vi.fn<(name: string, pages: unknown[]) => Promise<boolean>>();
-const renderPrintPages = vi.fn(() => [
+const renderPrintPages = vi.fn((_plan: { trackIds: readonly string[] }) => [
   { base64: 'AAA', width: 1000, height: 1400 },
 ]);
 
@@ -20,7 +20,8 @@ vi.mock('@moosiac/print', () => ({
   printPages: (name: string, pages: unknown[]) => printPages(name, pages),
 }));
 vi.mock('./print-pages.js', () => ({
-  renderPrintPages: () => renderPrintPages(),
+  renderPrintPages: (plan: { trackIds: readonly string[] }) =>
+    renderPrintPages(plan),
 }));
 
 const { printScore } = await import('./print-service.js');
@@ -68,5 +69,28 @@ describe('printScore', () => {
       /nothing to print/i,
     );
     expect(printPages).not.toHaveBeenCalled();
+  });
+});
+
+describe('what reaches the pages', () => {
+  /*
+    The plan is music_drawing's, shared with the web print view. What this app
+    owns is passing the reader's choices through to it — a part prints that
+    track alone, and a scope naming no track prints nothing rather than the
+    whole score.
+  */
+  it('prints a part as that track alone', async () => {
+    printPages.mockResolvedValue(true);
+    const score = createEmptyScore({ title: 'A' });
+    const trackId = score.tracks[0]!.id;
+    await printScore(score, { scope: trackId });
+    expect(renderPrintPages.mock.calls.at(-1)?.[0].trackIds).toEqual([trackId]);
+  });
+
+  it('refuses a part the score does not have', async () => {
+    printPages.mockResolvedValue(true);
+    await expect(
+      printScore(createEmptyScore({ title: 'A' }), { scope: 'nope' }),
+    ).rejects.toThrow(/nothing to print/i);
   });
 });

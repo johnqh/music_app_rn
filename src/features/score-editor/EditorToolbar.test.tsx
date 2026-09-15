@@ -16,12 +16,19 @@
   resolve.
 */
 import { jest } from '@jest/globals';
+import { mirrorDevicePrefs } from '@sudobility/music_lib';
+import { devicePrefs } from '@/config/useDevicePrefs';
 import { act, fireEvent } from '@testing-library/react-native';
 import {
   insertNoteAtCaret,
   defaultInsertPitch,
+  setPickup,
 } from '@sudobility/music_editing';
-import { isNoteEvent } from '@sudobility/music_types';
+import {
+  getMusicPosition,
+  getMusicPositionSource,
+  isNoteEvent,
+} from '@sudobility/music_types';
 import { renderWithApp, testDocument } from '@/test/render';
 import type { MusicDocument } from '@/documents/document';
 import { EditorToolbar } from './EditorToolbar';
@@ -232,14 +239,81 @@ describe('EditorToolbar', () => {
     expect(document.store.getState().activeVoiceIndex).toBe(1);
   });
 
-  it('toggles between written and concert pitch', () => {
+  it('toggles between written and concert pitch, as a device pref', () => {
     // The label names what tapping *does*, not the current state — so the two
-    // names are two states of one control, not two controls.
+    // names are two states of one control, not two controls. It writes the
+    // device prefs, which the app mirrors into every open document's store.
     const { view, document } = setup();
-    expect(document.store.getState().pitchDisplay).toBe('concert');
-    fireEvent.press(view.getByLabelText(/show written pitch/i));
-    expect(document.store.getState().pitchDisplay).toBe('written');
-    fireEvent.press(view.getByLabelText(/show concert pitch/i));
-    expect(document.store.getState().pitchDisplay).toBe('concert');
+    const unmirror = mirrorDevicePrefs(devicePrefs, document.store);
+    try {
+      expect(document.store.getState().pitchDisplay).toBe('concert');
+      fireEvent.press(view.getByLabelText(/show written pitch/i));
+      expect(devicePrefs.getState().pitchDisplay).toBe('written');
+      expect(document.store.getState().pitchDisplay).toBe('written');
+      fireEvent.press(view.getByLabelText(/show concert pitch/i));
+      expect(document.store.getState().pitchDisplay).toBe('concert');
+    } finally {
+      unmirror();
+    }
+  });
+
+  /*
+    Insert Note steps past what it wrote (decision 4 of the parity plan, and
+    music_editing's `insertDefaultNoteAtCaret`), so a second press continues the
+    line instead of stacking onto the first.
+  */
+  it('writes Insert Note at the caret and steps past it', () => {
+    const { view, document } = setup();
+    act(() => getMusicPositionSource().moveTo(0));
+    act(() => {
+      fireEvent.press(view.getByLabelText('Insert note'));
+    });
+    const notes = document.store
+      .getState()
+      .score!.tracks[0].measures[0].voices[0].events.filter(isNoteEvent);
+    expect(notes).toHaveLength(1);
+    expect(getMusicPosition().reportedTick).toBe(notes[0].durationTicks);
+  });
+
+  /*
+    The availability rules are music_editing's `selectToolbarAvailability`,
+    shared with the web bar. The More menu is where this bar used to differ:
+    only its Glissando entry knew about the transport, so Add Bar, Delete Bar
+    and Enter Lyrics were live mid-playback and did nothing when chosen.
+  */
+  it('greys the More menu content entries while the transport plays', () => {
+    const { view, document } = setup();
+    act(() => document.store.setState({ state: 'playing' }));
+    fireEvent.press(view.getByLabelText(/more actions/i));
+    for (const name of [/^add bar$/i, /^delete bar$/i, /enter lyrics/i]) {
+      expect(view.getByLabelText(name).props.accessibilityState.disabled).toBe(
+        true,
+      );
+    }
+    // Going to a bar moves only the caret, which is not an edit.
+    expect(
+      view.getByLabelText(/go to bar/i).props.accessibilityState.disabled,
+    ).toBe(false);
+  });
+
+  it('goes to a bar by the number drawn, which skips a pickup', () => {
+    /*
+      `caretToBar` counted `index + 1`, so on a score opening with an anacrusis
+      "bar 1" was the pickup — one bar early, disagreeing with the gutter. The
+      sheet now hands its text to `goToBarFromInput`, which counts as drawn.
+    */
+    const { view, document } = setup();
+    act(() => setPickup(document.store, 1));
+    act(() => getMusicPositionSource().moveTo(0));
+    fireEvent.press(view.getByLabelText(/more actions/i));
+    act(() => {
+      fireEvent.press(view.getByLabelText(/go to bar/i));
+    });
+    fireEvent.changeText(view.getByLabelText('Bar number'), '1');
+    act(() => {
+      fireEvent.press(view.getByRole('button', { name: 'Go' }));
+    });
+    const second = document.store.getState().score!.tracks[0].measures[1];
+    expect(getMusicPosition().reportedTick).toBe(second.startTick);
   });
 });

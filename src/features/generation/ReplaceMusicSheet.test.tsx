@@ -55,18 +55,21 @@ describe('ReplaceMusicSheet', () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('keeps the boundary notes by default and nothing else', () => {
+  it("opens on the web's defaults: nothing preserved, moderate, the default backend", () => {
     /*
-      Keeping the notes at the edges is what makes a replacement join up with
-      the music around it. The other three each remove a whole dimension the
-      model was asked to work in, so they start off.
+      This sheet used to preserve boundary notes and keep the complexity as it
+      was, where the web preserved nothing and asked for moderate — so one
+      instruction over one bar range sent two different requests depending on
+      the device. The defaults are music_lib's `defaultReplaceSubmission` now.
     */
     const { view, onSubmit } = setup();
     fireEvent.changeText(view.getByLabelText('Prompt'), 'more dramatic');
     fireEvent.press(view.getByRole('button', { name: 'Replace' }));
     expect(onSubmit.mock.calls[0]![0]).toMatchObject({
+      complexity: 'moderate',
+      variant: 'deepseek',
       constraints: {
-        preserveBoundaryNotes: true,
+        preserveBoundaryNotes: false,
         preserveHarmony: false,
         preserveRhythm: false,
         preserveMelody: false,
@@ -74,8 +77,8 @@ describe('ReplaceMusicSheet', () => {
     });
   });
 
-  it('omits style, mood and complexity rather than sending "none"', () => {
-    // The sheet needs a value for absence; the request expresses it by leaving
+  it('omits style and mood rather than sending "none"', () => {
+    // The picker needs a value for absence; the request expresses it by leaving
     // the field out, which is what "no particular style" means on the wire.
     const { view, onSubmit } = setup();
     fireEvent.changeText(view.getByLabelText('Prompt'), 'more dramatic');
@@ -83,7 +86,12 @@ describe('ReplaceMusicSheet', () => {
     const submission = onSubmit.mock.calls[0]![0] as Record<string, unknown>;
     expect('style' in submission).toBe(false);
     expect('mood' in submission).toBe(false);
-    expect('complexity' in submission).toBe(false);
+  });
+
+  it('labels the complexity rather than printing its value', () => {
+    const { view } = setup();
+    expect(view.getByText('Moderate')).toBeTruthy();
+    expect(view.queryByText('moderate')).toBeNull();
   });
 
   it('trims the instruction, so trailing spaces are not part of the prompt', () => {

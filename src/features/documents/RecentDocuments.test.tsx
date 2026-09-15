@@ -1,7 +1,7 @@
 /**
  * The way back to something you were working on.
  *
- * Two rules. Reopening goes through `openDocument`, so a file already open
+ * Two rules. Reopening goes through `openFileInto`, so a file already open
  * raises its tab rather than opening a second, divergent copy. And **a file
  * that has gone away leaves the list** rather than sitting there failing every
  * time it is tapped — a recent list whose entries do not open is worse than an
@@ -26,12 +26,14 @@ function memoryStore(): KeyValueStore {
 
 const readText = jest.fn<() => Promise<string>>();
 
-function storage() {
+/** The document services, with a filesystem whose reads the test decides. */
+function services() {
   return {
-    readText: () => readText(),
-    writeText: async () => undefined,
-    defaultDirectory: () => '/documents',
-    join: (d: string, f: string) => `${d}/${f}`,
+    context: {},
+    files: {
+      readText: () => readText(),
+      writeText: async () => undefined,
+    },
   };
 }
 
@@ -39,11 +41,8 @@ describe('RecentDocuments', () => {
   it('shows nothing at all when there is no history', async () => {
     // An empty heading is a promise of content that is not there.
     const view = renderWithApp(
-      <DocumentsProvider list={new DocumentList()}>
-        <RecentDocuments
-          storage={storage() as never}
-          keyValue={memoryStore()}
-        />
+      <DocumentsProvider list={new DocumentList()} services={services()}>
+        <RecentDocuments keyValue={memoryStore()} />
       </DocumentsProvider>,
     );
     await act(async () => {});
@@ -66,8 +65,8 @@ describe('RecentDocuments', () => {
       openedAt: 1,
     });
     const view = renderWithApp(
-      <DocumentsProvider list={new DocumentList()}>
-        <RecentDocuments storage={storage() as never} keyValue={keyValue} />
+      <DocumentsProvider list={new DocumentList()} services={services()}>
+        <RecentDocuments keyValue={keyValue} />
       </DocumentsProvider>,
     );
     await waitFor(() => expect(view.getByText('Quartet')).toBeTruthy());
@@ -83,8 +82,8 @@ describe('RecentDocuments', () => {
     });
     readText.mockRejectedValue(new Error('ENOENT'));
     const view = renderWithApp(
-      <DocumentsProvider list={new DocumentList()}>
-        <RecentDocuments storage={storage() as never} keyValue={keyValue} />
+      <DocumentsProvider list={new DocumentList()} services={services()}>
+        <RecentDocuments keyValue={keyValue} />
       </DocumentsProvider>,
     );
     await waitFor(() => expect(view.getByText('Gone')).toBeTruthy());

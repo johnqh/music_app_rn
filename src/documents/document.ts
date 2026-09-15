@@ -1,98 +1,196 @@
 /**
- * An open document: one score, one editing store, one file it came from.
+ * An open document: an id for its tab, and the store that is the document.
  *
- * The native app edits several at once — tabs on a desktop — so the store is
- * **per document** rather than app-wide. That is what the music_editing split
- * bought: `createEditingStore()` makes an independent store with no server, no
- * project row and no autosaver behind it, and nothing in the editing slices
- * knows the difference.
+ * The native app edits several scores at once — tabs on a desktop — so the
+ * store is **per document** rather than app-wide. That store is music_lib's
+ * `createDocumentStore`: the same editing slices, saver and project write the
+ * web app's project runs on, composed once per document. Everything a document
+ * *is* lives in its state — the title, the origin (unsaved, a `.moo` file, a
+ * server project), `dirty`, `saveState`, `serverUpdatedAt`, `lastGeneration`.
  *
- * Saving is not in here. The store reports that it changed and this records the
- * fact; who writes the bytes, and when, is the document *list*'s business —
- * which is what keeps a local file and a server project the same object with
- * two different backings.
+ * It used to be otherwise. This file wrapped a bare editing store in a mutable
+ * record whose `dirty` and `serverUpdatedAt` sat *beside* the store, saved by an
+ * autosaver of this app's own and a second set of project calls. That copy had
+ * drifted from the web's in exactly the ways that lose work quietly: a write
+ * that raced an edit marked the document clean, every project save PUT the
+ * whole score, and nothing reported a save state a generation poll could read.
+ * Those rules exist once now, in music_lib, and nothing here restates them.
+ *
+ * What stays here is what a store cannot hold: which tab it is, and the
+ * services every store in this app is built with. A store has no identity of
+ * its own to key a tab or a React subtree by.
  */
-import { createEditingStore } from '@sudobility/music_editing';
-import type { EditingStore } from '@sudobility/music_editing';
-import type { Score } from '@sudobility/music_types';
-
-/** Where a document's bytes live, and therefore what saving it means. */
-export type DocumentOrigin =
-  | { kind: 'unsaved' }
-  | { kind: 'file'; uri: string }
-  | { kind: 'project'; projectId: string };
+import {
+  createDocumentStore,
+  openFileDocument,
+  openProjectDocument,
+} from '@sudobility/music_lib';
+import type {
+  CreateDocumentStoreOptions,
+  DocumentFileStorage,
+  DocumentOrigin,
+  DocumentStore,
+  StoreContext,
+} from '@sudobility/music_lib';
 
 export type MusicDocument = {
   readonly id: string;
-  readonly store: EditingStore;
-  title: string;
-  origin: DocumentOrigin;
-  /** True once the score has changed since it was last written. */
-  dirty: boolean;
-  /**
-   * Where this client last saw the server's copy, for a project document.
-   *
-   * On the document rather than in the store, because the store is the
-   * *editing* engine and knows nothing about a server. It is how a client tells
-   * its own writes from somebody else's: a poll reloads only when the reported
-   * stamp is strictly newer than this one, so an autosave does not read as a
-   * foreign change and send the editor to re-download what it just uploaded.
-   */
-  serverUpdatedAt?: string | null;
+  readonly store: DocumentStore;
 };
 
-export type CreateDocumentOptions = {
-  id: string;
-  score: Score;
-  title: string;
-  origin?: DocumentOrigin;
-  /** Called whenever the score changes, so the owner can schedule a save. */
-  onChanged?: (document: MusicDocument) => void;
-};
+let nextId = 0;
 
-export function createDocument(options: CreateDocumentOptions): MusicDocument {
-  const document: MusicDocument = {
-    id: options.id,
-    title: options.title,
-    origin: options.origin ?? { kind: 'unsaved' },
-    dirty: false,
-    // Assigned below: the store's change callback needs the document, and the
-    // document needs the store. One of the two has to be filled in after.
-    store: undefined as unknown as EditingStore,
-  };
+/** A fresh tab id. Never reused within a process, so a key cannot collide. */
+export function nextDocumentId(): string {
+  nextId += 1;
+  return `doc-${nextId}`;
+}
 
-  const store = createEditingStore({
-    onChanged: () => {
-      document.dirty = true;
-      options.onChanged?.(document);
-    },
-  });
-  (document as { store: EditingStore }).store = store;
-  store.getState().setScore(options.score, { resetHistory: true });
-  // `setScore` is an adoption, not an edit: a freshly opened document is clean.
-  document.dirty = false;
-  return document;
+/** Gives a store a tab. */
+export function asDocument(
+  store: DocumentStore,
+  id: string = nextDocumentId(),
+): MusicDocument {
+  return { id, store };
 }
 
 /**
- * Changes where a document's bytes live.
+ * What every document store in this app is built with.
  *
- * Used by "Sync to server", which turns a local document into a project without
- * closing and reopening it — the identity, the undo history and the tab all
- * survive, because only the destination changed.
+ * One object rather than three arguments threaded through every menu and
+ * screen that can make a document: a document created from the File menu used
+ * to register no change callback at all and so never saved itself, because the
+ * autosaver lived in the composition root and nothing below could reach it.
+ * Now the composition root builds this once and the provider hands it down.
  */
-export function setDocumentOrigin(
-  document: MusicDocument,
-  origin: DocumentOrigin,
-): void {
-  document.origin = origin;
+export type DocumentServices = {
+  /** The server, the token getter and the toast sink. `{}` with no server. */
+  context: StoreContext;
+  /** How a `.moo` is read and written on this platform. */
+  files: DocumentFileStorage;
+  /** Told after every successful write — the recent-documents list. */
+  onSaved?: CreateDocumentStoreOptions['onSaved'];
+};
+
+/**
+ * Services for a host with no filesystem and no server — every component test.
+ *
+ * A read or write rejects rather than resolving empty: a test that reaches the
+ * disk without saying so should fail where it happened.
+ */
+export const OFFLINE_DOCUMENT_SERVICES: DocumentServices = {
+  context: {},
+  files: {
+    readText: async uri => {
+      throw new Error(`No file storage in this host (read ${uri}).`);
+    },
+    writeText: async uri => {
+      throw new Error(`No file storage in this host (write ${uri}).`);
+    },
+  },
+};
+
+function storeOptions(services: DocumentServices) {
+  return {
+    context: services.context,
+    files: services.files,
+    ...(services.onSaved ? { onSaved: services.onSaved } : {}),
+  };
 }
 
-/** Records that the document's bytes now match what is on screen. */
-export function markSaved(
-  document: MusicDocument,
-  origin?: DocumentOrigin,
-): void {
-  document.dirty = false;
-  if (origin) document.origin = origin;
+/** A new document that has never been written: New, an import, first launch. */
+export function newDocument(
+  services: DocumentServices,
+  input: {
+    score: CreateDocumentStoreOptions['score'];
+    title: string;
+    origin?: DocumentOrigin;
+    /** For a project just created: where the create left the server. */
+    serverUpdatedAt?: string;
+  },
+): MusicDocument {
+  return asDocument(
+    createDocumentStore({
+      ...storeOptions(services),
+      score: input.score,
+      title: input.title,
+      ...(input.origin ? { origin: input.origin } : {}),
+      ...(input.serverUpdatedAt
+        ? { serverUpdatedAt: input.serverUpdatedAt }
+        : {}),
+    }),
+  );
+}
+
+/** Reads a `.moo` — or the web's JSON export — into a document. */
+export async function openFile(
+  services: DocumentServices,
+  uri: string,
+): Promise<MusicDocument> {
+  return asDocument(
+    await openFileDocument(services.files, uri, {
+      context: services.context,
+      ...(services.onSaved ? { onSaved: services.onSaved } : {}),
+    }),
+  );
+}
+
+/** Reads a server project into a document. */
+export async function openProject(
+  services: DocumentServices,
+  projectId: string,
+): Promise<MusicDocument> {
+  return asDocument(
+    await openProjectDocument(services.context, projectId, {
+      files: services.files,
+      ...(services.onSaved ? { onSaved: services.onSaved } : {}),
+    }),
+  );
+}
+
+/** The part of the open-document list opening a document needs. */
+type OpenInto = {
+  findOpen(origin: DocumentOrigin): MusicDocument | null;
+  activate(id: string): void;
+  open(document: MusicDocument): MusicDocument;
+};
+
+/**
+ * Opens a `.moo` into the list, or raises the tab already holding it —
+ * checked **before** reading, so reopening an open file neither reads the disk
+ * nor builds a second store over the same path.
+ */
+export async function openFileInto(
+  list: OpenInto,
+  services: DocumentServices,
+  uri: string,
+): Promise<MusicDocument> {
+  const existing = list.findOpen({ kind: 'file', uri });
+  if (existing) {
+    list.activate(existing.id);
+    return existing;
+  }
+  return list.open(await openFile(services, uri));
+}
+
+/** The same for a server project: the open tab, or one fresh read. */
+export async function openProjectInto(
+  list: OpenInto,
+  services: DocumentServices,
+  projectId: string,
+): Promise<MusicDocument> {
+  const existing = list.findOpen({ kind: 'project', projectId });
+  if (existing) {
+    list.activate(existing.id);
+    return existing;
+  }
+  return list.open(await openProject(services, projectId));
+}
+
+/** Whether two origins name the same place. Two unsaved documents never do. */
+export function sameOrigin(a: DocumentOrigin, b: DocumentOrigin): boolean {
+  if (a.kind === 'file' && b.kind === 'file') return a.uri === b.uri;
+  if (a.kind === 'project' && b.kind === 'project')
+    return a.projectId === b.projectId;
+  return false;
 }

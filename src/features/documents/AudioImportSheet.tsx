@@ -22,30 +22,26 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
 import type { NativeUploadFile } from '@sudobility/music_client';
+import { AUDIO_IMPORT_EXTENSIONS, audioMimeFor } from '@sudobility/music_io';
 import { createFilePicker } from '@/documents/file-picker';
 
-/** What the server will accept, and what the picker should therefore offer. */
-const AUDIO_EXTENSIONS = ['wav', 'mp3', 'mpa', 'm4a', 'aac'] as const;
-
-/** MIME types by extension; React Native will not infer one for an upload. */
-const AUDIO_MIME: Record<string, string> = {
-  wav: 'audio/wav',
-  mp3: 'audio/mpeg',
-  mpa: 'audio/mpeg',
-  m4a: 'audio/mp4',
-  aac: 'audio/aac',
-};
+/**
+ * The formats as a reader names them, for the description.
+ *
+ * The list is music_io's `AUDIO_IMPORT_EXTENSIONS`, the one the web picker
+ * offers — this sheet kept its own copy of it and of the MIME table beside it —
+ * and the words are the web's: the description takes `{{formats}}`, so the
+ * two apps describe the import in one sentence rather than two.
+ */
+const FORMAT_NAMES = AUDIO_IMPORT_EXTENSIONS.map(ext => ext.toUpperCase()).join(
+  ', ',
+);
 
 export function nativeUploadFor(uri: string): NativeUploadFile {
   const name = uri.split('/').pop() ?? 'recording';
-  const extension = name.split('.').pop()?.toLowerCase() ?? '';
-  return {
-    uri,
-    name,
-    // A default rather than a refusal: the server sniffs the container anyway,
-    // and refusing an unusual extension here would reject files it can read.
-    type: AUDIO_MIME[extension] ?? 'audio/mpeg',
-  };
+  // `audioMimeFor` defaults rather than refusing: the server sniffs the
+  // container anyway, and React Native will not infer a type for an upload.
+  return { uri, name, type: audioMimeFor(name) };
 }
 
 export type AudioImportSheetProps = {
@@ -71,7 +67,7 @@ export function AudioImportSheet({
   const choose = async (): Promise<void> => {
     const picker = createFilePicker();
     if (!picker.isSupported()) return;
-    const uri = await picker.pickFile(AUDIO_EXTENSIONS);
+    const uri = await picker.pickFile(AUDIO_IMPORT_EXTENSIONS);
     // Cancelling is an ordinary outcome, not something to report.
     if (uri) setPicked(nativeUploadFor(uri));
   };
@@ -105,7 +101,7 @@ export function AudioImportSheet({
         {available ? (
           <>
             <Text className="text-foreground text-base">
-              {t('importAudio.description')}
+              {t('importAudio.description', { formats: FORMAT_NAMES })}
             </Text>
             {picked ? (
               <Text className="text-muted-foreground text-sm">

@@ -1,10 +1,13 @@
 /**
  * The property sheet, mirroring the web app's.
  *
- * Four tabs in the web app's own order — Track first, then Note, Measure,
- * Score. Track is first because it is the only one that always has something
- * to show: there is always an active track, where the note and measure tabs
- * are an empty state until something is selected.
+ * Four tabs in music_editing's `INSPECTOR_TABS` order — Score, Track, Note,
+ * Bar — which is the web's, so a reader moving between the apps finds each
+ * tab in the same place. The tab a selection opens is `defaultInspectorTab`:
+ * what the selection is *of*, or Track when nothing is selected, since there
+ * is always an active track and the Note and Bar tabs are an empty state until
+ * something is. This panel had its own order (Track, Note, Bar, Score) and
+ * always opened on Track, so tapping a note left its properties a tab away.
  *
  * Reflects and invokes only. Every edit is a `music_editing` action, because
  * the rules those enforce are rules about a score.
@@ -14,9 +17,16 @@
  * the top of a panel is what that control is for, and the drawn strip it
  * replaced read as a web page's rather than as part of the app.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
+import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
+import {
+  INSPECTOR_TABS,
+  INSPECTOR_TAB_LABEL_KEY,
+  defaultInspectorTab,
+} from '@sudobility/music_editing';
+import type { InspectorTab } from '@sudobility/music_editing';
 import { SegmentedTabs } from '@/components/controls/SegmentedTabs';
 import { TrackTab } from './TrackTab';
 import { NoteTab } from './NoteTab';
@@ -24,9 +34,7 @@ import { MeasureTab } from './MeasureTab';
 import { ScoreTab } from './ScoreTab';
 import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
-
-const TABS = ['track', 'note', 'measure', 'score'] as const;
-export type InspectorTab = (typeof TABS)[number];
+import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
 
 export type InspectorPanelProps = {
   document: MusicDocument;
@@ -43,25 +51,48 @@ export type InspectorPanelProps = {
    * row for a job to write back to.
    */
   onReplace?: (scope: ReplaceScope) => void;
+  /** Generate Again, shown under the Score tab's fields, as on the web. */
+  generation?: GenerationChoicesProps;
 };
 
-export function InspectorPanel({ document, onReplace }: InspectorPanelProps) {
+export function InspectorPanel({
+  document,
+  onReplace,
+  generation,
+}: InspectorPanelProps) {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<InspectorTab>('track');
+  const selection = useStore(document.store, s => s.selection);
+  const [tab, setTab] = useState<InspectorTab>(() =>
+    defaultInspectorTab(selection),
+  );
+  /*
+    Re-derived when the selection changes — a fresh tap on a note, a bar or a
+    track — and otherwise left alone, so the reader's own choice of tab between
+    selections is not fought. The web panel's effect, on the same three lists.
+  */
+  useEffect(() => {
+    setTab(defaultInspectorTab(selection));
+  }, [selection.eventIds, selection.measureIds, selection.trackIds]);
 
   return (
     <View className="flex-1" accessibilityLabel={t('editor.inspector')}>
       <SegmentedTabs
         label={t('editor.inspector')}
-        options={TABS.map(value => ({
+        options={INSPECTOR_TABS.map(value => ({
           value,
-          label: t(`inspector.${value}`),
+          label: t(INSPECTOR_TAB_LABEL_KEY[value]),
         }))}
         value={tab}
         onChange={value => setTab(value as InspectorTab)}
         testID="inspector-tabs"
       />
       <ScrollView className="flex-1" contentContainerClassName="p-3 gap-3">
+        {tab === 'score' ? (
+          <ScoreTab
+            document={document}
+            {...(generation ? { generation } : {})}
+          />
+        ) : null}
         {tab === 'track' ? (
           <TrackTab document={document} {...(onReplace ? { onReplace } : {})} />
         ) : null}
@@ -74,7 +105,6 @@ export function InspectorPanel({ document, onReplace }: InspectorPanelProps) {
             {...(onReplace ? { onReplace } : {})}
           />
         ) : null}
-        {tab === 'score' ? <ScoreTab document={document} /> : null}
       </ScrollView>
     </View>
   );

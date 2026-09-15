@@ -11,6 +11,12 @@
  */
 export const CONSTANTS = {
   API_URL: process.env.MUSIC_API_URL ?? 'http://localhost:8032',
+  /**
+   * Where the web app is served — what a shared link to a published score
+   * opens. Separate from the API because they are different hosts; the web
+   * dev server's port by default.
+   */
+  WEB_URL: process.env.MUSIC_WEB_URL ?? 'http://localhost:5039',
   FIREBASE_API_KEY: process.env.FIREBASE_API_KEY ?? '',
   FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN ?? '',
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ?? '',

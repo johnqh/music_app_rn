@@ -25,57 +25,67 @@
  * those rules belong in the library, not in a toolbar. This file decides only
  * what is offered, in what order, and when it is available.
  *
- * **Availability is copied from the web too.** Eleven controls act on the
- * selection and quietly return when it is empty; leaving them live is how the
- * bar came to invite a tap and do nothing. `canEdit` is "there is a score and
- * the transport is not playing"; the marks that span a run need two notes; the
- * ones that sit on a note need one; Paste follows the clipboard; Copy stays
- * live while playing because it only reads.
+ * **Availability is music_editing's `selectToolbarAvailability`**, the same
+ * function the web bar reads, so the two cannot disagree about when a
+ * glissando can be written. It used to be copied from the web by hand, thirty
+ * `canEdit && …` expressions that agreed only because nobody had changed
+ * either bar since — and the More menu had already parted: only its Glissando
+ * entry knew about the transport, so Add Bar, Delete Bar and Enter Lyrics were
+ * live mid-playback and did nothing. The same goes for the few controls that
+ * are more than one call: Insert Note (`insertDefaultNoteAtCaret`), quantize
+ * (`quantizeSelectionToGrid`), the More menu (`EDITOR_MORE_ACTIONS` /
+ * `runMoreAction`), the add-track answers (`addTrackChoices` /
+ * `runAddTrackChoice`) and the edit modes (`EDIT_MODE_OPTIONS`).
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@sudobility/components-rn';
 import {
-  addBlankTrack,
-  addMeasure,
-  canStackOnActiveTrack,
-  caretToBar,
+  addTrackChoices,
   changeAccidental,
   changeArticulation,
   changeBeam,
   changeOrnament,
   chooseDuration,
   chooseEditMode,
-  defaultInsertPitch,
-  deleteMeasureAtCaret,
-  insertNoteAtCaret,
+  editModeHintKey,
+  goToBarFromInput,
+  insertDefaultNoteAtCaret,
   insertRestAtSelection,
-  quantizeSelection,
-  selectAll,
+  quantizeSelectionToGrid,
+  runAddTrackChoice,
+  runMoreAction,
+  selectEffectiveEditMode,
   selectSelectedNotes,
   selectSelectedTrack,
+  selectToolbarAvailability,
   toggleArpeggiate,
   toggleFermata,
-  toggleGlissando,
   toggleHairpin,
   toggleSlur,
   toggleTie,
+  voiceHintKey,
   zoomIn,
   zoomOut,
+  EDIT_MODE_OPTIONS,
+  EDITOR_MORE_ACTIONS,
+  EDITOR_VOICE_COUNT,
   QUANTIZE_GRIDS,
   QUANTIZE_GRID_SHORT,
 } from '@sudobility/music_editing';
 import {
+  ACCIDENTAL_ICON,
   ACCIDENTAL_OPTIONS,
   ARTICULATION_OPTIONS,
+  BASE_DURATIONS,
+  DURATION_ICON,
   NO_MARK,
   ORNAMENT_OPTIONS,
   barCount as scoreBarCount,
   durationDisplay,
   durationParts,
-  ticksFor,
   withBase,
   withModifier,
 } from '@sudobility/music_types';
@@ -86,7 +96,11 @@ import type {
   NotationIconName,
   Ornament,
 } from '@sudobility/music_types';
-import type { EditMode, QuantizeGrid } from '@sudobility/music_editing';
+import type {
+  AddTrackChoice,
+  EditorMoreAction,
+  QuantizeGrid,
+} from '@sudobility/music_editing';
 import type { LayoutMode } from '@sudobility/music_drawing';
 import {
   ChevronDoubleLeftIcon,
@@ -107,43 +121,22 @@ import { ChoiceSheet } from './ChoiceSheet';
 import { GoToBarSheet } from './GoToBarSheet';
 import type { ReactNode } from 'react';
 import type { MusicDocument } from '@/documents/document';
+import { devicePrefs } from '@/config/useDevicePrefs';
 
 const ICON_SIZE = 18;
 
 /** One row of controls, matching the web bar's `h-8` plus its padding. */
 const TOOLBAR_HEIGHT = 44;
 
-/**
- * Note values, drawn with the web toolbar's own glyphs.
- *
- * `NOTATION_ICONS` in music_types holds the shapes; both toolbars replay them,
- * so a semiquaver here is the same drawing as a semiquaver there rather than a
- * lookalike. Unicode was the shortcut, and it does not work: the multi-codepoint
- * musical characters have no coverage in the system font and draw as `?`.
- */
-const DURATIONS: readonly { value: BaseDuration; icon: NotationIconName }[] = [
-  { value: 'whole', icon: 'WholeNoteIcon' },
-  { value: 'half', icon: 'HalfNoteIcon' },
-  { value: 'quarter', icon: 'QuarterNoteIcon' },
-  { value: 'eighth', icon: 'EighthNoteIcon' },
-  { value: 'sixteenth', icon: 'SixteenthNoteIcon' },
-  { value: 'thirtysecond', icon: 'ThirtySecondNoteIcon' },
-];
-
-const ACCIDENTALS: readonly { value: Accidental; icon: NotationIconName }[] = [
-  { value: -2, icon: 'DoubleFlatIcon' },
-  { value: -1, icon: 'FlatIcon' },
-  { value: 0, icon: 'NaturalIcon' },
-  { value: 1, icon: 'SharpIcon' },
-  { value: 2, icon: 'DoubleSharpIcon' },
-];
-
-/** What a click on a stave does to music already there. */
-const EDIT_MODES: readonly { value: EditMode; icon: NotationIconName }[] = [
-  { value: 'insert', icon: 'InsertModeIcon' },
-  { value: 'replace', icon: 'ReplaceModeIcon' },
-  { value: 'stack', icon: 'ChordIcon' },
-];
+/*
+  Which glyph each note value, accidental and edit mode draws is music_types'
+  (`DURATION_ICON`, `ACCIDENTAL_ICON`) and music_editing's (`EDIT_MODE_OPTIONS`)
+  — records keyed by the vocabulary, shared with the web bar. This file held
+  three lists of its own that agreed with the web's only because nobody had
+  redrawn one. `NOTATION_ICONS` holds the shapes, so a semiquaver here is the
+  same drawing as a semiquaver there; Unicode was the shortcut, and it does not
+  work — the multi-codepoint musical characters draw as `?`.
+*/
 
 export type EditorToolbarProps = {
   document: MusicDocument;
@@ -178,39 +171,41 @@ export function EditorToolbar({
   const score = useStore(store, s => s.score);
   const snapGrid = useStore(store, s => s.snapGrid);
   const editMode = useStore(store, s => s.editMode);
+  const effectiveEditMode = useStore(store, selectEffectiveEditMode);
   const zoom = useStore(store, s => s.zoom);
   const noteInput = useStore(store, s => s.noteInput);
   const pitchDisplay = useStore(store, s => s.pitchDisplay);
   const activeVoiceIndex = useStore(store, s => s.activeVoiceIndex);
-  const selection = useStore(store, s => s.selection);
   const selectedNotes = useStore(store, selectSelectedNotes);
   const activeTrack = useStore(store, selectSelectedTrack);
   /*
-    A boolean, so this re-renders on a transport transition only — not one of
-    the high-frequency reads that must stay out of a component's top level.
+    Which controls can be used right now. Reference-stable while no answer
+    changes, so this re-renders on a transition only — not one of the
+    high-frequency reads that must stay out of a component's top level.
   */
-  const playing = useStore(store, s => s.state) === 'playing';
+  const available = useStore(store, selectToolbarAvailability);
 
   const [quantizeGrid, setQuantizeGrid] = useState<QuantizeGrid>('sixteenth');
   const [goToBarOpen, setGoToBarOpen] = useState(false);
   const [addTrackOpen, setAddTrackOpen] = useState(false);
 
-  const hasScore = score !== null;
-  const canEdit = hasScore && !playing;
-  const hasSelection =
-    selection.eventIds.length > 0 || selection.measureIds.length > 0;
-  const selectedCount = selection.eventIds.length;
+  /*
+    The mode a write will actually use: stack on a part that cannot play a
+    chord reads as replace (asked through the *track*, because a drum track's
+    program is a kit — Brush sits at 40, the Violin address).
 
-  // Asked through the track, because a drum track's program is a kit: Brush
-  // sits at 40, the Violin address, which is how the web toolbar came to refuse
-  // a three-piece drum hit. The rule lives in music_editing; this only draws it.
-  const canStack = canStackOnActiveTrack(store);
-
-  // A mode chosen before the track changed would otherwise refuse every edit,
-  // and that refusal only surfaces after you have already played something.
+    The stored mode is still corrected from an effect, exactly as the web bar
+    does, and that is not a leftover: the library's write paths
+    (`insertNoteAtCaret`, `paste`) read the *stored* `editMode`, not the
+    effective one, so without the correction a mode chosen before the track
+    changed would refuse every edit — a refusal that only surfaces after
+    something has been played. The rule for *when* is the library's; only the
+    write-back is here.
+  */
   useEffect(() => {
-    if (editMode === 'stack' && !canStack) chooseEditMode(store, 'replace');
-  }, [editMode, canStack, store]);
+    if (effectiveEditMode !== editMode)
+      chooseEditMode(store, effectiveEditMode);
+  }, [editMode, effectiveEditMode, store]);
 
   /**
    * What the one duration control shows: the armed length with nothing
@@ -227,20 +222,10 @@ export function EditorToolbar({
 
   const zoomLabel = `${Math.round(zoom * 100)}%`;
 
-  const act = useCallback(
-    (run: () => void) => () => {
-      // Content edits are refused while the transport plays — the store
-      // enforces it, and a dead-looking control is the honest signal.
-      if (playing) return;
-      run();
-    },
-    [playing],
-  );
-
-  const durationOptions: ToolbarOption[] = DURATIONS.map(d => ({
-    value: d.value,
-    label: t(`duration.${d.value}`),
-    icon: d.icon,
+  const durationOptions: ToolbarOption[] = BASE_DURATIONS.map(value => ({
+    value,
+    label: t(`duration.${value}`),
+    icon: DURATION_ICON[value],
   }));
 
   /*
@@ -248,14 +233,11 @@ export function EditorToolbar({
     reaches this bar without anybody editing it; only the *glyph* is the app's,
     since a drawing is not something a vocabulary can carry.
   */
-  const accidentalOptions: ToolbarOption[] = ACCIDENTAL_OPTIONS.map(option => {
-    const glyph = ACCIDENTALS.find(a => a.value === option.value);
-    return {
-      value: String(option.value),
-      label: t(option.labelKey),
-      ...(glyph ? { icon: glyph.icon } : {}),
-    };
-  });
+  const accidentalOptions: ToolbarOption[] = ACCIDENTAL_OPTIONS.map(option => ({
+    value: String(option.value),
+    label: t(option.labelKey),
+    icon: ACCIDENTAL_ICON[option.value],
+  }));
 
   const articulationOptions: ToolbarOption[] = ARTICULATION_OPTIONS.map(
     option => ({ value: option.value, label: t(option.labelKey) }),
@@ -281,33 +263,23 @@ export function EditorToolbar({
   /*
     The rare ones live behind a menu, exactly as the web bar's "More actions"
     does: each is a real action, but none is reached often enough to be worth
-    permanent width. Glissando and the three Replace scopes join them here
-    rather than getting chips of their own — the web reaches glissando by
-    keyboard, which native has no equivalent for, and Replace is a native-only
-    entry point that would otherwise be four more chips on the widest bar in
-    the app.
+    permanent width. Which entries, in what order and when each is available
+    are music_editing's (`EDITOR_MORE_ACTIONS`, each naming the toolbar control
+    whose availability it takes) — so an entry is greyed here exactly when it
+    is on the web, and `runMoreAction` re-checks as it runs, because a sheet
+    can outlive the moment the transport started under it.
   */
-  const moreOptions: ToolbarOption[] = [
-    { value: 'select-all', label: t('editor.selectAllNotes') },
-    { value: 'add-measure', label: t('editor.addMeasure') },
-    { value: 'delete-measure', label: t('editor.deleteMeasure') },
-    { value: 'go-to-bar', label: t('editor.goToBar') },
-    { value: 'enter-lyrics', label: t('editor.enterLyrics') },
-    {
-      value: 'glissando',
-      label: t('editor.glissando'),
-      disabled: !canEdit || selectedCount < 2,
-    },
-  ];
+  const moreOptions: ToolbarOption[] = EDITOR_MORE_ACTIONS.map(action => ({
+    value: action.value,
+    label: t(action.labelKey),
+    ...(available[action.control] ? {} : { disabled: true }),
+  }));
 
   const handleMoreAction = (value: string): void => {
-    if (value === 'select-all') selectAll(store);
-    else if (value === 'add-measure') act(() => addMeasure(store))();
-    else if (value === 'delete-measure')
-      act(() => deleteMeasureAtCaret(store))();
-    else if (value === 'go-to-bar') setGoToBarOpen(true);
-    else if (value === 'enter-lyrics') act(onEnterLyrics)();
-    else if (value === 'glissando') act(() => toggleGlissando(store))();
+    runMoreAction(store, value as EditorMoreAction, {
+      goToBar: () => setGoToBarOpen(true),
+      enterLyrics: onEnterLyrics,
+    });
   };
 
   return (
@@ -346,7 +318,7 @@ export function EditorToolbar({
           */}
           <IconButton
             label={t('editor.addTrack')}
-            disabled={!hasScore || playing}
+            disabled={!available.addTrack}
             onPress={() => setAddTrackOpen(true)}
           >
             <PlusIcon size={ICON_SIZE} className="text-foreground" />
@@ -368,7 +340,7 @@ export function EditorToolbar({
           {...(durationShown.kind === 'mixed'
             ? {}
             : { value: durationShown.base })}
-          disabled={!hasScore}
+          disabled={!available.noteDuration}
           onChange={value =>
             chooseDuration(store, withBase(snapGrid, value as BaseDuration))
           }
@@ -379,10 +351,7 @@ export function EditorToolbar({
             <Text className="text-foreground text-base">…</Text>
           ) : (
             <NotationIcon
-              name={
-                DURATIONS.find(d => d.value === durationShown.base)?.icon ??
-                'QuarterNoteIcon'
-              }
+              name={DURATION_ICON[durationShown.base]}
               color={ink.foreground}
             />
           )}
@@ -393,7 +362,7 @@ export function EditorToolbar({
             icon="DottedIcon"
             label={t('editor.dotted')}
             hint={t('editor.dottedHint')}
-            disabled={!hasScore}
+            disabled={!available.dotted}
             selected={durationParts(snapGrid).modifier === 'dotted'}
             onPress={() =>
               chooseDuration(store, withModifier(snapGrid, 'dotted'))
@@ -403,7 +372,7 @@ export function EditorToolbar({
             icon="TripletIcon"
             label={t('editor.triplet')}
             hint={t('editor.tripletHint')}
-            disabled={!hasScore}
+            disabled={!available.triplet}
             selected={durationParts(snapGrid).modifier === 'triplet'}
             onPress={() =>
               chooseDuration(store, withModifier(snapGrid, 'triplet'))
@@ -420,7 +389,7 @@ export function EditorToolbar({
           label={t('editor.accidental')}
           hint={t('editor.accidentalHint')}
           options={accidentalOptions}
-          disabled={!canEdit || !hasSelection}
+          disabled={!available.accidental}
           onChange={value =>
             changeAccidental(store, Number(value) as Accidental)
           }
@@ -438,7 +407,7 @@ export function EditorToolbar({
           label={t('editor.articulation')}
           hint={t('editor.articulationHint')}
           options={articulationOptions}
-          disabled={!canEdit || !hasSelection}
+          disabled={!available.articulation}
           onChange={value =>
             changeArticulation(
               store,
@@ -453,7 +422,7 @@ export function EditorToolbar({
           label={t('editor.ornament')}
           hint={t('editor.ornamentHint')}
           options={ornamentOptions}
-          disabled={!canEdit || !hasSelection}
+          disabled={!available.ornament}
           onChange={value =>
             changeOrnament(
               store,
@@ -468,29 +437,29 @@ export function EditorToolbar({
           icon="TieIcon"
           label={t('editor.toggleTie')}
           hint={t('editor.toggleTie')}
-          disabled={!canEdit || !hasSelection}
+          disabled={!available.tie}
           onPress={() => toggleTie(store, 'tieStart')}
         />
 
         <Divider />
 
         <Group label={t('editor.editMode')}>
-          {EDIT_MODES.map(mode => (
+          {EDIT_MODE_OPTIONS.map(mode => (
             <GlyphChip
               key={mode.value}
               icon={mode.icon}
-              label={t(`editor.${mode.value}Mode`)}
-              hint={
-                mode.value === 'stack' && !canStack
-                  ? t('editor.stackModeUnavailable', {
-                      instrument:
-                        activeTrack?.instrumentName ??
-                        t('editor.thisInstrument'),
-                    })
-                  : t(`editor.${mode.value}ModeHint`)
-              }
-              selected={editMode === mode.value}
-              disabled={!hasScore || (mode.value === 'stack' && !canStack)}
+              label={t(mode.labelKey)}
+              /*
+                Stack has a second hint for a part that cannot play a chord,
+                saying why the button is off rather than describing a mode the
+                reader cannot have. It takes the instrument's name.
+              */
+              hint={t(editModeHintKey(mode.value, available.stackMode), {
+                instrument:
+                  activeTrack?.instrumentName ?? t('editor.thisInstrument'),
+              })}
+              selected={effectiveEditMode === mode.value}
+              disabled={!available[`${mode.value}Mode`]}
               onPress={() => chooseEditMode(store, mode.value)}
             />
           ))}
@@ -500,12 +469,14 @@ export function EditorToolbar({
           icon="InsertNoteIcon"
           label={t('editor.insertNote')}
           hint={t('editor.insertNoteHint')}
-          disabled={!canEdit}
-          onPress={() =>
-            insertNoteAtCaret(store, defaultInsertPitch(store), {
-              advanceCaret: true,
-            })
-          }
+          disabled={!available.insertNote}
+          /*
+            Writes the default pitch at the caret and steps past it, so a second
+            press continues the line — decision 4 of the parity plan, and the
+            library's rather than an `advanceCaret: true` this bar has to
+            remember.
+          */
+          onPress={() => insertDefaultNoteAtCaret(store)}
         />
 
         {/*
@@ -516,7 +487,7 @@ export function EditorToolbar({
           icon="SlurIcon"
           label={t('editor.slur')}
           hint={t('editor.slurHint')}
-          disabled={!canEdit || selectedCount < 2}
+          disabled={!available.slur}
           onPress={() => toggleSlur(store)}
         />
         {/*
@@ -529,14 +500,14 @@ export function EditorToolbar({
           icon="CrescendoIcon"
           label={t('editor.crescendo')}
           hint={t('editor.crescendoHint')}
-          disabled={!canEdit || selectedCount < 2}
+          disabled={!available.crescendo}
           onPress={() => toggleHairpin(store, 'crescendo')}
         />
         <GlyphChip
           icon="DiminuendoIcon"
           label={t('editor.diminuendo')}
           hint={t('editor.diminuendoHint')}
-          disabled={!canEdit || selectedCount < 2}
+          disabled={!available.diminuendo}
           onPress={() => toggleHairpin(store, 'diminuendo')}
         />
         {/* Rolling a chord. One note is enough to select; a lone note simply
@@ -545,7 +516,7 @@ export function EditorToolbar({
           icon="ArpeggioIcon"
           label={t('editor.arpeggiate')}
           hint={t('editor.arpeggiateHint')}
-          disabled={!canEdit || selectedCount === 0}
+          disabled={!available.arpeggiate}
           onPress={() => toggleArpeggiate(store)}
         />
         {/*
@@ -557,14 +528,14 @@ export function EditorToolbar({
           icon="BeamBreakIcon"
           label={t('editor.beamBreak')}
           hint={t('editor.beamBreakHint')}
-          disabled={!canEdit || selectedCount === 0}
+          disabled={!available.beamBreak}
           onPress={() => changeBeam(store, 'break')}
         />
         <GlyphChip
           icon="BeamNoneIcon"
           label={t('editor.beamNone')}
           hint={t('editor.beamNoneHint')}
-          disabled={!canEdit || selectedCount === 0}
+          disabled={!available.beamNone}
           onPress={() => changeBeam(store, 'none')}
         />
         {/*
@@ -575,7 +546,7 @@ export function EditorToolbar({
           icon="FermataIcon"
           label={t('editor.fermata')}
           hint={t('editor.fermataHint')}
-          disabled={!canEdit || selectedCount === 0}
+          disabled={!available.fermata}
           onPress={() => toggleFermata(store)}
         />
 
@@ -591,8 +562,8 @@ export function EditorToolbar({
           label={t('editor.noteInput')}
           hint={t('editor.noteInputHint')}
           selected={noteInput}
-          disabled={!canEdit}
-          onPress={act(() => store.getState().setNoteInput(!noteInput))}
+          disabled={!available.noteInput}
+          onPress={() => store.getState().setNoteInput(!noteInput)}
         >
           <PencilIcon
             size={ICON_SIZE}
@@ -604,7 +575,7 @@ export function EditorToolbar({
           icon="InsertRestIcon"
           label={t('editor.insertRest')}
           hint={t('editor.insertRestHint')}
-          disabled={!canEdit}
+          disabled={!available.insertRest}
           onPress={() => insertRestAtSelection(store)}
         />
 
@@ -625,7 +596,7 @@ export function EditorToolbar({
           hint={t('editor.quantizeGridHint')}
           options={quantizeOptions}
           value={quantizeGrid}
-          disabled={!hasScore}
+          disabled={!available.quantizeGrid}
           onChange={value => setQuantizeGrid(value as QuantizeGrid)}
         >
           {/* The short form: the trigger is read at a glance, and the full
@@ -638,32 +609,25 @@ export function EditorToolbar({
           icon="QuantizeIcon"
           label={t('editor.quantize')}
           hint={t('editor.quantizeHint')}
-          disabled={!canEdit || !hasSelection}
-          onPress={() => {
-            if (!score) return;
-            void quantizeSelection(store, {
-              grid: ticksFor(quantizeGrid, score.ppq),
-              quantizeStarts: true,
-              quantizeDurations: true,
-            });
-          }}
+          disabled={!available.quantize}
+          onPress={() => void quantizeSelectionToGrid(store, quantizeGrid)}
         />
 
         <Divider />
 
-        {/* Two voices is where the notation actually needs them — stems up
-            against stems down on one stave. More than two is real notation too,
-            but nothing else in the editor distinguishes voices yet, so offering
-            four would be offering somewhere to lose notes. */}
+        {/* How many voices is music_editing's `EDITOR_VOICE_COUNT` — two, where
+            the notation actually needs them: stems up against stems down on
+            one stave. Nothing else in the editor tells more apart yet, so
+            offering four would be offering somewhere to lose notes. */}
         <Group label={t('editor.voice')}>
-          {[0, 1].map(index => (
+          {Array.from({ length: EDITOR_VOICE_COUNT }, (_, index) => (
             <TextChip
               key={index}
               label={String(index + 1)}
               name={t('editor.voiceNumber', { number: index + 1 })}
-              hint={t(`editor.voice${index + 1}Hint`)}
+              hint={t(voiceHintKey(index))}
               selected={activeVoiceIndex === index}
-              disabled={!hasScore}
+              disabled={!available.voice}
               onPress={() => store.getState().setActiveVoice(index)}
             />
           ))}
@@ -674,7 +638,7 @@ export function EditorToolbar({
         <ToolbarSelect
           label={t('editor.moreActions')}
           options={moreOptions}
-          disabled={!hasScore}
+          disabled={!available.moreActions}
           onChange={handleMoreAction}
         >
           <EllipsisHorizontalIcon
@@ -759,8 +723,15 @@ export function EditorToolbar({
           }
           hint={t('editor.pitchDisplayHint')}
           selected={pitchDisplay === 'written'}
+          /*
+            A device pref, not this document's: written pitch is how the reader
+            reads, on every tab and after a relaunch. The document stores are
+            mirrored from the prefs store, so writing to this one alone would
+            change one tab, persist nothing, and be overwritten by the next
+            change made anywhere else.
+          */
           onPress={() =>
-            store
+            devicePrefs
               .getState()
               .setPitchDisplay(
                 pitchDisplay === 'written' ? 'concert' : 'written',
@@ -808,30 +779,27 @@ export function EditorToolbar({
         open={addTrackOpen}
         title={t('editor.addTrack')}
         message={t('editor.addTrackPrompt')}
-        choices={[
-          {
-            value: 'blank' as const,
-            label: t('editor.blankTrack'),
-            detail: t('editor.blankTrackHint'),
-            primary: true,
-          },
-          {
-            value: 'generate' as const,
-            label: t('editor.generateTrack'),
-            detail: onGenerateTrack
-              ? t('editor.generateTrackHint')
-              : t('editor.generateTrackUnavailable'),
-            ...(onGenerateTrack ? {} : { disabled: true }),
-          },
-        ]}
-        onChoose={choice => {
+        /*
+          The answers, their order, their hints and when Generate is off are
+          music_editing's `addTrackChoices`, the list the web's menu draws.
+        */
+        choices={addTrackChoices({
+          canGenerate: onGenerateTrack !== undefined,
+        }).map((choice, index) => ({
+          value: choice.value,
+          label: t(choice.labelKey),
+          detail: t(choice.hintKey),
+          ...(index === 0 ? { primary: true } : {}),
+          ...(choice.disabled ? { disabled: true } : {}),
+        }))}
+        onChoose={(choice: AddTrackChoice) => {
           setAddTrackOpen(false);
-          // Both answers add content, so both are refused mid-playback — the
-          // trigger is already disabled, but the sheet can outlive a play that
-          // started under it.
-          if (playing) return;
-          if (choice === 'blank') addBlankTrack(store);
-          else onGenerateTrack?.();
+          // Both answers add content, so `runAddTrackChoice` refuses them
+          // mid-playback — the trigger is already disabled, but the sheet can
+          // outlive a play that started under it.
+          runAddTrackChoice(store, choice, {
+            ...(onGenerateTrack ? { generateTrack: onGenerateTrack } : {}),
+          });
         }}
         onCancel={() => setAddTrackOpen(false)}
       />
@@ -839,7 +807,7 @@ export function EditorToolbar({
         open={goToBarOpen}
         barCount={barCount}
         onClose={() => setGoToBarOpen(false)}
-        onGo={bar => caretToBar(store, bar)}
+        onGo={text => goToBarFromInput(store, text)}
       />
     </View>
   );

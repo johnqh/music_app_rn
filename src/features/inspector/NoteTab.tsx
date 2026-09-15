@@ -20,19 +20,21 @@
  * applies to all of them — the same `commonValue` rule the web panel uses. A
  * panel that showed only the first note's value would silently misreport what a
  * change was about to do.
+ *
+ * **What a field offers and commits is shared.** `durationFieldState` tells a
+ * custom length from a disagreeing selection, `noteTextFieldsVisible` decides
+ * when the free-text fields appear, `changeVelocity` rounds and clamps, and the
+ * number fields go through `parseNumericDraft` on blur (`NumberDraftInput`) —
+ * the same functions the web's Note tab calls. **The whole tab locks while the
+ * transport plays** (`selectEditLocked`, decision 4 of the parity plan): every
+ * field on it writes notes.
  */
 import { useCallback } from 'react';
 import { OTTAVAS } from '@sudobility/music_types';
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import {
-  Button,
-  NumberInput,
-  Select,
-  Switch,
-  Text,
-} from '@sudobility/components-rn';
+import { Button, Select, Switch, Text } from '@sudobility/components-rn';
 import {
   changeAccidental,
   changeArticulation,
@@ -40,6 +42,8 @@ import {
   changeVelocity,
   clearGraceNotes,
   displayedPitchForNote,
+  noteTextFieldsVisible,
+  selectEditLocked,
   selectSelectedNotes,
   setChordSymbol,
   setDynamic,
@@ -56,11 +60,13 @@ import {
   ARTICULATION_OPTIONS,
   DURATION_NAMES,
   DYNAMIC_OPTIONS,
+  MAX_OCTAVE,
+  MIN_OCTAVE,
   NO_MARK,
   PITCH_STEPS,
   barBeatForTick,
   commonValue,
-  durationNameForTicks,
+  durationFieldState,
   findTrack,
   voiceNumberOf,
 } from '@sudobility/music_types';
@@ -73,7 +79,7 @@ import type {
   Pitch,
   PitchStep,
 } from '@sudobility/music_types';
-import { DraftInput } from './DraftInput';
+import { DraftInput, NumberDraftInput } from './DraftInput';
 import { EmptyTab, Field } from './Field';
 import { ReplaceButton } from './ReplaceButton';
 import type { ReplaceScope } from '@sudobility/music_types';
@@ -91,8 +97,9 @@ export function NoteTab({
   const score = useStore(store, s => s.score);
   const pitchDisplay = useStore(store, s => s.pitchDisplay);
   const notes = useStore(store, selectSelectedNotes);
-  // Content is immutable while the transport plays; these write notes.
-  const playing = useStore(store, s => s.state) === 'playing';
+  // Content is immutable while the transport plays; every field here writes
+  // notes, so the whole tab locks.
+  const locked = useStore(store, selectEditLocked);
 
   const shown = useCallback(
     (note: NoteEvent): Pitch =>
@@ -129,17 +136,14 @@ export function NoteTab({
   const step = commonValue(notes.map(n => shown(n).step));
   const accidental = commonValue(notes.map(n => String(shown(n).accidental)));
   const octave = commonValue(notes.map(n => shown(n).octave));
-  const durationName = commonValue(
-    notes.map(n => durationNameForTicks(n.durationTicks, score.ppq)),
-  );
   /*
-    `durationNameForTicks` answers null for a length no single notehead spells,
-    and `commonValue` answers null when the selection disagrees — so the name
-    alone cannot tell "custom" from "mixed", and this field reported every
-    tie-joined or imported note as Mixed. The ticks separate them: agreed ticks
-    with no name is one custom length, which is what the web app names.
+    Three states, not two: a name, one custom length the selection agrees on
+    (a tie join or an import can make a length no notehead spells), or a
+    selection that disagrees. This field used to derive them from two
+    `commonValue`s and reported every tie-joined note as Mixed until that was
+    patched here; `durationFieldState` is the web's answer to the same question.
   */
-  const durationTicks = commonValue(notes.map(n => n.durationTicks));
+  const duration = durationFieldState(notes, score.ppq);
   const velocity = commonValue(notes.map(n => n.velocity));
   const articulation = commonValue(notes.map(n => n.articulation ?? NO_MARK));
   const dynamic = commonValue(notes.map(n => n.dynamic ?? NO_MARK));
@@ -168,7 +172,7 @@ export function NoteTab({
             <Select
               value={step ?? ''}
               accessibilityLabel={t('inspector.pitch')}
-              disabled={playing}
+              disabled={locked}
               placeholder={mixed}
               options={PITCH_STEPS.map((s: PitchStep) => ({
                 value: s,
@@ -185,7 +189,7 @@ export function NoteTab({
             <Select
               value={accidental ?? ''}
               accessibilityLabel={t('editor.accidental')}
-              disabled={playing}
+              disabled={locked}
               placeholder={mixed}
               options={ACCIDENTAL_OPTIONS.map(option => ({
                 value: String(option.value),
@@ -204,32 +208,29 @@ export function NoteTab({
         </View>
         <View className="flex-1">
           <Field label={t('inspector.octave')}>
-            {/* The name sits on a wrapper: `NumberInput` takes no
-                accessibility props of its own. */}
-            <View accessibilityLabel={t('inspector.octave')}>
-              <NumberInput
-                value={octave ?? 4}
-                min={-1}
-                max={9}
-                disabled={playing}
-                onChange={(value: number) => applyPitchPatch({ octave: value })}
-              />
-            </View>
+            <NumberDraftInput
+              value={octave}
+              min={MIN_OCTAVE}
+              max={MAX_OCTAVE}
+              integer
+              editable={!locked}
+              mixedPlaceholder={mixed}
+              accessibilityLabel={t('inspector.octave')}
+              onCommit={value => applyPitchPatch({ octave: value })}
+            />
           </Field>
         </View>
       </View>
 
       <Field label={t('inspector.duration')}>
         <Select
-          value={durationName ?? ''}
+          value={duration?.kind === 'name' ? duration.name : ''}
           accessibilityLabel={t('inspector.duration')}
-          disabled={playing}
+          disabled={locked}
           placeholder={
-            durationName !== null
-              ? undefined
-              : durationTicks === null
-              ? mixed
-              : t('inspector.customDuration', { ticks: durationTicks })
+            duration?.kind === 'custom'
+              ? t('inspector.customDuration', { ticks: duration.ticks })
+              : mixed
           }
           options={DURATION_NAMES.map((name: DurationName) => ({
             value: name,
@@ -249,22 +250,24 @@ export function NoteTab({
         marked.
       */}
       <Field label={t('inspector.velocity')}>
-        <View accessibilityLabel={t('inspector.velocity')}>
-          <NumberInput
-            value={velocity ?? 0}
-            min={0}
-            max={127}
-            disabled={playing}
-            onChange={(value: number) => changeVelocity(store, value)}
-          />
-        </View>
+        {/* `changeVelocity` rounds and clamps to 0-127 itself. */}
+        <NumberDraftInput
+          value={velocity}
+          min={0}
+          max={127}
+          integer
+          editable={!locked}
+          mixedPlaceholder={mixed}
+          accessibilityLabel={t('inspector.velocity')}
+          onCommit={value => changeVelocity(store, value)}
+        />
       </Field>
 
       <Field label={t('inspector.articulation')}>
         <Select
           value={articulation ?? ''}
           accessibilityLabel={t('inspector.articulation')}
-          disabled={playing}
+          disabled={locked}
           placeholder={mixed}
           options={ARTICULATION_OPTIONS.map(option => ({
             value: option.value,
@@ -288,7 +291,7 @@ export function NoteTab({
         <Select
           value={dynamic ?? ''}
           accessibilityLabel={t('inspector.dynamic')}
-          disabled={playing}
+          disabled={locked}
           placeholder={mixed}
           options={DYNAMIC_OPTIONS.map(option => ({
             value: option.value,
@@ -304,32 +307,42 @@ export function NoteTab({
         />
       </Field>
 
-      <Field label={t('inspector.chordSymbol')}>
-        {/*
+      {/*
+        Free text belonging to one notehead each, so shown for exactly one note
+        (`noteTextFieldsVisible`): a draft seeded from the first of several
+        notes would overwrite the rest with its value on blur.
+      */}
+      {noteTextFieldsVisible(notes) ? (
+        <Field label={t('inspector.chordSymbol')}>
+          {/*
           Stored as typed. `C-7`, `Cmin7` and `Cm7` are one chord written three
           ways, and only the root is ever parsed.
         */}
-        <DraftInput
-          value={first.chordSymbol ?? ''}
-          placeholder={t('inspector.chordSymbolPlaceholder')}
-          editable={!playing}
-          onCommit={text => setChordSymbol(store, first.id, text)}
-          accessibilityLabel={t('inspector.chordSymbol')}
-        />
-      </Field>
+          <DraftInput
+            value={first.chordSymbol ?? ''}
+            placeholder={t('inspector.chordSymbolPlaceholder')}
+            editable={!locked}
+            onCommit={text => setChordSymbol(store, first.id, text)}
+            accessibilityLabel={t('inspector.chordSymbol')}
+          />
+        </Field>
+      ) : null}
 
-      <Field label={t('inspector.fingering')}>
-        {/*
+      {noteTextFieldsVisible(notes) ? (
+        <Field label={t('inspector.fingering')}>
+          {/*
           A string, not a number: piano uses 1-5, guitar adds `T`, and editions
           write `1-2` for a substitution.
         */}
-        <DraftInput
-          value={first.fingering ?? ''}
-          editable={!playing}
-          onCommit={text => setFingering(store, text || undefined)}
-          accessibilityLabel={t('inspector.fingering')}
-        />
-      </Field>
+          <DraftInput
+            value={first.fingering ?? ''}
+            editable={!locked}
+            // `setFingering` trims, and clears on blank.
+            onCommit={text => setFingering(store, text)}
+            accessibilityLabel={t('inspector.fingering')}
+          />
+        </Field>
+      ) : null}
 
       {/* Where this note is, in the numbers a player reads off the page —
           `barBeatForTick` skips pickups, so this is the bar they would count. */}
@@ -370,20 +383,21 @@ export function NoteTab({
               second line on one stave is built, and this panel could only
               report which voice a note was in.
             */}
-            <View accessibilityLabel={t('inspector.voice')}>
-              <NumberInput
-                value={voice ?? 1}
-                min={1}
-                disabled={playing}
-                onChange={(value: number) =>
-                  setVoice(
-                    store,
-                    notes.map(n => n.id),
-                    Math.round(value) - 1,
-                  )
-                }
-              />
-            </View>
+            <NumberDraftInput
+              value={voice}
+              min={1}
+              integer
+              editable={!locked}
+              mixedPlaceholder={mixed}
+              accessibilityLabel={t('inspector.voice')}
+              onCommit={value =>
+                setVoice(
+                  store,
+                  notes.map(n => n.id),
+                  value - 1,
+                )
+              }
+            />
           </Field>
         </View>
       </View>
@@ -399,7 +413,7 @@ export function NoteTab({
         </Text>
         <Switch
           checked={tieStart === true}
-          disabled={playing}
+          disabled={locked}
           onCheckedChange={() => toggleTie(store, 'tieStart')}
           accessibilityLabel={t('inspector.tieStart')}
         />
@@ -410,7 +424,7 @@ export function NoteTab({
         </Text>
         <Switch
           checked={tieStop === true}
-          disabled={playing}
+          disabled={locked}
           onCheckedChange={() => toggleTie(store, 'tieStop')}
           accessibilityLabel={t('inspector.tieStop')}
         />
@@ -425,7 +439,7 @@ export function NoteTab({
         <View className="flex-row flex-wrap gap-2">
           <Button
             variant="secondary"
-            disabled={playing || notes.length < 2}
+            disabled={locked || notes.length < 2}
             onPress={() => toggleGlissando(store)}
             accessibilityLabel={t('inspector.glissando')}
           >
@@ -444,7 +458,7 @@ export function NoteTab({
             <Button
               key={kind}
               variant="secondary"
-              disabled={playing || notes.length < 2}
+              disabled={locked || notes.length < 2}
               onPress={() => toggleOttava(store, kind)}
               accessibilityLabel={kind}
             >
@@ -459,36 +473,38 @@ export function NoteTab({
         bar. `toGraceNote` takes the note *out* of the voice and leaves a rest
         of the same length, so the bar still adds up.
       */}
-      <Field label={t('inspector.ornaments')}>
-        <View className="gap-2">
-          <Button
-            variant="secondary"
-            disabled={playing || notes.length !== 1}
-            onPress={() => toGraceNote(store, first.id)}
-            accessibilityLabel={t('inspector.makeGraceNote')}
-          >
-            {t('inspector.makeGraceNote')}
-          </Button>
-          {graceCount > 0 ? (
+      {notes.length === 1 ? (
+        <Field label={t('inspector.ornaments')}>
+          <View className="gap-2">
             <Button
-              variant="ghost"
-              disabled={playing}
-              onPress={() => clearGraceNotes(store, [first.id])}
-              accessibilityLabel={t('inspector.clearGraceNotes', {
-                count: graceCount,
-              })}
+              variant="secondary"
+              disabled={locked}
+              onPress={() => toGraceNote(store, first.id)}
+              accessibilityLabel={t('inspector.makeGraceNote')}
             >
-              {t('inspector.clearGraceNotes', { count: graceCount })}
+              {t('inspector.makeGraceNote')}
             </Button>
-          ) : null}
-        </View>
-      </Field>
+            {graceCount > 0 ? (
+              <Button
+                variant="ghost"
+                disabled={locked}
+                onPress={() => clearGraceNotes(store, [first.id])}
+                accessibilityLabel={t('inspector.clearGraceNotes', {
+                  count: graceCount,
+                })}
+              >
+                {t('inspector.clearGraceNotes', { count: graceCount })}
+              </Button>
+            ) : null}
+          </View>
+        </Field>
+      ) : null}
 
       {onReplace ? (
         <ReplaceButton
+          document={document}
           scope="notes"
           label={t('inspector.replaceNotes')}
-          disabled={playing}
           onReplace={onReplace}
         />
       ) : null}

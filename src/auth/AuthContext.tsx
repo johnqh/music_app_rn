@@ -13,7 +13,8 @@
  * tree — it reports `null` and the app opens into the editor.
  */
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { getMusicClient } from '@/config/server';
+import { useSiteAdmin } from '@sudobility/music_client';
+import { getMusicClient, getNetworkClient } from '@/config/server';
 import type { ReactNode } from 'react';
 import { getApps, initializeApp } from 'firebase/app';
 import {
@@ -71,11 +72,52 @@ function firebaseAuth(): Auth | null {
   return getAuth(app);
 }
 
+/**
+ * The current ID token, or null when signed out — without a React tree.
+ *
+ * Module-level so the document stores' `StoreContext` can hold it: the scratch
+ * document is built before any provider mounts, and a store captures its
+ * context for life, so a getter closed over a provider's state would be the
+ * one from whenever that store happened to be made. This reads Firebase's own
+ * singleton on every call instead.
+ *
+ * `currentUser` is null between `getAuth()` and the first state report, so a
+ * token read straight away answers null for a signed-in user — the request
+ * then omits the header entirely and the server says 401 with "Authorization
+ * header required", which is the tell. Hence `authStateReady` first.
+ */
+export async function readIdToken(): Promise<string | null> {
+  const auth = firebaseAuth();
+  if (!auth) return null;
+  await auth.authStateReady();
+  return auth.currentUser ? auth.currentUser.getIdToken() : null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [siteAdmin, setSiteAdmin] = useState(false);
   const auth = useMemo(firebaseAuth, []);
+  /*
+    Whether this account is a site administrator, asked the way the web asks
+    it: music_client's `useSiteAdmin`, keyed by the account and closed by
+    default. It was a `GET /me` chained onto the auth-state callback here, with
+    its own state and its own catch — the same question as the web's, answered
+    by a second copy of the code.
+  */
+  const siteAdmin = useSiteAdmin(
+    useMemo(
+      () =>
+        getMusicClient()
+          ? {
+              networkClient: getNetworkClient(),
+              baseUrl: CONSTANTS.API_URL,
+              getToken: readIdToken,
+              userId: user?.uid ?? null,
+            }
+          : null,
+      [user?.uid],
+    ),
+  );
 
   useEffect(() => {
     if (!auth) {
@@ -87,30 +129,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return onAuthStateChanged(auth, (next: User | null) => {
       setUser(next ? { uid: next.uid, email: next.email } : null);
       setLoading(false);
-      /*
-        Whether this account is a site administrator.
-
-        `music_api` grants an administrator free generation — no quota, no
-        balance check, no charge — so they sit at a balance of zero forever, and
-        a courtesy gate that did not know it would refuse work the server would
-        have accepted. One chain with one catch at the end, so a synchronous
-        throw is caught as well as a rejected fetch: failing to learn somebody
-        is an administrator costs them free service, where an unhandled
-        rejection here would break signing in.
-      */
-      if (!next) {
-        setSiteAdmin(false);
-        return;
-      }
-      void next
-        .getIdToken()
-        .then(async token => {
-          const client = getMusicClient();
-          if (!client || !token) return;
-          const me = await client.getCurrentUser(token);
-          setSiteAdmin(me.siteAdmin);
-        })
-        .catch(() => setSiteAdmin(false));
     });
   }, [auth]);
 
@@ -130,19 +148,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         if (auth) await firebaseSignOut(auth);
       },
-      getToken: async () => {
-        // `currentUser` is null between `getAuth()` and the first state report,
-        // so a token read straight away answers null for a signed-in user — the
-        // request then omits the header entirely and the server says 401 with
-        // "Authorization header required", which is the tell.
-        if (!auth) return null;
-        await auth.authStateReady();
-        return auth.currentUser ? auth.currentUser.getIdToken() : null;
-      },
+      getToken: readIdToken,
     }),
-    // `siteAdmin` arrives after `user`, from its own request — leaving it out
-    // of the deps kept an administrator's context reading `false` until
-    // something else changed, so the credit gate refused them free work.
+    // `siteAdmin` arrives after `user`, from its own query — leaving it out of
+    // the deps kept an administrator's context reading `false` until something
+    // else changed, so the credit gate refused them free work.
     [auth, user, loading, siteAdmin],
   );
 

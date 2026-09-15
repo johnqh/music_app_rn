@@ -124,18 +124,15 @@ function ProjectList({
   const transcribeAudio = useCallback(
     async (file: NativeUploadFile) => {
       const client = getMusicClient();
-      // The button is only offered with a server behind it, but the token can
-      // still have expired between render and press.
-      if (!client || !context.token) return;
-      const saved = await client.transcribeAudio(
-        file,
-        file.name,
-        context.token,
-      );
+      // Read now rather than at render: the button is only offered with a
+      // server behind it, but the session can still have ended since.
+      const token = await context.getToken?.();
+      if (!client || !token) return;
+      const saved = await client.transcribeAudio(file, file.name, token);
       await refetch();
       onOpened(saved.id);
     },
-    [context.token, refetch, onOpened],
+    [context, refetch, onOpened],
   );
 
   if (isLoading) {

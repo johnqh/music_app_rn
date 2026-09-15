@@ -12,12 +12,22 @@
  * still has entries in it is a lie the reader can see. `repairAllIssues`
  * answers with both numbers for exactly that reason, and does the whole sweep
  * as one undoable step.
+ *
+ * **What those numbers mean is music_editing's `repairIssuesOutcome`**, shared
+ * with the web: which sentence the toast reads, and whether the list closes.
+ * This sheet used to decide the second half itself and never said anything,
+ * so a press that repaired nothing looked exactly like a press that did not
+ * register. The toast goes through the document store's `pushToast`, which
+ * reaches the app's one queue whichever tab raised it.
  */
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
-import { repairAllIssues } from '@sudobility/music_editing';
+import {
+  repairAllIssues,
+  repairIssuesOutcome,
+} from '@sudobility/music_editing';
 import type { MusicDocument } from '@/documents/document';
 
 export function IssuesSheet({
@@ -43,14 +53,17 @@ export function IssuesSheet({
         {
           label: t('editor.fixIssues'),
           onPress: () => {
-            const { remaining } = repairAllIssues(
-              document.store,
-              t('editor.fixIssues'),
+            const outcome = repairIssuesOutcome(
+              repairAllIssues(document.store, t('editor.fixIssues')),
             );
+            document.store.getState().pushToast({
+              message: t(outcome.messageKey, outcome.params),
+              severity: outcome.severity,
+            });
             // Closed only when the list is actually empty: leaving it open over
             // what could not be repaired is what tells the reader there is
             // still something here that needs a decision.
-            if (remaining === 0) onClose();
+            if (outcome.close) onClose();
           },
           disabled: issues.length === 0,
         },

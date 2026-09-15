@@ -3,29 +3,28 @@
  *
  * Shown only in the empty state: once a score is on screen, a list of other
  * scores is a distraction from the one you came for. Reopening goes through
- * `openDocument`, so a file already open raises its tab rather than opening a
- * second, divergent copy.
+ * `openFileInto`, so a file already open raises its tab rather than opening a
+ * second, divergent copy. Saving adds to the list through the store's
+ * `onSaved`, wired at the composition root; reopening refreshes the entry here.
  */
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MIN_TOUCH_TARGET } from '@sudobility/components-rn';
-import { openDocument } from '@/documents/document-storage';
-import type { DocumentStorage } from '@/documents/document-storage';
+import { openFileInto } from '@/documents/document';
 import { forgetRecent, loadRecent } from '@/documents/recent-documents';
+import { recordRecent } from '@/documents/useRecentTracking';
 import type {
   KeyValueStore,
   RecentDocument,
 } from '@/documents/recent-documents';
-import { useDocumentList } from '@/documents/DocumentsContext';
+import {
+  useDocumentList,
+  useDocumentServices,
+} from '@/documents/DocumentsContext';
 
-export function RecentDocuments({
-  storage,
-  keyValue,
-}: {
-  storage: DocumentStorage;
-  keyValue: KeyValueStore;
-}) {
+export function RecentDocuments({ keyValue }: { keyValue: KeyValueStore }) {
   const list = useDocumentList();
+  const services = useDocumentServices();
   const [recent, setRecent] = useState<RecentDocument[]>([]);
 
   useEffect(() => {
@@ -34,7 +33,8 @@ export function RecentDocuments({
 
   async function open(entry: RecentDocument) {
     try {
-      await openDocument(list, storage, entry.handle);
+      const opened = await openFileInto(list, services, entry.handle);
+      recordRecent(keyValue, opened.store.getState());
     } catch {
       // A file that has gone away should leave the list rather than sit there
       // failing every time it is tapped.

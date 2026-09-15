@@ -41,8 +41,10 @@ jest.mock('@/auth/AuthContext', () => ({
 
 const { useDocumentGeneration } =
   require('./useDocumentGeneration') as typeof import('./useDocumentGeneration');
-const { createDocument } =
+const { asDocument } =
   require('@/documents/document') as typeof import('@/documents/document');
+const { createDocumentStore } =
+  require('@sudobility/music_lib') as typeof import('@sudobility/music_lib');
 const { createEmptyScore } =
   require('@sudobility/music_types') as typeof import('@sudobility/music_types');
 
@@ -57,11 +59,13 @@ function run(
   client: unknown = { createJob: jest.fn() },
 ): Captured {
   mockGetMusicClient.mockReturnValue(client as never);
-  const document = createDocument({
-    id: 'd1',
-    title: 'T',
-    score: createEmptyScore({ title: 'T', measures: 4 }),
-  });
+  const document = asDocument(
+    createDocumentStore({
+      title: 'T',
+      score: createEmptyScore({ title: 'T', measures: 4 }),
+    }),
+    'd1',
+  );
   renderHook(() =>
     useDocumentGeneration(document, projectId, options as never),
   );

@@ -7,10 +7,11 @@
  * fills MusicXML's `<syllabic>`; the join is *derived* from those keystrokes
  * rather than asked for, because a writer knows they are mid-word.
  *
- * The native bar watches the *text* rather than key events, because a typed
- * space on a phone is a character in the field and not a key anything can
- * cancel. That is the one deliberate difference from the web bar, and it is
- * what these cover.
+ * The rules are music_editing's (`lyricEntryStep`, tested there). The native
+ * bar watches the *text* rather than key events, because a typed space on a
+ * phone is a character in the field and not a key anything can cancel — so what
+ * these cover is that watching the text reaches the same rules the web's key
+ * handler does, including a separator typed anywhere in the syllable.
  */
 import { jest } from '@jest/globals';
 import { act, fireEvent } from '@testing-library/react-native';
@@ -97,17 +98,27 @@ describe('LyricEntryBar', () => {
     ]);
   });
 
-  it('a separator in the middle of a syllable is just a character', () => {
+  it('a separator anywhere in the syllable ends it, as the key does on the web', () => {
     /*
-      Only a *trailing* separator advances. Fixing "beaut" to "beau t" by way
-      of the arrow keys must not throw the entry two notes forward.
+      This bar used to honour a separator only at the end, so a space typed with
+      the cursor inside a word was a character here and a word break on the web.
+      One keystroke, one meaning: `splitLyricSeparator` finds it anywhere, and
+      the syllable is the text without it.
     */
     const { view, document } = setup();
     const field = view.getByLabelText('Syllable');
     fireEvent.changeText(field, 'be au');
-    fireEvent.changeText(field, 'beau ');
     expect(lyricsOf(document)[0]).toBe('beau');
-    expect(lyricsOf(document)[1]).toBeUndefined();
+    expect(view.getByText(/2.*4/)).toBeTruthy();
+  });
+
+  it('Return writes the syllable and stops', () => {
+    const { view, document, onClose } = setup();
+    const field = view.getByLabelText('Syllable');
+    fireEvent.changeText(field, 'last');
+    fireEvent(field, 'submitEditing');
+    expect(lyricsOf(document)[0]).toBe('last');
+    expect(onClose).toHaveBeenCalled();
   });
 
   it('closes when the last note has been sung', () => {

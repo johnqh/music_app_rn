@@ -22,8 +22,12 @@
 import { jest } from '@jest/globals';
 import i18next from 'i18next';
 import { fireEvent } from '@testing-library/react-native';
-import { DOCS_TOPICS } from '@sudobility/music_editing';
-import { INSTRUMENT_OPTIONS } from '@sudobility/music_types';
+import {
+  DOCS_GROUPS,
+  DOCS_TOPICS,
+  docsGroupLabelKey,
+} from '@sudobility/music_editing';
+import { gmInstrumentRows } from '@sudobility/music_types';
 import { renderWithApp } from '@/test/render';
 import { DocsScreen } from './DocsScreen';
 
@@ -48,6 +52,16 @@ describe('DocsScreen', () => {
       topic => view.queryAllByText(label(topic.title)).length === 0,
     ).map(topic => topic.id);
     expect(missing).toEqual([]);
+  });
+
+  it('heads the topic list with the shared groups, in words', () => {
+    // The web's master list is grouped; this one was a flat run of topics.
+    const view = renderWithApp(<DocsScreen />);
+    for (const group of DOCS_GROUPS) {
+      const key = docsGroupLabelKey(group);
+      expect(i18next.exists(key)).toBe(true);
+      expect(view.queryAllByText(label(key)).length).toBeGreaterThan(0);
+    }
   });
 
   it('opens on the first topic rather than an empty pane', () => {
@@ -91,8 +105,9 @@ describe('DocsScreen', () => {
     const view = renderWithApp(<DocsScreen />);
     fireEvent.press(view.getAllByText(label(topic.title))[0]);
     // A real catalogue row, present only if the live widget rendered.
+    const first = gmInstrumentRows('')[0]!;
     expect(
-      view.queryAllByText(INSTRUMENT_OPTIONS[0].label).length,
+      view.queryAllByText(`${first.program}  ${first.name}`).length,
     ).toBeGreaterThan(0);
   });
 
@@ -100,6 +115,9 @@ describe('DocsScreen', () => {
     const plain = DOCS_TOPICS.find(t => !t.widget)!;
     const view = renderWithApp(<DocsScreen />);
     fireEvent.press(view.getAllByText(label(plain.title))[0]);
-    expect(view.queryAllByText(INSTRUMENT_OPTIONS[0].label)).toHaveLength(0);
+    const first = gmInstrumentRows('')[0]!;
+    expect(view.queryAllByText(`${first.program}  ${first.name}`)).toHaveLength(
+      0,
+    );
   });
 });

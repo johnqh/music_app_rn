@@ -8,7 +8,7 @@
  * `String Quartet.mid`. Composer had no path at all, which left every exported
  * and published score anonymous.
  */
-import { fireEvent } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
 import { renderWithApp, testDocument } from '@/test/render';
 
 const { ScoreTab } = require('./ScoreTab') as typeof import('./ScoreTab');
@@ -29,7 +29,7 @@ describe('ScoreTab', () => {
       'Wedding March',
     );
     // The document keeps its own name: they are different things.
-    expect(document.title).toBe('String Quartet');
+    expect(document.store.getState().title).toBe('String Quartet');
   });
 
   it('gives the composer a path at all', () => {
@@ -49,5 +49,26 @@ describe('ScoreTab', () => {
     expect(document.store.getState().score!.metadata.title).toBe(
       'String Quartet',
     );
+  });
+
+  it('puts a refused blank title back to the one the score has', () => {
+    // `setScoreMetadata` refuses a blank title; the field must not keep
+    // showing an empty box the score does not have.
+    const { view, document } = setup();
+    const field = view.getByLabelText(/title/i);
+    fireEvent.changeText(field, '   ');
+    fireEvent(field, 'blur');
+    expect(document.store.getState().score!.metadata.title).toBe(
+      'String Quartet',
+    );
+    expect(view.getByLabelText(/title/i).props.value).toBe('String Quartet');
+  });
+
+  it('locks while the transport plays', () => {
+    const { view, document } = setup();
+    act(() => {
+      document.store.setState({ state: 'playing' });
+    });
+    expect(view.getByLabelText(/title/i).props.editable).toBe(false);
   });
 });

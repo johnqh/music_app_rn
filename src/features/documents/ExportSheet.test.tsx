@@ -10,17 +10,20 @@
 import { jest } from '@jest/globals';
 import { fireEvent } from '@testing-library/react-native';
 import { createEmptyScore } from '@sudobility/music_types';
-import { createDocument } from '@/documents/document';
+import { createDocumentStore } from '@sudobility/music_lib';
+import { asDocument } from '@/documents/document';
 import { renderWithApp } from '@/test/render';
 import { ExportSheet } from './ExportSheet';
 
 function setup() {
-  const document = createDocument({
-    id: 'd',
-    title: 'Jig',
-    // Empty bars: nothing to clamp, drop or quantise, so the fit is clean.
-    score: createEmptyScore({ title: 'Jig', measures: 4 }),
-  });
+  const document = asDocument(
+    createDocumentStore({
+      title: 'Jig',
+      // Empty bars: nothing to clamp, drop or quantise, so the fit is clean.
+      score: createEmptyScore({ title: 'Jig', measures: 4 }),
+    }),
+    'd',
+  );
   const onExport = jest.fn();
   const onClose = jest.fn();
   const view = renderWithApp(
@@ -44,7 +47,7 @@ describe('ExportSheet', () => {
 
   it('writes a clean tracker fit without a confirmation', () => {
     const { view, onExport } = setup();
-    fireEvent.press(view.getByText('Tracker module (XM)'));
+    fireEvent.press(view.getByText('XM Module'));
     expect(onExport).toHaveBeenCalledWith('xm');
   });
 
@@ -55,9 +58,10 @@ describe('ExportSheet', () => {
     for (const label of [
       'MIDI',
       'MusicXML',
-      'Tracker module (XM)',
-      'Audio (WAV)',
-      'Audio (MP3)',
+      'XM Module',
+      'Audio (WAV)…',
+      'Audio (MP3)…',
+      'Project file (.moo)',
     ]) {
       expect(view.getByText(label)).toBeTruthy();
     }

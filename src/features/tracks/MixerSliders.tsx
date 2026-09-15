@@ -27,13 +27,19 @@ import { Pressable, View } from 'react-native';
 import { MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
 import { LevelSlider, PositionSlider } from '@/components/controls/LevelSlider';
 /*
-  `panReadout` is music_types', not this app's — it sits with the other "say a
-  stored value the way a musician says it" conversions in
-  `music-vocabulary.ts`. It was three lines in music_app and three identical
-  lines here, which is the shape of thing that agrees right up until one side
-  is edited.
+  `panReadout` and `volumeReadout` are music_types', not this app's — they sit
+  with the other "say a stored value the way a musician says it" conversions in
+  `music-vocabulary.ts` — and so are `clampVolume` / `clampPan`, which also
+  decide what a non-number means (silence and centre, never full level). Each
+  was a few lines in music_app and a few identical lines here, which is the
+  shape of thing that agrees right up until one side is edited.
 */
-import { panReadout } from '@sudobility/music_types';
+import {
+  clampPan,
+  clampVolume,
+  panReadout,
+  volumeReadout,
+} from '@sudobility/music_types';
 
 /** The row shape both controls use, stated once so the two cannot drift. */
 const ROW_CLASS = 'flex-row items-center gap-2';
@@ -72,8 +78,7 @@ export function VolumeSlider({
   onChange,
   onCommit,
 }: MixerSliderProps) {
-  const clamped = Math.min(1, Math.max(0, value));
-  const percent = Math.round(clamped * 100);
+  const clamped = clampVolume(value);
   return (
     <View className={ROW_CLASS}>
       <Text className={ROW_LABEL_CLASS}>{rowLabel}</Text>
@@ -85,7 +90,7 @@ export function VolumeSlider({
         {...(onCommit ? { onSlidingComplete: onCommit } : {})}
         {...(disabled === undefined ? {} : { disabled })}
       />
-      <Text className={ROW_READOUT_CLASS}>{`${percent}%`}</Text>
+      <Text className={ROW_READOUT_CLASS}>{volumeReadout(clamped)}</Text>
       <View style={{ width: ROW_ACTION_WIDTH }} />
     </View>
   );
@@ -117,7 +122,7 @@ export function PanSlider({
   onReset,
   resetLabel,
 }: PanSliderProps) {
-  const clamped = Math.min(1, Math.max(-1, value));
+  const clamped = clampPan(value);
   const canReset = !disabled && clamped !== 0;
 
   return (

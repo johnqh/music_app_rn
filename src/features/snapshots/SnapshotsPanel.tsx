@@ -1,95 +1,52 @@
 /**
- * Snapshots for the open project.
+ * Snapshots for the open project: what the reader sees and presses.
  *
- * **Creating one flushes the live score first.** The server copies the
- * *projects row*, so anything still unwritten would not be in the snapshot —
- * and right after a generation, that row may hold the placeholder score rather
- * than the result. Deleting the flush pins stale music, silently.
+ * Every rule about snapshots is music_client's `useProjectSnapshots`, shared
+ * with the web editor, and this panel only draws what it answers and calls what
+ * it offers. The native copy of those rules had drifted in the way that costs
+ * the most: it re-downloaded the whole project after every create and every
+ * open — resetting nothing visible, but shipping the score back down each time
+ * and replacing the store's score with an identical one — and suggested a
+ * different public title from the web's. The rules, now upstream:
  *
- * **There is no edit or delete.** Immutability is enforced by the absence of a
- * route rather than by a check somebody can forget, and this offers only what
- * the server will do: create, list, open, publish.
- *
- * **A published title can still change, and that is not an exception to it.**
- * The *music* never changes; what the public sees it called is metadata about
- * sharing. Re-publishing is the server's own way of setting it, and the route
- * keeps the first `publicId` — so a link already shared stays valid across a
- * rename.
- *
- * **Opening one branches rather than overwriting.** Every snapshot has a
- * `parentId`; opening v1 while v2 exists leaves v2 alone and makes the next
- * snapshot v1's child. The tree is `snapshotTree`'s, shared with the web app.
+ * - **Creating one flushes the live score first**, because the server copies
+ *   the *projects row* and saving is debounced.
+ * - **Nothing re-downloads the project.** Creating changes no music; opening
+ *   hands the score back in its own response. What both change is the row's
+ *   `updatedAt`, which the hook reports through `noteServerVersion` so the
+ *   generation poll does not read this client's own write as a foreign one.
+ * - **There is no edit or delete.** Immutability is enforced by the absence of a
+ *   route. A published *title* can still change — re-publishing sets it and
+ *   keeps the first `publicId`, so a shared link survives a rename.
+ * - **Opening one branches rather than overwriting**; the tree is
+ *   `snapshotTree`'s.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Spinner, Text } from '@sudobility/components-rn';
-import { snapshotTree } from '@sudobility/music_types';
-import type { SnapshotSummary, TreeNode } from '@sudobility/music_types';
-import type { MusicClient } from '@sudobility/music_client';
+import type { ProjectSnapshots } from '@sudobility/music_client';
 import { CreateSnapshotSheet, OpenSnapshotSheet } from './SnapshotSheets';
 import { DraftInput } from '@/features/inspector/DraftInput';
-import type { MusicDocument } from '@/documents/document';
-
-export type SnapshotGateway = Pick<
-  MusicClient,
-  | 'listSnapshots'
-  | 'createSnapshot'
-  | 'openSnapshot'
-  | 'publishSnapshot'
-  | 'unpublishSnapshot'
-  | 'getProjectStatus'
->;
 
 export type SnapshotsPanelProps = {
-  document: MusicDocument;
-  gateway: SnapshotGateway;
-  getToken: () => Promise<string | null>;
-  /** Writes any pending edit, so the snapshot holds what is on screen. */
-  flush: () => Promise<unknown> | unknown;
-  /** Re-reads the project after opening a snapshot re-parents it. */
-  reload: () => Promise<void>;
+  /** `useProjectSnapshots` for this project. */
+  snapshots: ProjectSnapshots;
+  /** Half of the suggested public title. */
+  projectName: string;
 };
 
 export function SnapshotsPanel({
-  document,
-  gateway,
-  getToken,
-  flush,
-  reload,
+  snapshots,
+  projectName,
 }: SnapshotsPanelProps) {
   const { t } = useTranslation();
-  const projectId =
-    document.origin.kind === 'project' ? document.origin.projectId : null;
-
-  const [snapshots, setSnapshots] = useState<SnapshotSummary[] | null>(null);
-  const [nodes, setNodes] = useState<readonly TreeNode[]>([]);
   const [createOpen, setCreateOpen] = useState(false);
   const [openOpen, setOpenOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(async () => {
-    if (!projectId) return;
-    const token = await getToken();
-    if (!token) return;
-    const [list, status] = await Promise.all([
-      gateway.listSnapshots(projectId, token),
-      // The live project's parent rides on the status call rather than costing
-      // a whole project fetch to read one id.
-      gateway.getProjectStatus(projectId, token),
-    ]);
-    setSnapshots(list);
-    setNodes(snapshotTree(list, status.parentSnapshotId ?? null));
-  }, [projectId, gateway, getToken]);
-
-  useEffect(() => {
-    void refresh().catch(e =>
-      setError(e instanceof Error ? e.message : String(e)),
-    );
-  }, [refresh]);
-
-  const run = (work: () => Promise<void>): void => {
+  const run = (work: () => Promise<unknown>): void => {
     setBusy(true);
     setError(null);
     void work()
@@ -97,14 +54,8 @@ export function SnapshotsPanel({
       .finally(() => setBusy(false));
   };
 
-  /*
-    Published-ness is a field on the summary rather than a second request: the
-    list already says which snapshots are public, and asking again would be a
-    round trip to learn what is in hand.
-  */
-  const published = (snapshots ?? []).filter(s => s.publicId);
-
-  if (!projectId) return null;
+  const list = snapshots.snapshots;
+  const loadError = snapshots.error;
 
   return (
     <View className="gap-2">
@@ -123,7 +74,7 @@ export function SnapshotsPanel({
         </Button>
         <Button
           variant="secondary"
-          disabled={busy || (snapshots?.length ?? 0) === 0}
+          disabled={busy || (list?.length ?? 0) === 0}
           onPress={() => setOpenOpen(true)}
         >
           {t('snapshot.history')}
@@ -137,19 +88,20 @@ export function SnapshotsPanel({
         by mistake needs the way out to be obvious, and it is the one action
         here that cannot be reached from the create form.
       */}
-      {published.length > 0 ? (
+      {snapshots.published.length > 0 ? (
         <View className="gap-1 pt-2">
           <Text className="text-muted-foreground text-sm">
             {t('snapshot.managePublishedTitle')}
           </Text>
-          {published.map(snapshot => (
+          {snapshots.published.map(snapshot => (
             <View
               key={snapshot.id}
               className="flex-row items-center justify-between gap-2"
             >
               {/*
                 A draft committed on blur, not per keystroke: a half-typed
-                title must never reach a public page.
+                title must never reach a public page. A blank one is refused
+                by the hook, which sends nothing.
               */}
               <View className="flex-1">
                 <DraftInput
@@ -158,37 +110,14 @@ export function SnapshotsPanel({
                     name: snapshot.name,
                   })}
                   onCommit={publicName =>
-                    run(async () => {
-                      const trimmed = publicName.trim();
-                      if (trimmed === '') return;
-                      const token = await getToken();
-                      if (!token) throw new Error(t('library.authRequired'));
-                      await gateway.publishSnapshot(
-                        snapshot.id,
-                        {
-                          // Kept as it was: this is a rename of the title, not
-                          // a change of who published it.
-                          publisherName: snapshot.publisherName ?? '',
-                          publicName: trimmed,
-                        },
-                        token,
-                      );
-                      await refresh();
-                    })
+                    run(() => snapshots.rename(snapshot.id, publicName))
                   }
                 />
               </View>
               <Button
                 variant="ghost"
                 disabled={busy}
-                onPress={() =>
-                  run(async () => {
-                    const token = await getToken();
-                    if (!token) throw new Error(t('library.authRequired'));
-                    await gateway.unpublishSnapshot(snapshot.id, token);
-                    await refresh();
-                  })
-                }
+                onPress={() => run(() => snapshots.unpublish(snapshot.id))}
               >
                 {t('snapshot.unpublish')}
               </Button>
@@ -197,52 +126,41 @@ export function SnapshotsPanel({
         </View>
       ) : null}
 
-      {snapshots === null ? <Spinner /> : null}
+      {snapshots.isLoading ? <Spinner /> : null}
       {error ? <Text className="text-destructive text-sm">{error}</Text> : null}
+      {!error && loadError ? (
+        <Text className="text-destructive text-sm">
+          {loadError instanceof Error ? loadError.message : String(loadError)}
+        </Text>
+      ) : null}
 
       <CreateSnapshotSheet
         open={createOpen}
-        snapshotCount={snapshots?.length ?? 0}
-        projectName={document.title}
+        snapshotCount={list?.length ?? 0}
+        projectName={projectName}
+        {...(snapshots.defaultPublisherName
+          ? { defaultPublisherName: snapshots.defaultPublisherName }
+          : {})}
         onClose={() => setCreateOpen(false)}
         onCreate={(name, publisherName, publicName) =>
           run(async () => {
             setCreateOpen(false);
-            /*
-              Flush before asking. The server copies the projects row, and
-              saving is debounced — without this, a snapshot taken moments
-              after an edit pins the score as it was before it.
-            */
-            await flush();
-            const token = await getToken();
-            if (!token) throw new Error(t('library.authRequired'));
-            const snapshot = await gateway.createSnapshot(
-              projectId,
-              name,
-              token,
-            );
             // Published in the same step it is created, because that is how
             // the sheet asks it: publishing is a tick on the create form
             // rather than a second trip through a list.
-            if (publisherName && publicName) {
-              await gateway.publishSnapshot(
-                snapshot.id,
-                { publisherName, publicName },
-                token,
-              );
-            }
-            // Creating one re-parents the project row, which is a change this
-            // client made — so the project has to be re-read rather than left
-            // to the poll, which would see it as somebody else's.
-            await reload();
-            await refresh();
+            await snapshots.create({
+              name,
+              ...(publisherName && publicName
+                ? { publish: { publisherName, publicName } }
+                : {}),
+            });
           })
         }
       />
 
       <OpenSnapshotSheet
         open={openOpen}
-        nodes={nodes}
+        nodes={snapshots.nodes}
         onClose={() => setOpenOpen(false)}
         onSnapshotFirst={() => {
           // The non-destructive escape: keep the current work, then come back.
@@ -252,11 +170,7 @@ export function SnapshotsPanel({
         onOpen={snapshotId =>
           run(async () => {
             setOpenOpen(false);
-            const token = await getToken();
-            if (!token) throw new Error(t('library.authRequired'));
-            await gateway.openSnapshot(snapshotId, token);
-            await reload();
-            await refresh();
+            await snapshots.open(snapshotId);
           })
         }
       />

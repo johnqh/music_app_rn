@@ -1,11 +1,19 @@
 /**
- * A piano keyboard, in true physical layout.
+ * A piano keyboard, in true physical layout — drawn from keys it is handed.
  *
- * The geometry is `music_drawing`'s `computeKeys` — the same arithmetic the web
- * app lays its keyboard out with. It moved into the library the moment a second
- * app needed it: white keys tile, black keys straddle the boundary between two
- * whites, and a second copy of that would drift from the first the moment
- * either was tuned.
+ * Which keys, how wide, how tall, what each is called and where its label
+ * sits are all music_drawing's `keyboardKeys`, the one call the web keyboard
+ * makes too. This component used to compose those itself from `computeKeys`,
+ * and the composition had drifted from the web's in ways a reader could see: a
+ * transposing part read in written pitch kept its concert lettering, labels
+ * were printed inside the keys rather than in a gutter under them, the black
+ * keys' height was recomputed from the ratio, and a drum kit's black keys
+ * carried no names. The keys arrive decided now; this draws them.
+ *
+ * The colour of a key is `keyboardKeyFill` over the render theme — sounding
+ * over selected over the out-of-range dimming — so a black key outside the
+ * instrument dims as a white one does, which it did not here, and a lit key is
+ * the same colour as a playing note on both apps.
  *
  * Absolutely positioned rather than flexed, because a flex row cannot express a
  * child that overlaps two of its siblings. Whites come first in the array so
@@ -18,34 +26,23 @@
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
-  BLACK_KEY_HEIGHT_RATIO,
-  FULL_RANGE,
-  KEYBOARD_OUT_OF_RANGE_WHITE,
-  computeKeys,
-  keyboardWidth,
-  whiteKeyCount,
+  LABEL_ROW_HEIGHT,
+  LIGHT_RENDER_THEME,
+  keyboardKeyFill,
 } from '@sudobility/music_drawing';
-import type {
-  KeyNaming,
-  KeyboardRange,
-  PianoKey,
-} from '@sudobility/music_drawing';
-import type { MidiRange } from '@sudobility/music_types';
+import type { PianoKey, RenderTheme } from '@sudobility/music_drawing';
 
 export type PianoKeyboardProps = {
-  /** Available width; the white-key width follows from it and the range. */
+  /** The keys, from `keyboardKeys`: whites first, blacks after. */
+  keys: readonly PianoKey[];
+  /** The keyboard's total width, from `keyboardKeys`. */
   width: number;
-  height?: number;
-  range?: KeyboardRange;
-  /**
-   * What the instrument can play. Keys outside it are drawn pale and do not
-   * respond: they are there because the track holds notes there, not so more
-   * can be written. Null marks none.
-   */
-  playable?: MidiRange | null;
-  naming?: KeyNaming;
-  /** Pitches currently sounding, lit while they play. */
-  sounding?: ReadonlySet<number>;
+  /** The whole panel's height, label gutter included. */
+  height: number;
+  /** The fills come from here; defaults to the light theme. */
+  theme?: RenderTheme;
+  /** Pitches drawn pressed — `litKeys`: sounding while playing, or held. */
+  lit?: ReadonlySet<number>;
   /**
    * Pitches of the one selected chord, marked so they can be toggled.
    *
@@ -65,34 +62,25 @@ export type PianoKeyboardProps = {
   onKeyUp?: (midi: number) => void;
 };
 
-const DEFAULT_HEIGHT = 120;
-
 export function PianoKeyboard({
+  keys,
   width,
-  height = DEFAULT_HEIGHT,
-  range = FULL_RANGE,
-  playable = null,
-  naming = 'pitch',
-  sounding,
+  height,
+  theme = LIGHT_RENDER_THEME,
+  lit,
   selected,
   onKeyDown,
   onKeyUp,
 }: PianoKeyboardProps) {
-  // The range is fitted to the width rather than scrolled: a keyboard you have
-  // to scroll is one you cannot play a two-handed chord on.
-  const whiteWidth = width / Math.max(1, whiteKeyCount(range));
-  const keys = computeKeys(whiteWidth, height, range, naming, playable);
-  const total = keyboardWidth(whiteWidth, range);
-
   return (
-    <View style={[styles.board, { width: total, height }]}>
+    <View style={[styles.board, { width, height }]}>
       {keys.map(key => (
         <Key
           key={key.midi}
           pianoKey={key}
-          height={height}
-          lit={sounding?.has(key.midi) ?? false}
+          lit={lit?.has(key.midi) ?? false}
           selected={selected?.has(key.midi) ?? false}
+          theme={theme}
           onDown={onKeyDown}
           onUp={onKeyUp}
         />
@@ -103,78 +91,86 @@ export function PianoKeyboard({
 
 const Key = memo(function Key({
   pianoKey,
-  height,
   lit,
   selected,
+  theme,
   onDown,
   onUp,
 }: {
   pianoKey: PianoKey;
-  height: number;
   lit: boolean;
   selected: boolean;
+  theme: RenderTheme;
   onDown?: ((midi: number) => void) | undefined;
   onUp?: ((midi: number) => void) | undefined;
 }) {
   const black = pianoKey.isBlack;
   return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={pianoKey.label ?? String(pianoKey.midi)}
-      accessibilityState={{ disabled: pianoKey.outOfRange }}
-      disabled={pianoKey.outOfRange}
-      onPressIn={() => onDown?.(pianoKey.midi)}
-      onPressOut={() => onUp?.(pianoKey.midi)}
-      style={[
-        styles.key,
-        black ? styles.black : styles.white,
-        {
-          left: pianoKey.x,
-          width: pianoKey.width,
-          height: black ? height * BLACK_KEY_HEIGHT_RATIO : height,
-        },
-        /*
-          Sounding wins over selected: a note you are hearing right now is the
-          more urgent fact, and the two rarely coincide.
-        */
-        !black && pianoKey.outOfRange && styles.whiteOutOfRange,
-        selected && (black ? styles.blackSelected : styles.whiteSelected),
-        lit && (black ? styles.blackLit : styles.whiteLit),
-      ]}
-    >
+    <>
+      <Pressable
+        accessibilityRole="button"
+        // The spelled-out name, not the printed label: a black key prints
+        // nothing and a drum key prints an abbreviation, and both still have to
+        // announce what they are.
+        accessibilityLabel={pianoKey.name}
+        accessibilityState={{ disabled: pianoKey.outOfRange }}
+        disabled={pianoKey.outOfRange}
+        onPressIn={() => onDown?.(pianoKey.midi)}
+        onPressOut={() => onUp?.(pianoKey.midi)}
+        style={[
+          styles.key,
+          black ? styles.black : styles.white,
+          {
+            left: pianoKey.x,
+            width: pianoKey.width,
+            height: pianoKey.height,
+            backgroundColor: keyboardKeyFill(
+              pianoKey,
+              { lit, selected },
+              theme,
+            ),
+          },
+        ]}
+      />
+      {/*
+        A sibling in the gutter rather than a child of the key: `labelTop` is
+        measured from the key's top and lands below it, which a child would need
+        overflow to reach — and Android clips a child's overflow. A labelled
+        black key's `labelTop` is already on the second row, where its name
+        cannot land on both neighbours'.
+      */}
       {pianoKey.label ? (
         <Text
-          style={[styles.label, black && styles.labelOnBlack]}
+          style={[
+            styles.label,
+            {
+              left: pianoKey.x,
+              width: pianoKey.width,
+              top: pianoKey.labelTop,
+              height: LABEL_ROW_HEIGHT,
+              color: theme.foreground,
+            },
+          ]}
           numberOfLines={1}
         >
           {pianoKey.label}
         </Text>
       ) : null}
-    </Pressable>
+    </>
   );
 });
 
 const styles = StyleSheet.create({
-  board: { position: 'relative', backgroundColor: '#18181b' },
-  key: {
-    position: 'absolute',
-    top: 0,
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-  },
+  board: { position: 'relative' },
+  key: { position: 'absolute', top: 0 },
   white: {
-    backgroundColor: '#fafafa',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: '#a1a1aa',
   },
-  black: { backgroundColor: '#27272a' },
-  whiteOutOfRange: { backgroundColor: KEYBOARD_OUT_OF_RANGE_WHITE },
-  whiteLit: { backgroundColor: '#93c5fd' },
-  blackLit: { backgroundColor: '#2563eb' },
-  // Amber, as the web marks a selected key — distinct from the blue of
-  // sounding, because they mean different things and can overlap.
-  whiteSelected: { backgroundColor: '#fcd34d' },
-  blackSelected: { backgroundColor: '#b45309' },
-  label: { fontSize: 9, color: '#52525b', paddingBottom: 3 },
-  labelOnBlack: { color: '#e4e4e7' },
+  black: { zIndex: 1 },
+  label: {
+    position: 'absolute',
+    fontSize: 9,
+    textAlign: 'center',
+  },
 });

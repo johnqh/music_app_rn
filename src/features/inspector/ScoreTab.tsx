@@ -15,13 +15,29 @@ import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@sudobility/components-rn';
+import { selectEditLocked } from '@sudobility/music_editing';
 import { Field } from './Field';
 import type { MusicDocument } from '@/documents/document';
+import { GenerationChoices } from '@/features/generation/GenerationChoices';
+import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
 
-export function ScoreTab({ document }: { document: MusicDocument }) {
+export function ScoreTab({
+  document,
+  generation,
+}: {
+  document: MusicDocument;
+  /**
+   * Generate Again, when the score came from a generation. Below the fields,
+   * where the web inspector puts it: how the piece was made is a fact about the
+   * score, like its title.
+   */
+  generation?: GenerationChoicesProps;
+}) {
   const { t } = useTranslation();
   const store = document.store;
   const metadata = useStore(store, s => s.score?.metadata);
+  // Content, so locked while the transport plays — the web's rule.
+  const locked = useStore(store, selectEditLocked);
   const [title, setTitle] = useState(metadata?.title ?? '');
   const [composer, setComposer] = useState(metadata?.composer ?? '');
 
@@ -33,18 +49,20 @@ export function ScoreTab({ document }: { document: MusicDocument }) {
   /*
     Through the store's own action, not by dispatching the command.
 
-    `setScoreMetadata` trims each field and **refuses an empty title** — a
-    score with no name exports as one — and dispatching `changeMetadataCommand`
-    straight past it skipped both. The web tab has always gone through the
-    action; this one did not, which is two answers to "what happens when you
-    clear the title and tab away".
+    `setScoreMetadata` trims each field, **refuses an empty title** — a score
+    with no name exports as one — skips a field that has not changed, and picks
+    its own undo label; it answers whether it wrote. Whatever it declines, the
+    draft goes back to what the score holds, as the web's tab does — the field
+    used to keep showing a blank title the score did not have.
   */
-  const commit = useCallback(
-    (patch: { title?: string; composer?: string }) => () => {
-      store.getState().setScoreMetadata(patch, t('inspector.setMetadata'));
-    },
-    [store, t],
-  );
+  const commitTitle = useCallback(() => {
+    if (!store.getState().setScoreMetadata({ title }))
+      setTitle(metadata?.title ?? '');
+  }, [store, title, metadata?.title]);
+  const commitComposer = useCallback(() => {
+    if (!store.getState().setScoreMetadata({ composer }))
+      setComposer(metadata?.composer ?? '');
+  }, [store, composer, metadata?.composer]);
 
   return (
     <View className="gap-3">
@@ -55,7 +73,8 @@ export function ScoreTab({ document }: { document: MusicDocument }) {
         <Input
           value={title}
           onChangeText={setTitle}
-          onBlur={commit({ title })}
+          onBlur={commitTitle}
+          editable={!locked}
           accessibilityLabel={t('inspector.scoreTitle')}
         />
       </Field>
@@ -63,10 +82,12 @@ export function ScoreTab({ document }: { document: MusicDocument }) {
         <Input
           value={composer}
           onChangeText={setComposer}
-          onBlur={commit({ composer })}
+          onBlur={commitComposer}
+          editable={!locked}
           accessibilityLabel={t('inspector.composer')}
         />
       </Field>
+      {generation ? <GenerationChoices {...generation} /> : null}
     </View>
   );
 }

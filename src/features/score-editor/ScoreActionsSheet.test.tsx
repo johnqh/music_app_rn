@@ -8,28 +8,57 @@
  * because the action did not exist: a cleared bar keeps its number and its
  * markings, a deleted one takes the rest of the score up with it.
  *
- * The web app's `ScoreContextMenu.test.tsx` asserts the same things about the
- * same menu; the two are one control with two shells.
+ * The rules — which entries are live, what the header counts — are
+ * music_editing's `scoreContextMenuModel`, tested there. These render the
+ * model, so what is pinned here is that the sheet draws what it is handed; the
+ * web app's `ScoreContextMenu.test.tsx` asserts the same about its menu.
  */
 import { jest } from '@jest/globals';
 import { fireEvent } from '@testing-library/react-native';
+import { scoreContextMenuModel } from '@sudobility/music_editing';
+import type { ClipboardData } from '@sudobility/music_editing';
+import type { ScoreSelection } from '@sudobility/music_types';
 import { renderWithApp } from '@/test/render';
 import { ScoreActionsSheet } from './ScoreActionsSheet';
-import type { ScoreActionsSheetProps } from './ScoreActionsSheet';
 
-function open(overrides: Partial<ScoreActionsSheetProps> = {}) {
+const ids = (prefix: string, n: number) =>
+  Array.from({ length: n }, (_, i) => `${prefix}${i}`);
+const noteSelection = (n: number): ScoreSelection => ({
+  eventIds: ids('n', n),
+  measureIds: [],
+  trackIds: [],
+});
+const selections: Record<string, (n: number) => ScoreSelection> = {
+  track: () => ({ eventIds: [], measureIds: [], trackIds: ['t0'] }),
+  measures: n => ({ eventIds: [], measureIds: ids('m', n), trackIds: [] }),
+  notes: noteSelection,
+};
+const NOTES_CLIPBOARD: ClipboardData = {
+  kind: 'notes',
+  events: [],
+  anchorTick: 0,
+};
+const NOTHING: ScoreSelection = { eventIds: [], measureIds: [], trackIds: [] };
+
+function open(
+  input: {
+    selection?: ScoreSelection;
+    clipboard?: ClipboardData | null;
+    playing?: boolean;
+  } = {},
+) {
   const onAction = jest.fn();
   const onClose = jest.fn();
   const view = renderWithApp(
     <ScoreActionsSheet
       open
-      kind="notes"
-      count={1}
-      canPaste={false}
-      canEdit
+      model={scoreContextMenuModel({
+        selection: input.selection ?? noteSelection(1),
+        clipboard: input.clipboard ?? null,
+        playing: input.playing ?? false,
+      })}
       onAction={onAction}
       onClose={onClose}
-      {...overrides}
     />,
   );
   return { view, onAction, onClose };
@@ -40,18 +69,18 @@ const disabled = (view: ReturnType<typeof open>['view'], name: RegExp) =>
 
 describe('the subject header', () => {
   it.each([
-    ['track' as const, 1, 'Track'],
-    ['measures' as const, 1, 'Bar'],
-    ['measures' as const, 4, 'Bars'],
-    ['notes' as const, 1, 'Note'],
-    ['notes' as const, 3, 'Notes'],
+    ['track', 1, 'Track'],
+    ['measures', 1, 'Bar'],
+    ['measures', 4, 'Bars'],
+    ['notes', 1, 'Note'],
+    ['notes', 3, 'Notes'],
   ])('names %s (%i) as "%s"', (kind, count, label) => {
-    const { view } = open({ kind, count });
+    const { view } = open({ selection: selections[kind]!(count) });
     expect(view.getByText(label)).toBeTruthy();
   });
 
   it('says nothing when nothing is selected', () => {
-    const { view } = open({ kind: null, count: 0 });
+    const { view } = open({ selection: NOTHING });
     expect(view.queryByText('Track')).toBeNull();
     expect(view.queryByText('Notes')).toBeNull();
   });
@@ -73,7 +102,7 @@ describe('the entries', () => {
   });
 
   it('disables everything that acts on a selection when there is none', () => {
-    const { view } = open({ kind: null, count: 0 });
+    const { view } = open({ selection: NOTHING });
     for (const name of [/^copy$/i, /^cut$/i, /^clear$/i, /delete selection/i])
       expect(disabled(view, name)).toBe(true);
     // Select all needs no selection, by definition.
@@ -82,14 +111,16 @@ describe('the entries', () => {
 
   it('keeps Copy live while the transport plays, and nothing else', () => {
     // Copy only reads. The same exemption the edit lock makes everywhere else.
-    const { view } = open({ canEdit: false });
+    const { view } = open({ playing: true });
     expect(disabled(view, /^copy$/i)).toBe(false);
     for (const name of [/^cut$/i, /^clear$/i, /delete selection/i])
       expect(disabled(view, name)).toBe(true);
   });
 
   it('offers Paste only when the clipboard holds the same kind of thing', () => {
-    expect(disabled(open({ canPaste: false }).view, /^paste$/i)).toBe(true);
-    expect(disabled(open({ canPaste: true }).view, /^paste$/i)).toBe(false);
+    expect(disabled(open().view, /^paste$/i)).toBe(true);
+    expect(
+      disabled(open({ clipboard: NOTES_CLIPBOARD }).view, /^paste$/i),
+    ).toBe(false);
   });
 });

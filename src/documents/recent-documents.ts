@@ -2,7 +2,7 @@
  * The documents opened lately, most recent first.
  *
  * Persisted through an injected key-value store rather than `AsyncStorage`
- * directly, for the reason `DocumentStorage` is injected: the rules worth
+ * directly, for the reason `DocumentFileStorage` is injected: the rules worth
  * testing — the cap, the ordering, what happens to a duplicate — are testable
  * without a device.
  *

@@ -16,7 +16,12 @@
  * holds all of them.
  */
 import { SectionList } from 'react-native';
-import { SHORTCUTS, SHORTCUT_GROUPS } from '@sudobility/music_editing';
+import {
+  SHORTCUTS,
+  SHORTCUT_GROUPS,
+  shortcutGroupLabelKey,
+} from '@sudobility/music_editing';
+import i18next from 'i18next';
 
 import { renderWithApp } from '@/test/render';
 import { ShortcutsScreen } from './ShortcutsScreen';
@@ -53,6 +58,25 @@ describe('ShortcutsScreen', () => {
       const group = used[index];
       expect(section.data.every(row => row.group === group)).toBe(true);
       expect(section.data).toEqual(SHORTCUTS.filter(r => r.group === group));
+    });
+  });
+
+  it('titles each group in words, never with its own key', () => {
+    /*
+      The headings used to be `t(`shortcuts.<group>`)` — a key neither locale
+      has — so every heading printed the key itself, and nothing failed:
+      `keys-exist` cannot see a key built at runtime. The key is
+      music_editing's `shortcutGroupLabelKey`, the one the web docs page reads.
+    */
+    const sections = sectionsOf();
+    const used = SHORTCUT_GROUPS.filter(g =>
+      SHORTCUTS.some(row => row.group === g),
+    );
+    sections.forEach((section, index) => {
+      const key = shortcutGroupLabelKey(used[index]!);
+      expect(i18next.exists(key)).toBe(true);
+      expect(section.title).toBe(i18next.t(key));
+      expect(section.title).not.toMatch(/^[a-z]+\.[a-zA-Z.]+$/);
     });
   });
 

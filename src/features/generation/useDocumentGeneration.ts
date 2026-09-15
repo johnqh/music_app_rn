@@ -47,9 +47,11 @@ export type UseDocumentGenerationOptions = {
   /**
    * Writes any pending edit before the job starts.
    *
-   * The job reads the *stored* score. Passed in rather than taken from the
-   * store, because in this app the store knows nothing about saving — a
-   * document is a file, and who writes it is the document layer's business.
+   * The job reads the *stored* score, so anything unwritten would be invisible
+   * to it and then overwritten by its result. The editor passes the document
+   * store's own `saveNow` — a no-op when nothing is dirty. An option rather
+   * than read off the store because `useProjectGeneration` is music_client's
+   * and knows no store library.
    */
   flush?: () => Promise<unknown> | unknown;
   /** Tests inject a stub; production uses the configured client. */

@@ -26,15 +26,28 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   FormModal,
-  NumberInput,
+  Input,
   Select,
   Switch,
   Text,
 } from '@sudobility/components-rn';
-import { defaultMidiImportOptions } from '@sudobility/music_lib';
-import type { MidiImportOptions, MidiSummary } from '@sudobility/music_lib';
+import {
+  canImportMidi,
+  defaultMidiImportOptions,
+  patchMidiImportOptions,
+} from '@sudobility/music_lib';
+import type {
+  MidiImportOptions,
+  MidiImportPatch,
+  MidiSummary,
+} from '@sudobility/music_lib';
 import type { Clef, DurationName } from '@sudobility/music_types';
-import { CLEFS, MIDI_GRID_OPTIONS, NO_MARK } from '@sudobility/music_types';
+import {
+  CLEFS,
+  MIDI_GRID_OPTIONS,
+  NO_MARK,
+  parseNumericDraft,
+} from '@sudobility/music_types';
 
 export type MidiImportSheetProps = {
   open: boolean;
@@ -52,6 +65,14 @@ export function MidiImportSheet({
 }: MidiImportSheetProps) {
   const { t } = useTranslation();
   const [options, setOptions] = useState<MidiImportOptions | null>(null);
+  /*
+    The two number fields as typed. Kept apart from the options so an emptied
+    field can be *empty* while somebody types its replacement, rather than
+    snapping to whatever the clamp makes of nothing; the options already hold
+    the clamped value, and the text is tidied back to it on blur.
+  */
+  const [minDurationText, setMinDurationText] = useState('');
+  const [splitPointText, setSplitPointText] = useState('');
 
   /*
     Re-seeded from each file's analysis rather than carried across: the grid,
@@ -59,27 +80,30 @@ export function MidiImportSheet({
     the last file's would silently apply them to the next one.
   */
   useEffect(() => {
-    setOptions(summary ? defaultMidiImportOptions(summary) : null);
+    const seeded = summary ? defaultMidiImportOptions(summary) : null;
+    setOptions(seeded);
+    setMinDurationText(seeded ? String(seeded.minDurationTicks) : '');
+    setSplitPointText(seeded ? String(seeded.splitPointMidi) : '');
   }, [summary]);
 
   if (!summary || !options) return null;
 
-  const patch = (next: Partial<MidiImportOptions>): void =>
-    setOptions(current => (current ? { ...current, ...next } : current));
+  /*
+    Every write goes through music_lib's `patchMidiImportOptions`, which holds
+    the web wizard's clamps: the split point rounded into MIDI 0-127 with 0
+    kept as a note rather than read as absent, and the minimum duration
+    floored at 0 with no ceiling. This sheet used to floor that at 1 and cap it
+    at 480 on its own, so the same file imported differently here.
+  */
+  const patch = (next: MidiImportPatch): void =>
+    setOptions(current =>
+      current ? patchMidiImportOptions(current, next) : current,
+    );
 
   const setTrack = (
     sourceIndex: number,
     next: Partial<{ include: boolean; clef: Clef }>,
-  ): void =>
-    patch({
-      trackSelections: options.trackSelections.map(selection =>
-        selection.sourceIndex === sourceIndex
-          ? { ...selection, ...next }
-          : selection,
-      ),
-    });
-
-  const includedCount = options.trackSelections.filter(s => s.include).length;
+  ): void => patch({ track: { sourceIndex, ...next } });
 
   return (
     <FormModal
@@ -94,7 +118,7 @@ export function MidiImportSheet({
           variant: 'primary',
           // Importing nothing produces an empty score, which is not what
           // anybody means by it.
-          ...(includedCount === 0 ? { disabled: true } : {}),
+          ...(canImportMidi(options) ? {} : { disabled: true }),
         },
       ]}
       closeAriaLabel={t('common.closeDialog')}
@@ -207,16 +231,21 @@ export function MidiImportSheet({
             <Text className="text-muted-foreground text-sm">
               {t('importMidi.minDurationShort')}
             </Text>
-            <View accessibilityLabel={t('importMidi.minDuration')}>
-              <NumberInput
-                value={options.minDurationTicks}
-                min={1}
-                max={480}
-                onChange={(value: number) =>
-                  patch({ minDurationTicks: Math.max(1, Math.round(value)) })
-                }
-              />
-            </View>
+            {/* Text through `parseNumericDraft`, never `Number(text)`: an
+                emptied field is `null`, which the patch reads as "drop
+                nothing" rather than as whatever `Number('')` happens to be. */}
+            <Input
+              value={minDurationText}
+              keyboardType="number-pad"
+              accessibilityLabel={t('importMidi.minDuration')}
+              onChangeText={text => {
+                setMinDurationText(text);
+                patch({ minDurationTicks: parseNumericDraft(text) });
+              }}
+              onBlur={() =>
+                setMinDurationText(String(options.minDurationTicks))
+              }
+            />
           </View>
 
           <Toggle
@@ -254,16 +283,19 @@ export function MidiImportSheet({
               <Text className="text-muted-foreground text-sm">
                 {t('importMidi.splitPoint')}
               </Text>
-              <View accessibilityLabel={t('importMidi.splitPointLabel')}>
-                <NumberInput
-                  value={options.splitPointMidi}
-                  min={0}
-                  max={127}
-                  onChange={(value: number) =>
-                    patch({ splitPointMidi: Math.round(value) })
-                  }
-                />
-              </View>
+              {/* A cleared field keeps the previous split point rather than
+                  moving the split to MIDI 0 — the note clearing it was on its
+                  way to replacing. */}
+              <Input
+                value={splitPointText}
+                keyboardType="number-pad"
+                accessibilityLabel={t('importMidi.splitPointLabel')}
+                onChangeText={text => {
+                  setSplitPointText(text);
+                  patch({ splitPointMidi: parseNumericDraft(text) });
+                }}
+                onBlur={() => setSplitPointText(String(options.splitPointMidi))}
+              />
             </View>
           ) : null}
 

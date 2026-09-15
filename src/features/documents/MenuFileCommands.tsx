@@ -13,9 +13,11 @@
  * none; offering the toggle would be offering something that cannot work. The
  * dashboard is where a generated project is started.
  *
- * **Open, Save and Save As speak the app's own `.moo` document**, which
- * `parseDocument` validates on the way in — a file on disk is exactly as
- * untrusted as a network response.
+ * **Open, Save and Save As speak the app's own `.moo` document** through the
+ * document's store: `openFileDocument` reads it (and the web's JSON export)
+ * with music_codecs' `parseProjectFile`, which validates on the way in — a file
+ * on disk is exactly as untrusted as a network response — and `saveNow` /
+ * `saveAs` write it with the same saver the autosave uses.
  */
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,24 +25,19 @@ import { FormModal, Text } from '@sudobility/components-rn';
 import { useMenuCommand } from '@/app/menu-commands';
 import type { MenuCommand } from '@/app/menu-commands';
 import {
-  newDocument,
-  openDocument,
-  saveDocument,
-  saveDocumentAs,
-} from '@/documents/document-storage';
-import {
-  documentFilename,
+  DOCUMENT_EXTENSION,
   DOCUMENT_EXTENSIONS,
-} from '@/documents/document-file';
+  exportFilename,
+} from '@sudobility/music_lib';
+import { newDocument, openFileInto } from '@/documents/document';
 import { createFilePicker } from '@/documents/file-picker';
-import { createFileStorage } from '@/documents/rn-storage';
 import { createKeyValueStore } from '@/documents/rn-key-value';
 import { useRecentTracking } from '@/documents/useRecentTracking';
 import { useOpenLink } from '@/app/useOpenLink';
 import {
   useActiveDocument,
-  useDocumentChanged,
   useDocumentList,
+  useDocumentServices,
 } from '@/documents/DocumentsContext';
 import { NewProjectSheet } from '@/features/projects/NewProjectSheet';
 import {
@@ -51,30 +48,30 @@ import { navigationRef } from '@/app/Navigation';
 import { useAuth } from '@/auth/AuthContext';
 import { useServerContext } from '@/config/useServerContext';
 
-const storage = createFileStorage();
 const keyValue = createKeyValueStore();
 
 export function MenuFileCommands() {
   const { t } = useTranslation();
   const list = useDocumentList();
   const document = useActiveDocument();
-  const onChanged = useDocumentChanged();
+  const services = useDocumentServices();
   const recordRecent = useRecentTracking(keyValue);
   const [newOpen, setNewOpen] = useState(false);
   // The gate, the 402 paywall and the failure report are the dashboard's too.
   const creation = useServerProjectCreation();
   const { user } = useAuth();
   const serverContext = useServerContext();
-  const canGenerate = user !== null && Boolean(serverContext?.token);
+  const canGenerate = user !== null && serverContext !== null;
   const [failure, setFailure] = useState<string | null>(null);
 
   /**
    * Writes the document somewhere the user picks.
    *
    * Also what Save falls back to for a document that has never been written:
-   * `saveDocument`'s own fallback puts it in a default directory without
-   * asking, which is right for autosave and wrong for a menu command, where a
-   * person is present to be asked.
+   * the store never picks a place for one on its own — that is right for
+   * autosave and wrong for a menu command, where a person is present to be
+   * asked. The recent list hears about it from the store's `onSaved`, after
+   * the write succeeds.
    */
   const saveAs = useCallback(async (): Promise<void> => {
     if (!document) return;
@@ -83,11 +80,14 @@ export function MenuFileCommands() {
       setFailure(t('import.unsupported'));
       return;
     }
-    const uri = await picker.pickSaveLocation(documentFilename(document.title));
+    const state = document.store.getState();
+    const uri = await picker.pickSaveLocation(
+      exportFilename(state.title, DOCUMENT_EXTENSION),
+    );
     // Cancelling is an ordinary outcome, not a failure to report.
     if (!uri) return;
-    await saveDocumentAs(document, storage, uri, recordRecent);
-  }, [document, recordRecent, t]);
+    await state.saveAs(uri);
+  }, [document, t]);
 
   const run = useCallback(
     (command: MenuCommand): void => {
@@ -103,15 +103,16 @@ export function MenuFileCommands() {
             }
             const uri = await picker.pickFile(DOCUMENT_EXTENSIONS);
             if (!uri) return;
-            await openDocument(list, storage, uri, onChanged, recordRecent);
+            const opened = await openFileInto(list, services, uri);
+            recordRecent(opened.store.getState());
           } else if (command === 'file.saveAs') {
             await saveAs();
           } else if (command === 'file.save') {
             if (!document) return;
             // A document that already has a file goes back to it; one that does
             // not has to be asked about, which is Save As.
-            if (document.origin.kind === 'file') {
-              await saveDocument(document, storage, recordRecent);
+            if (document.store.getState().origin.kind !== 'unsaved') {
+              await document.store.getState().saveNow();
             } else {
               await saveAs();
             }
@@ -124,7 +125,7 @@ export function MenuFileCommands() {
         }
       })();
     },
-    [document, list, onChanged, recordRecent, saveAs, t],
+    [document, list, services, recordRecent, saveAs, t],
   );
 
   useMenuCommand(run);
@@ -135,10 +136,11 @@ export function MenuFileCommands() {
   */
   useOpenLink('documents', link => {
     if (link.kind !== 'document') return;
-    openDocument(list, storage, link.path, onChanged, recordRecent).catch(
-      (error: unknown) =>
+    openFileInto(list, services, link.path)
+      .then(opened => recordRecent(opened.store.getState()))
+      .catch((error: unknown) =>
         setFailure(error instanceof Error ? error.message : String(error)),
-    );
+      );
   });
 
   return (
@@ -154,7 +156,12 @@ export function MenuFileCommands() {
         onSubmit={submission => {
           if (submission.kind === 'blank') {
             setNewOpen(false);
-            newDocument(list, submission.score, submission.title, onChanged);
+            list.open(
+              newDocument(services, {
+                score: submission.score,
+                title: submission.title,
+              }),
+            );
             return;
           }
           void creation.create(submission).then(projectId => {

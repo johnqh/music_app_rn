@@ -23,8 +23,8 @@ import {
   ClockIcon,
   MusicalNoteIcon,
   PrinterIcon,
-  SparklesIcon,
 } from 'react-native-heroicons/outline';
+import type { SaveState as DocumentSaveState } from '@sudobility/music_lib';
 import { IconButton } from './IconButton';
 import type { MusicDocument } from '@/documents/document';
 
@@ -35,27 +35,30 @@ export type TitleBarProps = {
   document: MusicDocument;
   onSave: () => void;
   onExport: () => void;
-  /** Absent for a document with no project behind it. */
-  onGenerate?: () => void;
-  /** The same, for the snapshot history: a file has no versions on a server. */
+  /** Absent for a document with no project: a file has no versions on a server. */
   onSnapshots?: () => void;
   /** Prints. Absent on a build with no print service to talk to. */
   onPrint?: () => void;
   printing?: boolean;
-  saving?: boolean;
 };
 
 export function TitleBar({
   document,
   onSave,
   onExport,
-  onGenerate,
   onSnapshots,
   onPrint,
   printing = false,
-  saving = false,
 }: TitleBarProps) {
   const { t } = useTranslation();
+  /*
+    The name and the save state are the store's. They used to be fields on a
+    record beside it — read once per render, so the bar showed "Saved" until
+    something else happened to re-render it — plus a `saving` flag the editor
+    screen kept for the manual save alone, blind to the autosave.
+  */
+  const title = useStore(document.store, s => s.title);
+  const saveState = useStore(document.store, s => s.saveState);
   const canUndo = useStore(document.store, s => s.canUndo);
   const canRedo = useStore(document.store, s => s.canRedo);
   const playing = useStore(document.store, s => s.state) === 'playing';
@@ -70,14 +73,14 @@ export function TitleBar({
         className="text-primary-foreground px-1 text-lg font-medium"
         numberOfLines={1}
       >
-        {document.title}
+        {title}
       </Text>
-      <SaveState dirty={document.dirty} saving={saving} />
+      <SaveState state={saveState} />
 
       <IconButton
         label={t('editor.saveNow')}
         onPress={onSave}
-        disabled={saving}
+        disabled={saveState === 'saving'}
       >
         <ArrowDownTrayIcon size={ICON_SIZE} color="white" />
       </IconButton>
@@ -99,9 +102,9 @@ export function TitleBar({
         <DocumentArrowDownIcon size={ICON_SIZE} color="white" />
       </IconButton>
       {/*
-        Offered only for a project. A local document has no row on the server
-        for a job to write back to, so a Generate button there would be a
-        button that cannot work — better absent than dead.
+        There is no Generate here. A whole new score is where a project starts
+        (New Project); what an open project offers is Generate Again, on the
+        property sheet's Score tab — the web app's arrangement.
       */}
       {onPrint ? (
         <IconButton
@@ -117,15 +120,6 @@ export function TitleBar({
           <ClockIcon size={ICON_SIZE} color="white" />
         </IconButton>
       ) : null}
-      {onGenerate ? (
-        <IconButton
-          label={t('generate.action')}
-          onPress={onGenerate}
-          disabled={playing}
-        >
-          <SparklesIcon size={ICON_SIZE} color="white" />
-        </IconButton>
-      ) : null}
 
       {/* Pushes what follows to the right, exactly as the web's `flex-1` div does. */}
       <View className="flex-1" />
@@ -139,20 +133,23 @@ export function TitleBar({
  * Three states rather than two: "saving" has to be distinguishable from
  * "saved", or a slow write looks like nothing happened.
  */
-function SaveState({ dirty, saving }: { dirty: boolean; saving: boolean }) {
+const SAVE_STATE_LABEL: Record<DocumentSaveState, string> = {
+  saving: 'editor.saving',
+  unsaved: 'editor.unsaved',
+  saved: 'editor.saved',
+};
+
+const SAVE_STATE_CLASS: Record<DocumentSaveState, string> = {
+  saving: 'bg-warning/20 text-warning rounded-full px-2 py-0.5',
+  unsaved: 'bg-destructive/20 text-destructive rounded-full px-2 py-0.5',
+  saved: 'bg-success/20 text-success rounded-full px-2 py-0.5',
+};
+
+function SaveState({ state }: { state: DocumentSaveState }) {
   const { t } = useTranslation();
-  const label = saving
-    ? t('editor.saving')
-    : dirty
-    ? t('editor.unsaved')
-    : t('editor.saved');
-  const tone = saving
-    ? 'bg-warning/20 text-warning'
-    : dirty
-    ? 'bg-destructive/20 text-destructive'
-    : 'bg-success/20 text-success';
+  const label = t(SAVE_STATE_LABEL[state]);
   return (
-    <View className={`rounded-full px-2 py-0.5 ${tone}`}>
+    <View className={SAVE_STATE_CLASS[state]}>
       <Text className="text-sm font-medium">{label}</Text>
     </View>
   );

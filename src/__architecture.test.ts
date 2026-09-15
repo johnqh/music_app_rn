@@ -52,26 +52,12 @@ const ALLOWED_NON_UI = new Set([
   // against the extensions the app reads. Arrangement over the document and
   // import tables, and the same kind of platform glue as the menu bar.
   'src/app/open-links.ts',
-  // Server wiring for New Project: create the project row, start the job,
-  // undo the row if the job is refused. The same kind of network glue as
-  // `project-sync.ts`, shared by the dashboard and the macOS File menu so
-  // the two cannot disagree about what creating a generated project means.
-  'src/features/projects/create-server-project.ts',
-  // Printing. `print-plan.ts` is the pagination decisions, which need no
-  // renderer and are testable under node; `print-pages.ts` draws them with
-  // Skia; `print-service.ts` hands the images to the platform. All three are
-  // arrangement over `music_drawing`, which owns every rule about what a
-  // printed page is.
-  'src/features/print/print-plan.ts',
+  // Printing. `print-pages.ts` draws music_drawing's `printPlan` with Skia;
+  // `print-service.ts` hands the images to the platform. Both are arrangement
+  // over `music_drawing`, which owns every rule about what a printed page is —
+  // the pagination included, which this app used to hold in `print-plan.ts`.
   'src/features/print/print-pages.ts',
   'src/features/print/print-service.ts',
-  // Where a project document's bytes go. A sibling of `document-storage.ts`:
-  // the same document model over a different destination, and the rules about
-  // `serverUpdatedAt` are about *this* server rather than about music.
-  'src/documents/project-sync.ts',
-  // The colour scheme, remembered. The *choice* is the editing store's; making
-  // it survive a relaunch is a property of the device.
-  'src/config/theme-preference.ts',
   // The file panels. A picker is a platform control, and which one exists is
   // a property of the OS rather than of the music — so this is exactly the
   // kind of thing a library must not contain, and the `.macos` variant beside
@@ -87,15 +73,16 @@ const ALLOWED_NON_UI = new Set([
   // configuration, and it must match the web app's.
   'src/config/designTheme.ts',
   'src/config/themeVars.ts',
-  // Bundled translations and the copy the libraries deliberately do not carry.
+  // Bundled translations, and which language is in force. The copy the
+  // libraries need is built by music_lib's `createLibraryCopy` from this app's
+  // `t` at the composition root; nothing here restates its keys.
   'src/i18n/index.ts',
-  'src/i18n/lib-copy.ts',
-  // The app's own document — a score plus a file it came from. The score model
-  // is music_types'; none of this is about music.
+  // The app's own documents — a tab id over music_lib's document store, the
+  // services every store is built with, and the list of what is open with each
+  // tab's caret. Saving, the file format and the unsaved-work guard are the
+  // libraries'; none of this is about music.
   'src/documents/document.ts',
   'src/documents/document-list.ts',
-  'src/documents/document-file.ts',
-  'src/documents/document-storage.ts',
   // The one platform-bound file in the document layer.
   'src/documents/rn-storage.ts',
   'src/documents/rn-key-value.ts',
@@ -105,12 +92,6 @@ const ALLOWED_NON_UI = new Set([
   // Which format a document comes from, and that an import makes a new
   // document rather than editing the open one. The decoding is music_io's.
   'src/documents/import.ts',
-  // When a document gets written without being asked. Debounce and failure
-  // policy, not anything about music.
-  'src/documents/autosave.ts',
-  // Whether closing would lose work. A decision, deliberately without a dialog
-  // attached, so one rule serves a tab, a window and a quit.
-  'src/documents/unsaved-guard.ts',
   // Geometry that turns a touch into a place in the score. It reads a
   // LayoutPlan, which is music_drawing's, but every question it answers is
   // about a pointer — the same split music_app makes for its hit tests.

@@ -65,9 +65,6 @@ const WORDED_DIFFERENTLY: Record<string, string> = {
   'importMidi.description': 'document vs project',
   'inspector.scoreTitleHint': 'document name vs project name',
   'library.saveFailed': 'a save here, an autosave there',
-  // The native transport carries the load percentage inline; the web app has a
-  // separate `SynthLoadIndicator` that shows it.
-  'transport.preparing': 'the native string carries the percentage',
   // The web sells credits and the native app cannot — `consumables_pages` has
   // no React Native build, so the native copy explains the rate instead.
   'credits.rate': 'the web quotes a price, the native app a rate',

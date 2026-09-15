@@ -7,27 +7,35 @@
  * are equally far from the thing they act on, and the reader has to work out
  * which region each one means from its name alone.
  *
- * Refused while the transport plays, like every other content control: the
- * result is applied to the score, and the score is immutable mid-playback.
+ * **Available when music_editing's `canReplace` says so**, which the web's
+ * button asks too: there is a region for this scope (`replacementRegion`, the
+ * same region the job will use) and the transport is not playing, since the
+ * result is written into the score. Each tab used to pass its own `playing`
+ * flag, so a Replace with nothing to replace looked live and opened a sheet
+ * over nothing.
  */
+import { useStore } from 'zustand';
 import { Button } from '@sudobility/components-rn';
+import { canReplace } from '@sudobility/music_editing';
 import type { ReplaceScope } from '@sudobility/music_types';
+import type { MusicDocument } from '@/documents/document';
 
 export function ReplaceButton({
+  document,
   scope,
   label,
-  disabled = false,
   onReplace,
 }: {
+  document: MusicDocument;
   scope: ReplaceScope;
   label: string;
-  disabled?: boolean;
   onReplace: (scope: ReplaceScope) => void;
 }) {
+  const available = useStore(document.store, s => canReplace(s, scope));
   return (
     <Button
       variant="secondary"
-      disabled={disabled}
+      disabled={!available}
       onPress={() => onReplace(scope)}
       accessibilityLabel={label}
     >
