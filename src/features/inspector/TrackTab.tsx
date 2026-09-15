@@ -52,6 +52,12 @@ export function TrackTab({
   const store = document.store;
   const track = useStore(store, selectSelectedTrack);
   const playing = useStore(store, s => s.state) === 'playing';
+  /*
+    Subscribed, not read once with `getState()`: a read during render goes
+    stale the moment a track is added or removed elsewhere — adding a second
+    part left Delete Track disabled until something else re-rendered the tab.
+  */
+  const canDelete = useStore(store, s => s.canDeleteTrack());
   const [draftName, setDraftName] = useState(track?.name ?? '');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -285,7 +291,7 @@ export function TrackTab({
       */}
       <Button
         variant="destructive"
-        disabled={!store.getState().canDeleteTrack() || playing}
+        disabled={!canDelete || playing}
         onPress={() => setConfirmDelete(true)}
         accessibilityLabel={t('inspector.deleteTrack')}
       >

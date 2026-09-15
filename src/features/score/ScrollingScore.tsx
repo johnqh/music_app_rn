@@ -3,14 +3,19 @@
  *
  * That windowing *is* the virtualization — the renderer draws the visible
  * systems per frame, so a 200-bar score costs what a 64-bar one does. The
- * spacer below the canvas gives the scroll view the full content height so the
+ * spacer below the canvas gives the scroll view the full content size so the
  * bar behaves honestly, while the canvas itself stays viewport-sized.
  *
- * Scroll offset is held in state deliberately, unlike playback position: it
- * changes only while a finger is moving, and each change genuinely does need a
- * repaint, because it changes which systems are on screen.
+ * **Every geometric question goes to `ScoreCanvas`** (music_drawing, see its
+ * `docs/score-canvas.md`), the same object the web editor asks: the content
+ * size, what a touch landed on, the tick under it, the cursor and where
+ * following playback scrolls. This component used to answer those itself and
+ * disagreed with the web — its viewport and hit tests mixed logical and zoomed
+ * units, so they were right only at 100%, and a touch on the spacer (already
+ * in content coordinates) had the scroll offset added a second time. What is
+ * left here is wiring: touches, scroll views, and which callback a hit means.
  */
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import { useTheme } from '@/config/ThemeContext';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type {
@@ -21,27 +26,21 @@ import type {
 import {
   DARK_RENDER_THEME,
   LIGHT_RENDER_THEME,
-  computeLayout,
-  eventIdAtPoint,
-  eventIdsAtPoint,
-  measureAtPoint,
-  measureIndexAtGutterPoint,
-  pitchAtStavePoint,
-  trackIdAtGutterPoint,
-  tickForPoint,
+  bindPlaybackToCanvas,
+  outOfRangeNoteIds,
 } from '@sudobility/music_drawing';
 import type {
-  CanvasRenderResult,
   LayoutMode,
   MeasureHit,
-  NoteColorRole,
   RenderTheme,
 } from '@sudobility/music_drawing';
-import { displayScore } from '@sudobility/music_types';
+import { displayScore, getMusicPosition } from '@sudobility/music_types';
 import type { Pitch, PitchDisplay, Score } from '@sudobility/music_types';
+import { getAppServices } from '@/config/initialize';
 import { ScoreView } from './ScoreView';
-import { PlaybackCaret } from './PlaybackCaret';
-import { useFollowPlayback } from './useFollowPlayback';
+import { PlaybackCursor } from './PlaybackCursor';
+import { useScoreCanvas } from './useScoreCanvas';
+import type { ScoreSelection } from './useScoreSelection';
 import { useContainerSize } from '@/features/layout/useContainerSize';
 
 export type ScrollingScoreProps = {
@@ -51,22 +50,26 @@ export type ScrollingScoreProps = {
   layoutMode?: LayoutMode;
   theme?: RenderTheme;
   activeTrackId?: string | null;
-  /** Which notes are lit; absent on the read-only published view. */
-  noteColors?: ReadonlyMap<string, NoteColorRole>;
-  selectedMeasureIds?: ReadonlySet<string>;
+  /**
+   * Which tracks to draw, top to bottom; absent draws every one. The editor
+   * passes `selectVisibleTrackIds`, so hiding a part in the track picker hides
+   * its staves — the published view has no picker and draws them all.
+   */
+  trackIds?: string[];
+  /** What is selected; absent on the read-only published view. */
+  selection?: ScoreSelection;
   /**
    * Which pitch to draw. Only the editor has this setting; a published score
    * is read in concert pitch, which is the default.
    */
   pitchDisplay?: PitchDisplay;
-  /** A tap on the music, already resolved to a bar. */
   /**
    * A tap landed on the sheet. Carries the exact tick, not a box fraction.
    *
-   * Resolved here because this is where the drawn note positions are: the tick
-   * comes from `tickForPoint`, which interpolates between the noteheads and
-   * holds flat across the clef and time signature, so tapping them puts the
-   * caret at the start of the bar rather than a fifth of the way into it.
+   * The tick comes from the canvas, which interpolates between the drawn
+   * noteheads and holds flat across the clef and time signature, so tapping
+   * them puts the caret at the start of the bar rather than a fifth of the way
+   * into it.
    */
   onMeasureTap?: (hit: MeasureHit, tick: number) => void;
   /**
@@ -118,7 +121,6 @@ export type ScrollingScoreProps = {
   ) => void;
 };
 
-/** How often a scroll reports back. 16ms is one frame; more is wasted repaint. */
 /**
  * How long a press must be held to read as a long press, and how far it may
  * wander while doing so.
@@ -131,7 +133,10 @@ export type ScrollingScoreProps = {
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP = 12;
 
+/** How often a scroll reports back. 16ms is one frame; more is wasted repaint. */
 const SCROLL_EVENT_THROTTLE = 16;
+
+const NO_IDS: readonly string[] = [];
 
 export function ScrollingScore({
   score,
@@ -139,8 +144,8 @@ export function ScrollingScore({
   layoutMode = 'page',
   theme,
   activeTrackId = null,
-  noteColors,
-  selectedMeasureIds,
+  trackIds,
+  selection,
   pitchDisplay = 'concert',
   onMeasureTap,
   onNoteTap,
@@ -155,10 +160,7 @@ export function ScrollingScore({
 
     VexFlow paints straight to the context and never resolves a CSS variable or
     a NativeWind class, which is why these are two hand-written palettes rather
-    than tokens — the same reason the notation glyphs take a literal ink. This
-    app had only the light one until `render-theme` moved into music_drawing
-    with the rest of the canvas geometry: in dark mode it drew near-black
-    noteheads on a dark page.
+    than tokens — the same reason the notation glyphs take a literal ink.
   */
   const { resolved } = useTheme();
   const resolvedTheme =
@@ -166,55 +168,141 @@ export function ScrollingScore({
 
   const { size, onLayout, measured } = useContainerSize();
   const { width, height } = size;
-  const [scrollTop, setScrollTop] = useState(0);
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
+
+  const verticalRef = useRef<ScrollView | null>(null);
+  const horizontalRef = useRef<ScrollView | null>(null);
+  const { canvas, picture, cursor } = useScoreCanvas({
+    vertical: verticalRef,
+    horizontal: horizontalRef,
+    size: sizeRef,
+  });
+
   /*
-    Only continuous mode ever has one. Page mode fits every system inside the
-    width — both margins come out of the packing budget — so a horizontal scroll
-    there could only slide the sheet under nothing.
+    Scroll offsets, in content px. A ref for the touch handler (which must not
+    re-render to read it) and state for the cursor overlay, which is placed in
+    content coordinates and has to move with the sheet.
   */
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const scrollRef = useRef({ left: 0, top: 0 });
+  const [scroll, setScroll] = useState({ left: 0, top: 0 });
   const continuous = layoutMode === 'continuous';
 
   /*
     The score as drawn, not as stored — octave brackets moved to where they are
     written, and transposing instruments in written pitch if that is the mode.
-    Everything below reads this rather than `score`, so the layout, the canvas
-    and the caret cannot disagree about where a note is. The lens composition
-    itself is music_types'; this is only where the app applies it. It returns
-    its input untouched when neither half applies, which is almost every score,
-    so the identity cache below is unaffected.
+    The lens composition itself is music_types'; this is only where the app
+    applies it. It returns its input untouched when neither half applies.
   */
-  const drawn = useMemo(
-    () => displayScore(score, pitchDisplay),
-    [score, pitchDisplay],
-  );
+  const drawn = displayScore(score, pitchDisplay);
 
-  // Content height comes from the layout, which `computeLayout` caches on score
-  // identity — so this is not a second pass over the score per frame.
-  const plan = useMemo(
-    () =>
-      computeLayout(drawn, {
+  const [contentSize, setContentSize] = useState({ width: 0, height: 0 });
+  useLayoutEffect(() => {
+    canvas.setScore(drawn);
+    if (measured && width > 0 && height > 0) {
+      canvas.setView({
+        width,
+        height,
         zoom,
         layoutMode,
-        width,
         theme: resolvedTheme,
-      }),
-    [drawn, zoom, layoutMode, width, resolvedTheme],
-  );
-  const contentHeight = plan.totalHeight;
+        ...(trackIds ? { trackIds } : {}),
+      });
+    }
+    const next = canvas.contentSize();
+    setContentSize(previous =>
+      previous.width === next.width && previous.height === next.height
+        ? previous
+        : next,
+    );
+  }, [
+    canvas,
+    drawn,
+    measured,
+    width,
+    height,
+    zoom,
+    layoutMode,
+    resolvedTheme,
+    trackIds,
+  ]);
 
-  /**
-   * A tap, in content coordinates.
-   *
-   * The scroll offset is added here because only this component knows it — the
-   * canvas is pinned to the viewport and never moves, so the touch's y is a
-   * viewport y and the music's is not.
-   */
+  /*
+    Notes the instrument cannot play, marked in the notation as the web marks
+    them. Scanned on the STORED score, never `drawn`: the compass is sounding
+    pitch, and the lenses have moved a clarinet a tone and an `8va` an octave.
+    The ids survive both lenses, which is why the stored scan colours the drawn
+    notes correctly in either display mode.
+  */
+  useLayoutEffect(() => {
+    canvas.setOutOfRangeNotes(outOfRangeNoteIds(score).ids);
+  }, [canvas, score]);
+
+  useLayoutEffect(() => {
+    canvas.setActiveTrack(activeTrackId);
+  }, [canvas, activeTrackId]);
+
+  useLayoutEffect(() => {
+    canvas.setSelectedNotes(selection?.noteIds ?? NO_IDS, {
+      regenerated: selection?.regenerated ?? false,
+    });
+    canvas.setSelectedMeasures(selection?.measureIds ?? NO_IDS);
+  }, [canvas, selection]);
+
+  /*
+    Playback — the cursor, the lit notes and following the music — is the
+    shared binding's, the same rules the web runs. Bound after the effects
+    above so the canvas already holds the score it will place the cursor in.
+  */
+  useLayoutEffect(
+    () =>
+      bindPlaybackToCanvas(canvas, {
+        position: getMusicPosition(),
+        // One decision per burst: a stop homes to 0 and then reports stopped
+        // in the same call, and that is not a jump to bar 1.
+        defer: work => queueMicrotask(work),
+        onSounding: listener => getAppServices().player.onSounding(listener),
+        // The lit notes are published as far ahead as this canvas measures
+        // drawing them takes — a Skia recording and a React commit here, much
+        // longer than a web repaint — so they land with the sound.
+        setSoundingRenderDelay: seconds =>
+          getAppServices().player.setSoundingRenderDelay(seconds),
+        now: () => performance.now(),
+      }),
+    [canvas],
+  );
+
+  const updateScroll = useCallback(
+    (left: number, top: number) => {
+      scrollRef.current = { left, top };
+      canvas.setScroll(left, top);
+      setScroll(previous =>
+        previous.left === left && previous.top === top
+          ? previous
+          : { left, top },
+      );
+    },
+    [canvas],
+  );
+
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      updateScroll(scrollRef.current.left, e.nativeEvent.contentOffset.y);
+    },
+    [updateScroll],
+  );
+
+  const onScrollHorizontal = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      updateScroll(e.nativeEvent.contentOffset.x, scrollRef.current.top);
+    },
+    [updateScroll],
+  );
+
   /**
    * Where and when the current press began.
    *
-   * A ref, not state: it changes on every touch and nothing renders from it,
-   * so putting it in state would re-render the score on each press.
+   * A ref, not state: it changes on every touch and nothing renders from it.
    */
   const pressStart = useRef<{ x: number; y: number; at: number } | null>(null);
 
@@ -229,16 +317,9 @@ export function ScrollingScore({
       const start = pressStart.current;
       pressStart.current = null;
 
-      const point = { x: locationX + scrollLeft, y: locationY + scrollTop };
-
       /*
-        Decided here, before any branch returns.
-
-        It used to be worked out further down, after the track gutter and the
-        measure gutter had each already returned — so holding a track's name or
-        a bar number was indistinguishable from tapping it, and the context menu
-        could only ever be opened over a note or a stave. Those are two of the
-        three things the menu is *about*.
+        Decided before any branch returns, so holding a track's name or a bar
+        number opens the menu on it just as holding a note does.
       */
       const travelled =
         start === null
@@ -248,187 +329,81 @@ export function ScrollingScore({
       const isLongPress = held >= LONG_PRESS_MS && travelled <= LONG_PRESS_SLOP;
 
       /*
-        The track-info gutter first, in **viewport** coordinates.
-
-        The gutter is painted over the sheet at the viewport's left edge rather
-        than at content x=0, so in continuous mode it does not scroll with the
-        music — which is the one place this app's hit tests differ. Tapping a
-        track's name makes it active; it is not a position in time, so the
-        caret stays put.
+        The spacer scrolls with the sheet, so its touch is in content px; the
+        canvas takes view px. Its own hit order is the spec's: the gutter, the
+        bar-number band, a note, a stave.
       */
-      const gutterTrackId = onTrackTap
-        ? trackIdAtGutterPoint(plan, zoom, scrollTop, {
-            x: locationX,
-            y: locationY,
-          })
-        : null;
-      if (gutterTrackId) {
-        onTrackTap?.(gutterTrackId);
-        if (isLongPress)
-          onContextGesture?.({ kind: 'track', trackId: gutterTrackId });
-        return;
-      }
-
-      /*
-        Then the measure-number band above each system, which selects a bar
-        rather than moving the caret — the gesture Replace Measures and
-        regeneration are aimed with.
-      */
-      const gutterMeasure = onMeasureSelect
-        ? measureIndexAtGutterPoint(plan, point)
-        : null;
-      if (gutterMeasure !== null) {
-        onMeasureSelect?.(gutterMeasure);
-        if (isLongPress)
-          onContextGesture?.({ kind: 'measure', index: gutterMeasure });
-        return;
-      }
-
-      const hit = measureAtPoint(plan, point);
+      const hit = canvas.hitTest({
+        x: locationX - scrollRef.current.left,
+        y: locationY - scrollRef.current.top,
+      });
       if (!hit) return;
 
-      const tick =
-        tickForPoint(
-          plan,
-          drawn,
-          point.x,
-          point.y,
-          frameRef.current?.measureNotePositions,
-        ) ?? 0;
-
-      if (isLongPress) {
-        /*
-          A note under the hold still selects that note first, so the menu is
-          about what was pressed rather than about the bar around it — the same
-          select-then-open the web's right-click does.
-        */
-        const heldBox = frameRef.current?.idToBBox;
-        const heldNote = heldBox ? eventIdAtPoint(heldBox, point) : null;
-        if (heldNote && onNoteTap) {
-          const chordIds = eventIdsAtPoint(heldBox!, point);
-          onNoteTap(chordIds.length > 0 ? chordIds : [heldNote]);
-          onContextGesture?.({ kind: 'notes' });
+      switch (hit.kind) {
+        case 'trackGutter':
+          // Not a position in time, so the caret stays put.
+          if (!onTrackTap) return;
+          onTrackTap(hit.trackId);
+          if (isLongPress) {
+            onContextGesture?.({ kind: 'track', trackId: hit.trackId });
+          }
           return;
-        }
-        onMeasureLongPress?.(hit, tick);
-        return;
+
+        case 'measureNumber':
+          // Selects a bar rather than moving the caret — the gesture Replace
+          // Measures and regeneration are aimed with.
+          if (!onMeasureSelect) return;
+          onMeasureSelect(hit.measureIndex);
+          if (isLongPress) {
+            onContextGesture?.({ kind: 'measure', index: hit.measureIndex });
+          }
+          return;
+
+        case 'note':
+          /*
+            A note under the press wins over the bar under it, and the whole
+            chord is the target: every note of a chord shares one bounding box.
+            A hold selects it first, so the menu is about what was pressed.
+          */
+          if (onNoteTap) {
+            onNoteTap(hit.eventIds);
+            if (isLongPress) onContextGesture?.({ kind: 'notes' });
+            return;
+          }
+          break;
+
+        case 'stave':
+          /*
+            Note input: a tap on a stave writes a note there instead of moving
+            the caret. The pitch is what is drawn; inverting the display lenses
+            is the caller's job.
+          */
+          if (!isLongPress && onWriteNote && hit.pitch) {
+            onWriteNote({
+              tick: hit.tick,
+              trackId: hit.trackId,
+              drawnPitch: hit.pitch,
+            });
+            return;
+          }
+          break;
       }
 
-      /*
-        A note under the tap wins over the measure under it.
-
-        The whole chord, not one arbitrary member: every note of a chord shares
-        one bounding box, so "which one did you tap" is not a question the
-        geometry can answer — the same rule the web app follows. Nothing here
-        could ask this at all until the renderer was kept across frames, so
-        tapping a note simply moved the caret and left it unselected.
-      */
-      const idToBBox = frameRef.current?.idToBBox;
-      if (idToBBox && onNoteTap) {
-        const noteId = eventIdAtPoint(idToBBox, point);
-        if (noteId) {
-          const chordIds = eventIdsAtPoint(idToBBox, point);
-          onNoteTap(chordIds.length > 0 ? chordIds : [noteId]);
-          return;
-        }
-      }
-      /*
-        Note input: a tap on a stave writes a note there instead of moving the
-        caret. Only in the mode, because aiming the caret and placing a note
-        are both needed and a tap cannot mean two things.
-
-        `hit.pitch` is what is **drawn** at that point, and the drawing has been
-        through the display lenses — an octave bracket and a transposing
-        instrument both move noteheads away from the sounding pitch. Storing it
-        raw writes a note an octave or a tone out, silently, because it then
-        draws exactly where it was tapped and only sounds wrong. Inverting them
-        is this view's job, since only it knows what was drawn.
-      */
-      if (onWriteNote) {
-        const stave = pitchAtStavePoint(plan, drawn, point);
-        if (stave) {
-          onWriteNote({
-            tick,
-            trackId: stave.trackId,
-            drawnPitch: stave.pitch,
-          });
-          return;
-        }
-      }
-
-      onMeasureTap?.(hit, tick);
+      const measure = { trackId: hit.trackId, measureIndex: hit.measureIndex };
+      if (isLongPress) onMeasureLongPress?.(measure, hit.tick);
+      else onMeasureTap?.(measure, hit.tick);
     },
     [
+      canvas,
       onMeasureTap,
       onMeasureLongPress,
       onNoteTap,
       onTrackTap,
       onMeasureSelect,
       onWriteNote,
-      zoom,
-      plan,
-      drawn,
-      scrollTop,
-      scrollLeft,
+      onContextGesture,
     ],
   );
-
-  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setScrollTop(e.nativeEvent.contentOffset.y);
-  }, []);
-
-  const onScrollHorizontal = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      setScrollLeft(e.nativeEvent.contentOffset.x);
-    },
-    [],
-  );
-
-  /*
-    What the last frame drew, held in a ref rather than state.
-
-    Two things read it. The caret interpolates between the noteheads VexFlow
-    actually drew, not across the stave box — which begins at the barline and
-    spends its left edge on clef, key and time signature. And a tap asks which
-    note is under it, which is a question only the drawn bounding boxes can
-    answer.
-
-    A ref because the renderer reports this on every draw and the caret reads
-    it inside its frame loop: putting it in state would re-render the whole
-    score on each frame.
-  */
-  /*
-    The scroll views, so playback can follow. Refs rather than state: nothing
-    renders from them, and `useFollowPlayback` reads them inside a frame loop.
-  */
-  const verticalRef = useRef<ScrollView | null>(null);
-  const horizontalRef = useRef<ScrollView | null>(null);
-
-  const frameRef = useRef<CanvasRenderResult | null>(null);
-  const handleRender = useCallback((result: CanvasRenderResult) => {
-    frameRef.current = result;
-  }, []);
-  const readNotePositions = useCallback(
-    () => frameRef.current?.measureNotePositions,
-    [],
-  );
-
-  /*
-    Following playback. The decision is `playbackScrollTarget`'s, shared with
-    the web, so a wrap leaves the page in the same place on both.
-  */
-  useFollowPlayback({
-    score: drawn,
-    plan,
-    layoutMode,
-    zoom,
-    vertical: verticalRef,
-    horizontal: horizontalRef,
-    scrollTop,
-    scrollLeft,
-    viewportWidth: width,
-    viewportHeight: height,
-  });
 
   return (
     <View style={styles.fill} onLayout={onLayout}>
@@ -436,31 +411,12 @@ export function ScrollingScore({
           moves, because what changes on a scroll is which systems it draws. */}
       {measured ? (
         <View style={StyleSheet.absoluteFill} pointerEvents="none">
-          <ScoreView
-            score={drawn}
-            width={width}
-            height={height}
-            zoom={zoom}
-            layoutMode={layoutMode}
-            theme={resolvedTheme}
-            activeTrackId={activeTrackId}
-            {...(noteColors ? { noteColors } : {})}
-            {...(selectedMeasureIds ? { selectedMeasureIds } : {})}
-            onRender={handleRender}
-            scrollTop={scrollTop}
-            scrollLeft={scrollLeft}
-          />
-          {/*
-            Over the canvas, under nothing: the caret is absolutely positioned
-            in the same content space the renderer draws in, so it needs the
-            scroll offset to sit where the music is.
-          */}
-          <PlaybackCaret
-            score={drawn}
-            plan={plan}
-            notePositions={readNotePositions}
-            scrollTop={scrollTop}
-            scrollLeft={scrollLeft}
+          <ScoreView picture={picture} height={height} />
+          <PlaybackCursor
+            cursor={cursor}
+            scrollLeft={scroll.left}
+            scrollTop={scroll.top}
+            color={resolvedTheme.caret}
           />
         </View>
       ) : null}
@@ -471,7 +427,7 @@ export function ScrollingScore({
         scrollEventThrottle={SCROLL_EVENT_THROTTLE}
       >
         {/*
-          The spacer carries the touch as well as the content height: the canvas
+          The spacer carries the touch as well as the content size: the canvas
           above is `pointerEvents="none"` so scrolling still works.
 
           In continuous mode it is nested in a horizontal scroll view, because
@@ -487,14 +443,14 @@ export function ScrollingScore({
             scrollEventThrottle={SCROLL_EVENT_THROTTLE}
           >
             <View
-              style={{ height: contentHeight, width: plan.totalWidth }}
+              style={{ height: contentSize.height, width: contentSize.width }}
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
             />
           </ScrollView>
         ) : (
           <View
-            style={{ height: contentHeight }}
+            style={{ height: contentSize.height }}
             onTouchStart={onTouchStart}
             onTouchEnd={onTouchEnd}
           />

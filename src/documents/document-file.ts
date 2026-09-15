@@ -16,7 +16,13 @@ import { parseScore } from '@sudobility/music_types';
 import type { Score } from '@sudobility/music_types';
 
 export const DOCUMENT_FORMAT_VERSION = 1;
-export const DOCUMENT_EXTENSION = 'moosiac';
+/** What the app writes. Short, like the app's other formats' extensions. */
+export const DOCUMENT_EXTENSION = 'moo';
+/**
+ * What the app opens: its own extension, and the longer one documents were
+ * saved under before it was shortened, so nothing written then is stranded.
+ */
+export const DOCUMENT_EXTENSIONS = [DOCUMENT_EXTENSION, 'moosiac'] as const;
 
 export type DocumentFile = {
   version: number;
@@ -84,7 +90,7 @@ export function parseDocument(text: string): DocumentFile {
   return { version, title, score };
 }
 
-/** `Wedding March` -> `Wedding March.moosiac`, safe on every platform we ship. */
+/** `Wedding March` -> `Wedding March.moo`, safe on every platform we ship. */
 export function documentFilename(title: string): string {
   const cleaned = title.replace(/[/\\:*?"<>|]/g, '-').trim() || 'Untitled';
   return `${cleaned}.${DOCUMENT_EXTENSION}`;

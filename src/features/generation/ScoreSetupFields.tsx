@@ -21,7 +21,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Animated, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Input, Select, Switch, Text } from '@sudobility/components-rn';
+import { Button, Input, Select, Switch, Text } from '@sudobility/components-rn';
 import { useScorePresets } from '@sudobility/music_client';
 import { publicServerContext } from '@/config/server';
 import {
@@ -39,6 +39,10 @@ import {
   KIT_OPTIONS,
   VOICE_OPTIONS,
   sortOptionsByLabel,
+  barsForSeconds,
+  formatDuration,
+  parseDuration,
+  secondsForBars,
 } from '@sudobility/music_lib';
 import type {
   GenerateScoreComplexity,
@@ -144,6 +148,14 @@ export type ScoreSetupDraft = {
   setPrompt: (v: string) => void;
   measuresText: string;
   setMeasuresText: (v: string) => void;
+  /**
+   * The Bars field read as a length, `m:ss`. Editing either refreshes the other
+   * at the form's tempo and meter, as the web dialog does.
+   */
+  durationText: string;
+  setDurationText: (v: string) => void;
+  /** Tidies a typed length to what the bars now play. */
+  refreshDuration: () => void;
   tempoText: string;
   setTempoText: (v: string) => void;
   style: string;
@@ -206,13 +218,63 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
   const { t } = useTranslation();
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
-  const [measuresText, setMeasuresText] = useState('16');
-  const [tempoText, setTempoText] = useState('');
+  const [measuresText, setMeasuresTextState] = useState('16');
+  const [tempoText, setTempoTextState] = useState('');
+  const [durationText, setDurationTextState] = useState(() =>
+    formatDuration(secondsForBars(16, '')),
+  );
   const [style, setStyle] = useState(NONE);
   const [mood, setMood] = useState(NONE);
   const [complexity, setComplexity] =
     useState<GenerateScoreComplexity>('moderate');
-  const [timeSignature, setTimeSignature] = useState('4/4');
+  const [timeSignature, setTimeSignatureState] = useState('4/4');
+
+  /*
+    Bars are the value; the duration is what is typed, kept apart so "1:" part
+    way through an edit is not rewritten under the cursor. Every change to bars,
+    tempo or meter refreshes it, and typing a length sets the bars.
+  */
+  const refreshDurationFrom = (bars: string, tempo: string, meter: string) => {
+    const count = Number(bars);
+    if (Number.isInteger(count) && count > 0) {
+      setDurationTextState(
+        formatDuration(
+          secondsForBars(
+            count,
+            tempo,
+            GENERATE_SCORE_TIME_SIGNATURE_OPTIONS[meter],
+          ),
+        ),
+      );
+    }
+  };
+  const setMeasuresText = (next: string) => {
+    setMeasuresTextState(next);
+    refreshDurationFrom(next, tempoText, timeSignature);
+  };
+  const setTempoText = (next: string) => {
+    setTempoTextState(next);
+    refreshDurationFrom(measuresText, next, timeSignature);
+  };
+  const setTimeSignature = (next: string) => {
+    setTimeSignatureState(next);
+    refreshDurationFrom(measuresText, tempoText, next);
+  };
+  const setDurationText = (next: string) => {
+    setDurationTextState(next);
+    const seconds = parseDuration(next);
+    if (seconds !== null) {
+      setMeasuresTextState(
+        String(
+          barsForSeconds(
+            seconds,
+            tempoText,
+            GENERATE_SCORE_TIME_SIGNATURE_OPTIONS[timeSignature],
+          ),
+        ),
+      );
+    }
+  };
   const [fifths, setFifths] = useState('0');
   const [mode, setMode] = useState<'major' | 'minor'>('major');
   /*
@@ -282,9 +344,14 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
         .filter(entry => entry.tier === 'essential')
         .map(entry => entry.value),
     );
-    setTempoText(String(preset.tempo));
-    setMeasuresText(String(preset.measures));
-    setTimeSignature(preset.timeSignature);
+    setTempoTextState(String(preset.tempo));
+    setMeasuresTextState(String(preset.measures));
+    setTimeSignatureState(preset.timeSignature);
+    refreshDurationFrom(
+      String(preset.measures),
+      String(preset.tempo),
+      preset.timeSignature,
+    );
     if (preset.mode) setMode(preset.mode);
   };
 
@@ -336,6 +403,10 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
     setPrompt,
     measuresText,
     setMeasuresText,
+    durationText,
+    setDurationText,
+    refreshDuration: () =>
+      refreshDurationFrom(measuresText, tempoText, timeSignature),
     tempoText,
     setTempoText,
     style,
@@ -367,7 +438,7 @@ export function useScoreSetupDraft(): ScoreSetupDraft {
   };
 }
 
-/**
+/**Anot
  * Fields that fade and slide in when they are wanted, and out when they are not.
  *
  * Mounted only while visible *or* still animating out, so a collapsed field is
@@ -426,10 +497,13 @@ const REVEAL_MS = 200;
 export function ScoreSetupFields({
   draft,
   showAi,
+  generateToggle,
 }: {
   draft: ScoreSetupDraft;
   /** Renders the prompt, style, mood and complexity fields. */
   showAi: boolean;
+  /** Placed under the title, where the web dialog puts "Generate for me". */
+  generateToggle?: ReactNode;
 }) {
   const { t, i18n } = useTranslation();
   /*
@@ -450,6 +524,9 @@ export function ScoreSetupFields({
       label: t(`generateScore.preset.${key}`),
     }));
 
+  const lockedLabel = t('generateScore.essential');
+  const durationRefused = parseDuration(draft.durationText) === null;
+
   return (
     <>
       <Field label={t('generateScore.titleField')}>
@@ -461,11 +538,24 @@ export function ScoreSetupFields({
         />
       </Field>
 
+      {/* The caller's own control, if it has one — New Project's "Generate for
+          me" — in the place the web dialog puts it: under the title, above
+          everything it reveals. */}
+      {generateToggle ?? null}
+
       <Reveal shown={showAi}>
+        <Field label={t('generate.prompt')}>
+          <Input
+            value={draft.prompt}
+            onChangeText={draft.setPrompt}
+            multiline
+            numberOfLines={3}
+            accessibilityLabel={t('generate.prompt')}
+          />
+        </Field>
+
         {/* A starting point, chosen from the briefs the server offers for the
-            style in hand. Rendered only when a list has arrived: the list is
-            the server's, so a local document with no server gets no control
-            rather than one that opens empty. */}
+            style in hand. Rendered only when a list has arrived. */}
         {presets.length > 0 ? (
           <Field label={t('generateScore.presetPrompts')}>
             <Select
@@ -478,15 +568,37 @@ export function ScoreSetupFields({
           </Field>
         ) : null}
 
-        <Field label={t('generate.prompt')}>
-          <Input
-            value={draft.prompt}
-            onChangeText={draft.setPrompt}
-            multiline
-            numberOfLines={3}
-            accessibilityLabel={t('generate.prompt')}
-          />
-        </Field>
+        <Row>
+          <Field label={t('generateScore.style')} grow>
+            <Select
+              value={draft.style}
+              accessibilityLabel={t('generateScore.style')}
+              options={styleSelectOptions(t, i18n.language)}
+              onValueChange={draft.applyStyle}
+            />
+          </Field>
+          <Field label={t('generateScore.mood')} grow>
+            <Select
+              value={draft.mood}
+              accessibilityLabel={t('generateScore.mood')}
+              options={moodSelectOptions(t, i18n.language)}
+              onValueChange={draft.setMood}
+            />
+          </Field>
+          <Field label={t('generateScore.complexity')} grow>
+            <Select
+              value={draft.complexity}
+              accessibilityLabel={t('generateScore.complexity')}
+              options={GENERATE_SCORE_COMPLEXITY_OPTIONS.map(value => ({
+                value,
+                label: value,
+              }))}
+              onValueChange={value =>
+                draft.setComplexity(value as GenerateScoreComplexity)
+              }
+            />
+          </Field>
+        </Row>
 
         {/* Only where somebody can sing them: syllables under a bass line are
             not a lyric. music_lib drops the field from the request otherwise,
@@ -509,10 +621,6 @@ export function ScoreSetupFields({
           </View>
         ) : null}
 
-        {/* Only where words are actually being written: a subject for a lyric
-            nobody asked for is the disagreement this field was once left out to
-            avoid, and music_lib drops it from the request on the same rule
-            rather than trusting this to stay in step. */}
         {draft.hasVocal && draft.lyrics ? (
           <Field label={t('newProject.lyricsTheme')}>
             <Input
@@ -525,131 +633,173 @@ export function ScoreSetupFields({
         ) : null}
       </Reveal>
 
-      <Field label={t('generateScore.measures')}>
-        <Input
-          value={draft.measuresText}
-          onChangeText={draft.setMeasuresText}
-          keyboardType="number-pad"
-          accessibilityLabel={t('generateScore.measures')}
-        />
-      </Field>
-
-      <Field label={t('generateScore.tempo')}>
-        <Input
-          value={draft.tempoText}
-          onChangeText={draft.setTempoText}
-          keyboardType="number-pad"
-          accessibilityLabel={t('generateScore.tempo')}
-        />
-      </Field>
-
-      <Reveal shown={showAi}>
-        <Field label={t('generateScore.style')}>
-          <Select
-            value={draft.style}
-            accessibilityLabel={t('generateScore.style')}
-            options={styleSelectOptions(t, i18n.language)}
-            onValueChange={draft.applyStyle}
-          />
-        </Field>
-
-        <Field label={t('generateScore.mood')}>
-          <Select
-            value={draft.mood}
-            accessibilityLabel={t('generateScore.mood')}
-            options={moodSelectOptions(t, i18n.language)}
-            onValueChange={draft.setMood}
-          />
-        </Field>
-
-        <Field label={t('generateScore.complexity')}>
-          <Select
-            value={draft.complexity}
-            accessibilityLabel={t('generateScore.complexity')}
-            options={GENERATE_SCORE_COMPLEXITY_OPTIONS.map(value => ({
-              value,
-              label: value,
-            }))}
-            onValueChange={value =>
-              draft.setComplexity(value as GenerateScoreComplexity)
-            }
-          />
-        </Field>
-      </Reveal>
-
-      <Field label={t('generateScore.timeSignature')}>
-        <Select
-          value={draft.timeSignature}
-          accessibilityLabel={t('generateScore.timeSignature')}
-          options={Object.keys(GENERATE_SCORE_TIME_SIGNATURE_OPTIONS).map(
-            value => ({ value, label: value }),
-          )}
-          onValueChange={draft.setTimeSignature}
-        />
-      </Field>
-
-      <Field label={t('generateScore.key')}>
-        <Select
-          value={draft.fifths}
-          accessibilityLabel={t('generateScore.key')}
-          options={GENERATE_SCORE_KEY_FIFTHS_OPTIONS.map(option => ({
-            value: String(option.fifths),
-            label: option.label,
-          }))}
-          onValueChange={draft.setFifths}
-        />
-      </Field>
-
-      <Field label={t('generateScore.mode')}>
-        <Select
-          value={draft.mode}
-          accessibilityLabel={t('generateScore.mode')}
-          options={[
-            { value: 'major', label: t('key.major') },
-            { value: 'minor', label: t('key.minor') },
-          ]}
-          onValueChange={value => draft.setMode(value as 'major' | 'minor')}
-        />
-      </Field>
-
       {/*
-        One picker per part rather than a checklist of every instrument: a
-        score has an ordered instrumentation, and the same instrument twice
-        is a perfectly ordinary request.
+        One picker per part, in order: a score has an ordered instrumentation,
+        and the same instrument twice is a perfectly ordinary request. A part
+        can be removed unless the chosen style cannot do without it.
       */}
       <Field label={t('generateScore.instrumentation')}>
         <View className="gap-2">
-          {draft.instruments.map((value, index) => (
-            <View key={`${value}-${index}`} className="gap-1">
-              <Select
-                value={value}
-                accessibilityLabel={t('generateScore.instrumentation')}
-                options={[...GENERATION_INSTRUMENT_OPTIONS]}
-                disabled={draft.isLockedInstrument(index)}
-                onValueChange={next =>
-                  draft.setInstruments(
-                    draft.instruments.map((v, i) => (i === index ? next : v)),
-                  )
-                }
-              />
-              {draft.isLockedInstrument(index) ? (
-                <Text className="text-muted-foreground text-sm">
-                  {t('generateScore.essential')}
-                </Text>
-              ) : null}
-            </View>
-          ))}
+          {draft.instruments.map((value, index) => {
+            const locked = draft.isLockedInstrument(index);
+            return (
+              <View
+                key={`${value}-${index}`}
+                className="flex-row items-center gap-2"
+              >
+                <View className="flex-1">
+                  <Select
+                    value={value}
+                    accessibilityLabel={t('generateScore.instrumentation')}
+                    options={[...GENERATION_INSTRUMENT_OPTIONS]}
+                    disabled={locked}
+                    onValueChange={next =>
+                      draft.setInstruments(
+                        draft.instruments.map((v, i) =>
+                          i === index ? next : v,
+                        ),
+                      )
+                    }
+                  />
+                </View>
+                {locked ? (
+                  <Text className="text-muted-foreground text-sm">
+                    {lockedLabel}
+                  </Text>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={draft.instruments.length <= 1}
+                    accessibilityLabel={t('generateScore.removeInstrument', {
+                      instrument:
+                        GENERATION_INSTRUMENT_OPTIONS.find(
+                          option => option.value === value,
+                        )?.label ?? value,
+                    })}
+                    onPress={() =>
+                      draft.setInstruments(
+                        draft.instruments.filter((_, i) => i !== index),
+                      )
+                    }
+                  >
+                    ✕
+                  </Button>
+                )}
+              </View>
+            );
+          })}
+          <View className="flex-row">
+            <Button
+              variant="outline"
+              size="sm"
+              onPress={() =>
+                draft.setInstruments([
+                  ...draft.instruments,
+                  DEFAULT_INSTRUMENT_VALUE,
+                ])
+              }
+            >
+              {t('generateScore.addInstrument')}
+            </Button>
+          </View>
         </View>
       </Field>
+
+      <Row>
+        <Field label={t('generateScore.measures')} grow>
+          <Input
+            value={draft.measuresText}
+            onChangeText={draft.setMeasuresText}
+            keyboardType="number-pad"
+            accessibilityLabel={t('generateScore.measures')}
+          />
+        </Field>
+        <Field
+          label={t('generateScore.duration')}
+          grow
+          {...(durationRefused
+            ? { hint: t('generateScore.durationInvalid') }
+            : {})}
+        >
+          <Input
+            value={draft.durationText}
+            onChangeText={draft.setDurationText}
+            onBlur={draft.refreshDuration}
+            accessibilityLabel={t('generateScore.duration')}
+          />
+        </Field>
+        <Field label={t('generateScore.tempo')} grow>
+          <Input
+            value={draft.tempoText}
+            onChangeText={draft.setTempoText}
+            keyboardType="number-pad"
+            accessibilityLabel={t('generateScore.tempo')}
+          />
+        </Field>
+      </Row>
+
+      <Row>
+        <Field label={t('generateScore.key')} grow>
+          <Select
+            value={draft.fifths}
+            accessibilityLabel={t('generateScore.key')}
+            options={GENERATE_SCORE_KEY_FIFTHS_OPTIONS.map(option => ({
+              value: String(option.fifths),
+              label: option.label,
+            }))}
+            onValueChange={draft.setFifths}
+          />
+        </Field>
+        <Field label={t('generateScore.mode')} grow>
+          <Select
+            value={draft.mode}
+            accessibilityLabel={t('generateScore.mode')}
+            options={[
+              { value: 'major', label: t('key.major') },
+              { value: 'minor', label: t('key.minor') },
+            ]}
+            onValueChange={value => draft.setMode(value as 'major' | 'minor')}
+          />
+        </Field>
+        <Field label={t('generateScore.timeSignature')} grow>
+          <Select
+            value={draft.timeSignature}
+            accessibilityLabel={t('generateScore.timeSignature')}
+            options={Object.keys(GENERATE_SCORE_TIME_SIGNATURE_OPTIONS).map(
+              value => ({ value, label: value }),
+            )}
+            onValueChange={draft.setTimeSignature}
+          />
+        </Field>
+      </Row>
     </>
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+/** Controls side by side, as the web dialog lays them out — one per row wasted the width. */
+function Row({ children }: { children: ReactNode }) {
+  return <View className="flex-row gap-2">{children}</View>;
+}
+
+function Field({
+  label,
+  children,
+  grow = false,
+  hint,
+}: {
+  label: string;
+  children: ReactNode;
+  /** Shares a row's width with its neighbours. */
+  grow?: boolean;
+  /** Shown under the control when what was typed is refused. */
+  hint?: string;
+}) {
   return (
-    <View className="gap-1 pb-3">
+    <View className={grow ? 'min-w-0 flex-1 gap-1 pb-3' : 'gap-1 pb-3'}>
       <Text className="text-muted-foreground text-sm">{label}</Text>
       {children}
+      {hint ? <Text className="text-destructive text-sm">{hint}</Text> : null}
     </View>
   );
 }

@@ -16,7 +16,6 @@
  * per bar **per instrument**, because a quartet costs about four times a solo
  * of the same length to produce.
  */
-import { ScrollView } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
 import {
@@ -87,7 +86,7 @@ export function GenerateScoreSheet({
         the screen, and a form whose Generate button is off the bottom is a
         form nobody can submit.
       */}
-      <ScrollView keyboardShouldPersistTaps="handled">
+      <>
         <ScoreSetupFields draft={setup} showAi />
 
         <Text className="text-muted-foreground text-sm">
@@ -105,7 +104,7 @@ export function GenerateScoreSheet({
             {t('credits.outOfCreditsTitle')}
           </Text>
         ) : null}
-      </ScrollView>
+      </>
     </FormModal>
   );
 }

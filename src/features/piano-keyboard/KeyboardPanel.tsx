@@ -24,8 +24,12 @@ import {
   releaseKey,
   selectSelectedNotes,
 } from '@sudobility/music_editing';
-import { trackKeyboardRange } from '@sudobility/music_types';
-import { FULL_RANGE, snapToWhiteKeys } from '@sudobility/music_drawing';
+import { midiIsInRange } from '@sudobility/music_types';
+import {
+  FULL_RANGE,
+  snapToWhiteKeys,
+  trackKeyboardSpan,
+} from '@sudobility/music_drawing';
 import { getAppServices } from '@/config/initialize';
 import type { MusicDocument } from '@/documents/document';
 import { PianoKeyboard } from './PianoKeyboard';
@@ -99,41 +103,37 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
     const track = s.score?.tracks.find(t => t.id === activeTrackId);
     return track?.clef === 'percussion';
   });
-  const clef = useStore(document.store, s => {
-    const track = s.score?.tracks.find(t => t.id === activeTrackId);
-    return track?.clef;
-  });
 
   /**
-   * The keys this instrument can actually sound, not always all 88.
+   * The instrument's compass, widened to reach every note the track holds, with
+   * the keys outside the compass marked — `trackKeyboardSpan`, the same call
+   * the web keyboard makes.
    *
-   * A piccolo part should not present three octaves that will never sound, and
-   * the keyboard follows a track change and an instrument change alike since
-   * both move `midiProgram`. This panel used to pass no range at all, so
-   * `PianoKeyboard` fell back to `FULL_RANGE` and every track — piccolo, bass,
-   * drum kit — got the same 88 keys.
-   *
-   * Asked through `trackKeyboardRange`, never through `midiProgram` directly:
-   * on a percussion track that number is a **drum kit**, so reading it as an
-   * instrument shows a piano's compass for a kit — keys that cannot sound a
-   * drum, with the drums that do sound (35-81) partly off the end. That exact
-   * bug shipped on the web before the rule moved into the library.
-   *
-   * `snapToWhiteKeys` widens the result to whole keys, because a black key at
-   * either end has no white neighbour to hang off.
+   * Widened because an import can hold notes the instrument cannot play (a
+   * sub-octave bass layer is the usual one), and a keyboard that stopped at the
+   * compass lit no key for them. Through the track, never `midiProgram` alone:
+   * on a percussion track that number is a drum kit.
    */
-  const range = useMemo(() => {
-    if (clef === undefined) return snapToWhiteKeys(FULL_RANGE);
-    return snapToWhiteKeys(trackKeyboardRange({ clef, midiProgram: program }));
-  }, [clef, program]);
+  const track = useStore(document.store, s =>
+    s.score?.tracks.find(t => t.id === activeTrackId),
+  );
+  const span = useMemo(
+    () =>
+      track
+        ? trackKeyboardSpan(track)
+        : { range: snapToWhiteKeys(FULL_RANGE), playable: null },
+    [track],
+  );
 
   const onKeyDown = useCallback(
     (midi: number) => {
+      // Out of the instrument's compass: neither sounded nor written.
+      if (span.playable && !midiIsInRange(midi, span.playable)) return;
       group.current = pressKey(group.current, midi, Date.now());
       // Audition only: `noteOn` touches no transport state.
       getAppServices().player.noteOn(midi, program, isPercussion);
     },
-    [program, isPercussion],
+    [program, isPercussion, span.playable],
   );
 
   const onKeyUp = useCallback(
@@ -174,7 +174,8 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
           <PianoKeyboard
             width={size.width}
             height={KEYBOARD_HEIGHT}
-            range={range}
+            range={span.range}
+            playable={span.playable}
             naming={isPercussion ? 'percussion' : 'pitch'}
             sounding={sounding}
             selected={selectedMidis}

@@ -25,6 +25,7 @@ import { getMusicClient } from '@/config/server';
 import { openProjectDocument } from '@/documents/project-sync';
 import { useDocumentList } from '@/documents/DocumentsContext';
 import { ImportFeedback, useImport } from './useImport';
+import { useOpenLink } from '@/app/useOpenLink';
 import { AudioImportSheet } from './AudioImportSheet';
 
 const IMPORT_FOR: Partial<Record<MenuCommand, ImportFormat>> = {
@@ -35,7 +36,7 @@ const IMPORT_FOR: Partial<Record<MenuCommand, ImportFormat>> = {
 
 export function MenuImportCommands() {
   const importer = useImport();
-  const { run } = importer;
+  const { run, importFile } = importer;
   const list = useDocumentList();
   const { getToken } = useAuth();
   const [audioOpen, setAudioOpen] = useState(false);
@@ -78,6 +79,14 @@ export function MenuImportCommands() {
       [run],
     ),
   );
+
+  /*
+    A `moosiac://open` link or a Finder open naming a file the importers read
+    runs the same import this menu does. Documents are `MenuFileCommands`'.
+  */
+  useOpenLink('imports', link => {
+    if (link.kind === 'import') void importFile(link.format, link.path);
+  });
 
   return (
     <>

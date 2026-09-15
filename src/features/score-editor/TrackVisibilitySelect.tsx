@@ -15,7 +15,10 @@ import { useCallback } from 'react';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
 import { CheckableSelect } from '@sudobility/components-rn';
-import { selectActiveTrackId } from '@sudobility/music_editing';
+import {
+  selectActiveTrackId,
+  selectVisibleTrackIds,
+} from '@sudobility/music_editing';
 import type { MusicDocument } from '@/documents/document';
 
 export function TrackVisibilitySelect({
@@ -27,17 +30,24 @@ export function TrackVisibilitySelect({
   const store = document.store;
   const tracks = useStore(store, s => s.score?.tracks ?? []);
   const activeTrackId = useStore(store, selectActiveTrackId);
-  const visibleTrackIds = useStore(store, s => s.visibleTrackIds);
-
-  // `null` means "all of them" — the state a score starts in, which a list of
-  // ids cannot express without repeating every one.
-  const checked = visibleTrackIds ?? tracks.map(track => track.id);
+  /*
+    Through the selector, never `state.visibleTrackIds` raw. The raw field is
+    `null` for "all of them" and can still name a track that has since been
+    deleted; the selector resolves both, and it is what the canvas draws from —
+    so the ticks here and the staves on screen cannot disagree.
+  */
+  const checked = useStore(store, selectVisibleTrackIds);
 
   // The slice takes a list, not `null` — it normalises "all of them" itself.
   const setVisible = useCallback(
     (next: string[]) => store.getState().setVisibleTracks(next),
     [store],
   );
+
+  // With fewer than two tracks there is nothing to choose between and nothing
+  // that could be hidden, so the control would be a permanently-disabled no-op
+  // taking up toolbar width. The web's rule.
+  if (tracks.length < 2 || !activeTrackId) return null;
 
   return (
     <CheckableSelect
@@ -52,7 +62,7 @@ export function TrackVisibilitySelect({
       className="min-w-32 max-w-44"
       title={t('editor.tracks')}
       options={tracks.map(track => ({ value: track.id, label: track.name }))}
-      value={activeTrackId ?? ''}
+      value={activeTrackId}
       onChange={id => store.getState().setActiveTrack(id)}
       checked={checked}
       onCheckedChange={setVisible}

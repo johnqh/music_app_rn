@@ -62,7 +62,6 @@ import {
   toggleHairpin,
   toggleSlur,
   toggleTie,
-  useClipboardPrompts,
   zoomIn,
   zoomOut,
   QUANTIZE_GRIDS,
@@ -73,6 +72,7 @@ import {
   ARTICULATION_OPTIONS,
   NO_MARK,
   ORNAMENT_OPTIONS,
+  barCount as scoreBarCount,
   durationDisplay,
   durationParts,
   ticksFor,
@@ -103,7 +103,6 @@ import { IconButton } from '@/components/layout/IconButton';
 import { ToolbarSelect } from '@/components/controls/ToolbarSelect';
 import type { ToolbarOption } from '@/components/controls/ToolbarSelect';
 import { TrackVisibilitySelect } from './TrackVisibilitySelect';
-import { ClipboardPromptSheets } from './ClipboardPromptSheets';
 import { ChoiceSheet } from './ChoiceSheet';
 import { GoToBarSheet } from './GoToBarSheet';
 import type { ReactNode } from 'react';
@@ -191,12 +190,6 @@ export function EditorToolbar({
     the high-frequency reads that must stay out of a component's top level.
   */
   const playing = useStore(store, s => s.state) === 'playing';
-  /*
-    Paste follows the clipboard, the way Copy and Cut follow the selection. It
-    used to stay live whether or not anything had been copied, so it was the one
-    control on the bar that could look ready and do nothing.
-  */
-  const clipboard = useClipboardPrompts(store);
 
   const [quantizeGrid, setQuantizeGrid] = useState<QuantizeGrid>('sixteenth');
   const [goToBarOpen, setGoToBarOpen] = useState(false);
@@ -228,10 +221,9 @@ export function EditorToolbar({
     [selectedNotes, score?.ppq, snapGrid],
   );
 
-  const barCount = useMemo(
-    () => score?.tracks[0]?.measures.length ?? 0,
-    [score],
-  );
+  // music_types' count, so this and every other surface agree on which track's
+  // grid is the score's.
+  const barCount = scoreBarCount(score);
 
   const zoomLabel = `${Math.round(zoom * 100)}%`;
 
@@ -805,7 +797,6 @@ export function EditorToolbar({
         </IconButton>
       </View>
 
-      <ClipboardPromptSheets clipboard={clipboard} />
       {/*
         Both answers are always listed, and Generate Track is *disabled* rather
         than dropped when the document is not a server project — a menu whose

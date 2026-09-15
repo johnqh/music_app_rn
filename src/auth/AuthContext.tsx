@@ -140,7 +140,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return auth.currentUser ? auth.currentUser.getIdToken() : null;
       },
     }),
-    [auth, user, loading],
+    // `siteAdmin` arrives after `user`, from its own request — leaving it out
+    // of the deps kept an administrator's context reading `false` until
+    // something else changed, so the credit gate refused them free work.
+    [auth, user, loading, siteAdmin],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

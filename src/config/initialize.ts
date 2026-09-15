@@ -12,11 +12,15 @@
  * projects add those later without changing anything here.
  */
 import { Platform } from 'react-native';
+import { setNativeDialogsSupported } from '@sudobility/components-rn';
 import { createMusicIo } from '@sudobility/music_io';
 import type { MusicIo } from '@sudobility/music_io';
 import {
   createMusicPlayer,
   initializeMusicPlayer,
+  MusicPlayer,
+  NativeSynthBackend,
+  SoundfontPlaybackEngine,
 } from '@sudobility/music_player';
 import type { IMusicPlayer } from '@sudobility/music_player';
 import {
@@ -27,6 +31,37 @@ import { initializeMusicPosition } from '@sudobility/music_types';
 import { setErrorLogging, setLibraryMessages } from '@sudobility/music_lib';
 import { buildEditingCopy, libraryMessages } from '@/i18n/lib-copy';
 import { BUNDLED_SOUNDFONT, readBundledPack } from './soundfont-packs';
+import { bundledSoundfontPath, nativeSynthApi } from '@moosiac/synth';
+
+/**
+ * The player for this platform.
+ *
+ * On macOS, libfluidsynth — the synthesizer the web plays through — driven by
+ * the same shared scheduler (`SoundfontPlaybackEngine` over
+ * `NativeSynthBackend`). The per-note MP3 engine decoded every instrument
+ * before the first note and timed itself from JavaScript timers: a long
+ * "Preparing instruments" and a playhead that jumped. Everywhere else, and on a
+ * Mac build without the module or its font, the MP3 engine as before.
+ */
+/*
+  Dialogs as real macOS sheets. This app patches a modal host into React Native
+  macOS (`patches/react-native-macos+0.81.9.patch`), which stock React Native
+  macOS does not have — so the shared components only mount `Modal` there when
+  an app says it can.
+*/
+if (Platform.OS === 'macos') setNativeDialogsSupported(true);
+
+function createPlayer(soundfont: SoundfontOptions): IMusicPlayer {
+  const soundfontUri = Platform.OS === 'macos' ? bundledSoundfontPath() : null;
+  if (soundfontUri && nativeSynthApi.isSupported()) {
+    return new MusicPlayer(
+      new SoundfontPlaybackEngine({
+        backend: new NativeSynthBackend({ api: nativeSynthApi, soundfontUri }),
+      }),
+    );
+  }
+  return createMusicPlayer(soundfont);
+}
 
 export type AppServices = {
   io: MusicIo;
@@ -109,7 +144,7 @@ export function initializeApp(options: InitializeOptions = {}): AppServices {
           : {}),
       }
     : { ...BUNDLED_SOUNDFONT, fetchPack: readBundledPack };
-  const player = initializeMusicPlayer(createMusicPlayer(soundfont));
+  const player = initializeMusicPlayer(createPlayer(soundfont));
 
   /*
     macOS is told it has no share sheet, rather than left to work it out.
@@ -178,6 +213,7 @@ function silentPlayer(): IMusicPlayer {
     noteOff: () => {},
     setLoop: () => {},
     setMetronome: () => {},
+    setSoundingRenderDelay: () => {},
     setTempoMultiplier: () => {},
     setMasterVolume: () => {},
     load: async () => {},

@@ -1,6 +1,7 @@
 #import "AppDelegate.h"
 
 #import <React/RCTBundleURLProvider.h>
+#import <React/RCTLinkingManager.h>
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 #import <ReactAppDependencyProvider/RCTAppDependencyProvider.h>
@@ -20,6 +21,48 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
 
 @implementation AppDelegate
 
+/*
+  `moosiac://` links arrive as a GetURL Apple Event, which React Native's
+  `RCTLinkingManager` turns into `Linking` events — but only once something
+  registers it as the handler. Registered here, before launch finishes, because
+  a link that *launched* the app is delivered before `didFinishLaunching`, and
+  `RCTLinkingManager` keeps that one as the initial URL.
+*/
+- (void)applicationWillFinishLaunching:(NSNotification *)notification
+{
+  [[NSAppleEventManager sharedAppleEventManager]
+      setEventHandler:[RCTLinkingManager class]
+          andSelector:@selector(getUrlEventHandler:withReplyEvent:)
+        forEventClass:kInternetEventClass
+           andEventID:kAEGetURL];
+}
+
+/*
+  A `.moo` opened from Finder — double-clicked, dragged onto the Dock icon, or
+  chosen with Open With. Each file is forwarded as the link `open-links.ts`
+  reads, through the same handler, so JavaScript has one way in rather than two
+  and a file that launched the app is kept as the initial URL just as a link is.
+*/
+- (void)application:(NSApplication *)application openURLs:(NSArray<NSURL *> *)urls
+{
+  NSCharacterSet *allowed = [NSCharacterSet URLQueryAllowedCharacterSet].mutableCopy;
+  [(NSMutableCharacterSet *)allowed removeCharactersInString:@"&=?+#"];
+  for (NSURL *url in urls) {
+    NSString *link = url.isFileURL
+        ? [@"moosiac://open?path="
+              stringByAppendingString:[url.path stringByAddingPercentEncodingWithAllowedCharacters:allowed]]
+        : url.absoluteString;
+    NSAppleEventDescriptor *event =
+        [NSAppleEventDescriptor appleEventWithEventClass:kInternetEventClass
+                                                 eventID:kAEGetURL
+                                        targetDescriptor:nil
+                                                returnID:kAutoGenerateReturnID
+                                           transactionID:kAnyTransactionID];
+    [event setParamDescriptor:[NSAppleEventDescriptor descriptorWithString:link] forKeyword:keyDirectObject];
+    [RCTLinkingManager getUrlEventHandler:event withReplyEvent:[NSAppleEventDescriptor nullDescriptor]];
+  }
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
   self.moduleName = @"MoosiacRN"; // matches app.json and index.js; the macOS project was generated under the repo name
@@ -27,8 +70,34 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
   self.dependencyProvider = [RCTAppDependencyProvider new];
-  
+
+  [self giveFileMenuItemsImages];
   return [super applicationDidFinishLaunching:notification];
+}
+
+/*
+  macOS 26 draws a symbol beside every standard menu item (New, Open, Save,
+  Print) and indents the titles to make room for it. Import and Export are ours,
+  so AppKit has no symbol for them and their titles sat flush left, out of line
+  with every other item in the menu. They get the system's own import and export
+  symbols, which keeps the column aligned; on an older macOS nothing reserves
+  that space and the images are simply not drawn.
+*/
+- (void)giveFileMenuItemsImages
+{
+  if (@available(macOS 11.0, *)) {
+    NSMenu *file = [[NSApp mainMenu] itemWithTitle:@"File"].submenu;
+    NSDictionary<NSString *, NSString *> *symbols = @{
+      @"Import" : @"square.and.arrow.down",
+      @"Export" : @"square.and.arrow.up",
+    };
+    [symbols enumerateKeysAndObjectsUsingBlock:^(NSString *title, NSString *symbol, BOOL *stop) {
+      NSMenuItem *item = [file itemWithTitle:title];
+      if (item.image == nil) {
+        item.image = [NSImage imageWithSystemSymbolName:symbol accessibilityDescription:nil];
+      }
+    }];
+  }
 }
 
 #pragma mark - File menu

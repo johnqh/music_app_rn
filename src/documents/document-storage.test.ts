@@ -66,7 +66,7 @@ describe('saving', () => {
       'Wedding March',
     );
     const uri = await saveDocument(doc, storage);
-    expect(uri).toBe('/docs/Wedding March.moosiac');
+    expect(uri).toBe('/docs/Wedding March.moo');
     expect(written[uri]).toContain('Wedding March');
     expect(doc.origin).toEqual({ kind: 'file', uri });
     expect(doc.dirty).toBe(false);

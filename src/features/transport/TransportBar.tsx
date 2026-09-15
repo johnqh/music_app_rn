@@ -38,6 +38,7 @@ import {
 } from 'react-native-heroicons/solid';
 import {
   barBeatForTick,
+  barCount,
   formatBarBeat,
   TempoMap,
 } from '@sudobility/music_types';
@@ -105,7 +106,7 @@ export function TransportBar({
   const endTick = lastMeasure
     ? lastMeasure.startTick + lastMeasure.durationTicks
     : 0;
-  const measureCount = score.tracks[0]?.measures.length ?? 0;
+  const measureCount = barCount(score);
 
   /*
     Rounded for display as well as on commit: a score can arrive carrying a
@@ -337,6 +338,9 @@ export function TransportBar({
               : t('editor.hideKeyboard')
           }
           selected={!keyboardCollapsed}
+          // An on/off switch for the panel below, drawn like the web's: red
+          // while the keyboard is showing.
+          fill
           onPress={onToggleKeyboard}
         >
           {/*
@@ -346,7 +350,10 @@ export function TransportBar({
             `currentColor` is an SVG idea react-native-svg does not resolve — so
             it comes from the theme through `useNotationInk`.
           */}
-          <NotationIcon name="PianoKeysIcon" color={ink.foreground} />
+          <NotationIcon
+            name="PianoKeysIcon"
+            color={keyboardCollapsed ? ink.foreground : ink.onPrimary}
+          />
         </IconButton>
       ) : null}
 

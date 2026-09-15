@@ -717,9 +717,27 @@
     "voice2Hint": "Voice 2 — a second, independent line on the same stave",
     "voiceNumber": "Voice {{number}}",
     "zoomIn": "Zoom in",
-    "zoomOut": "Zoom out"
+    "zoomOut": "Zoom out",
+    "outOfRange": {
+      "above": "{{pitch}} is above {{instrument}}'s range ({{low}}–{{high}}), {{action}}",
+      "below": "{{pitch}} is below {{instrument}}'s range ({{low}}–{{high}}), {{action}}"
+    },
+    "refused": {
+      "addNote": "so it was not added.",
+      "addChord": "so this chord was not added.",
+      "changeNote": "so the note was not changed.",
+      "changeAccidental": "so the accidental was not changed.",
+      "moveNote": "so the note was not moved.",
+      "moveNotes": "so the notes were not moved.",
+      "transpose": "so nothing was transposed.",
+      "paste": "so nothing was pasted."
+    },
+    "polyphonyOne": "{{instrument}} plays one note at a time, {{action}}",
+    "polyphonyMany": "{{instrument}} plays at most {{limit}} notes at once, {{action}}",
+    "unknownInstrument": "This instrument"
   },
   "errors": {
+    "createProject": "Failed to create project",
     "loadProjects": "Could not load your projects."
   },
   "export": {
@@ -744,6 +762,10 @@
     "presets": "Presets"
   },
   "generateScore": {
+    "duration": "Duration",
+    "durationInvalid": "Enter a length like 0:45 or 1:30.",
+    "addInstrument": "Add instrument",
+    "removeInstrument": "Remove {{instrument}}",
     "essential": "(essential)",
     "complexity": "Complexity",
     "instrumentation": "Instrumentation",

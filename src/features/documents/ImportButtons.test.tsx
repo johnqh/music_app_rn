@@ -167,6 +167,35 @@ describe('ImportButtons', () => {
     );
   });
 
+  it('reports a refused audio upload instead of dropping it', async () => {
+    /*
+      The sheet calls the upload fire-and-forget, so a rejection used to vanish
+      as an unhandled promise: the spinner stopped and nothing said why.
+    */
+    mockPickFile.mockResolvedValue('/tmp/take.wav');
+    const onTranscribeAudio = jest.fn(async () => {
+      throw new Error('recording too long');
+    });
+    const list = new DocumentList();
+    const view = renderWithApp(
+      <DocumentsProvider list={list}>
+        <ImportButtons onTranscribeAudio={onTranscribeAudio} />
+      </DocumentsProvider>,
+    );
+    openImportMenu(view);
+    fireEvent.press(view.getByText('Import Audio'));
+    await act(async () => {
+      fireEvent.press(view.getByText('Choose a recording'));
+    });
+    await act(async () => {
+      fireEvent.press(view.getByText('Transcribe'));
+    });
+    expect(onTranscribeAudio).toHaveBeenCalled();
+    await waitFor(() =>
+      expect(view.getByText('recording too long')).toBeTruthy(),
+    );
+  });
+
   /*
     MIDI is the one format that cannot be imported without deciding things — a
     performance has no bar lines, no clefs and no key. Importing it blind

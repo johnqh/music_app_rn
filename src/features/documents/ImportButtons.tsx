@@ -90,6 +90,20 @@ export function ImportButtons({ onTranscribeAudio }: ImportButtonsProps = {}) {
           try {
             await onTranscribeAudio(file);
             setAudioOpen(false);
+          } catch (error) {
+            /*
+              The sheet hands this callback a fire-and-forget promise, so a
+              refused upload — no connection, a file the server will not take,
+              an expired session — used to be an unhandled rejection: the
+              spinner stopped and nothing said why. It is reported through the
+              importer's own failure dialog, the one every other format's
+              refusal already uses, after the sheet closes so the two are
+              never stacked.
+            */
+            setAudioOpen(false);
+            importer.setFailure(
+              error instanceof Error ? error.message : String(error),
+            );
           } finally {
             setUploading(false);
           }

@@ -36,6 +36,13 @@ describe('TrackVisibilitySelect', () => {
     expect(view.queryByRole('button', { name: 'Done' })).toBeNull();
   });
 
+  it('is not offered with a single track', () => {
+    // Nothing to choose between and nothing that could be hidden — the web's
+    // rule, rather than a control that can only ever be a no-op.
+    const { view } = setup(0);
+    expect(view.queryByLabelText(/tracks/i)).toBeNull();
+  });
+
   it('offers the tracks the score has', () => {
     const { view, document } = setup(2);
     const tracks = document.store.getState().score!.tracks;

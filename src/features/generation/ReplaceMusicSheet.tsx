@@ -16,7 +16,7 @@
  */
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   FormModal,
@@ -135,7 +135,7 @@ export function ReplaceMusicSheet({
         },
       ]}
     >
-      <ScrollView keyboardShouldPersistTaps="handled">
+      <>
         {estimatedCredits > 0 ? (
           <Text className="text-muted-foreground pb-3 text-sm">
             {t('generate.estimate', { count: estimatedCredits })}
@@ -239,7 +239,7 @@ export function ReplaceMusicSheet({
             {t('replace.nothingSelected')}
           </Text>
         ) : null}
-      </ScrollView>
+      </>
     </FormModal>
   );
 }

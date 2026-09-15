@@ -11,7 +11,10 @@
  * no account at all, so the gate would refuse what the app is for. Screens that
  * genuinely need a server say so themselves.
  */
-import { NavigationContainer } from '@react-navigation/native';
+import {
+  NavigationContainer,
+  createNavigationContainerRef,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { EditorScreen } from '@/features/editor/EditorScreen';
@@ -42,10 +45,17 @@ export type RootStackParamList = {
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
+/**
+ * For what sits above the navigator and still has to open a screen: the macOS
+ * File menu's New Project makes a server project when a model writes it, and
+ * opens it in the editor from outside any screen.
+ */
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
 export function Navigation() {
   const { t } = useTranslation();
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={navigationRef}>
       <Stack.Navigator
         initialRouteName="Editor"
         screenOptions={{ headerShown: false }}

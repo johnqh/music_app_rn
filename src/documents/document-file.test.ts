@@ -47,8 +47,8 @@ describe('document files', () => {
   });
 
   it('makes a filename safe on every platform', () => {
-    expect(documentFilename('Wedding March')).toBe('Wedding March.moosiac');
-    expect(documentFilename('A/B:C*D?')).toBe('A-B-C-D-.moosiac');
-    expect(documentFilename('   ')).toBe('Untitled.moosiac');
+    expect(documentFilename('Wedding March')).toBe('Wedding March.moo');
+    expect(documentFilename('A/B:C*D?')).toBe('A-B-C-D-.moo');
+    expect(documentFilename('   ')).toBe('Untitled.moo');
   });
 });

@@ -13,7 +13,7 @@
  * none; offering the toggle would be offering something that cannot work. The
  * dashboard is where a generated project is started.
  *
- * **Open, Save and Save As speak the app's own `.moosiac` document**, which
+ * **Open, Save and Save As speak the app's own `.moo` document**, which
  * `parseDocument` validates on the way in — a file on disk is exactly as
  * untrusted as a network response.
  */
@@ -30,18 +30,26 @@ import {
 } from '@/documents/document-storage';
 import {
   documentFilename,
-  DOCUMENT_EXTENSION,
+  DOCUMENT_EXTENSIONS,
 } from '@/documents/document-file';
 import { createFilePicker } from '@/documents/file-picker';
 import { createFileStorage } from '@/documents/rn-storage';
 import { createKeyValueStore } from '@/documents/rn-key-value';
 import { useRecentTracking } from '@/documents/useRecentTracking';
+import { useOpenLink } from '@/app/useOpenLink';
 import {
   useActiveDocument,
   useDocumentChanged,
   useDocumentList,
 } from '@/documents/DocumentsContext';
 import { NewProjectSheet } from '@/features/projects/NewProjectSheet';
+import {
+  ServerProjectCreationFeedback,
+  useServerProjectCreation,
+} from '@/features/projects/useServerProjectCreation';
+import { navigationRef } from '@/app/Navigation';
+import { useAuth } from '@/auth/AuthContext';
+import { useServerContext } from '@/config/useServerContext';
 
 const storage = createFileStorage();
 const keyValue = createKeyValueStore();
@@ -53,6 +61,11 @@ export function MenuFileCommands() {
   const onChanged = useDocumentChanged();
   const recordRecent = useRecentTracking(keyValue);
   const [newOpen, setNewOpen] = useState(false);
+  // The gate, the 402 paywall and the failure report are the dashboard's too.
+  const creation = useServerProjectCreation();
+  const { user } = useAuth();
+  const serverContext = useServerContext();
+  const canGenerate = user !== null && Boolean(serverContext?.token);
   const [failure, setFailure] = useState<string | null>(null);
 
   /**
@@ -88,7 +101,7 @@ export function MenuFileCommands() {
               setFailure(t('import.unsupported'));
               return;
             }
-            const uri = await picker.pickFile([DOCUMENT_EXTENSION]);
+            const uri = await picker.pickFile(DOCUMENT_EXTENSIONS);
             if (!uri) return;
             await openDocument(list, storage, uri, onChanged, recordRecent);
           } else if (command === 'file.saveAs') {
@@ -116,19 +129,46 @@ export function MenuFileCommands() {
 
   useMenuCommand(run);
 
+  /*
+    A `moosiac://open` link, or a `.moo` opened from Finder, opens the document
+    exactly as File > Open does. Imports are `MenuImportCommands`'.
+  */
+  useOpenLink('documents', link => {
+    if (link.kind !== 'document') return;
+    openDocument(list, storage, link.path, onChanged, recordRecent).catch(
+      (error: unknown) =>
+        setFailure(error instanceof Error ? error.message : String(error)),
+    );
+  });
+
   return (
     <>
       <NewProjectSheet
         open={newOpen}
-        generationAvailable={false}
+        // A model writes into a project on the server, so generating needs an
+        // account; a blank score stays a local document either way.
+        generationAvailable={canGenerate}
+        submitting={creation.creating}
+        outOfCredits={creation.outOfCredits}
         onClose={() => setNewOpen(false)}
         onSubmit={submission => {
-          setNewOpen(false);
-          // `generationAvailable={false}` means the sheet cannot produce a
-          // generate submission; the guard is here so a later change to that
-          // prop cannot silently drop one on the floor.
-          if (submission.kind !== 'blank') return;
-          newDocument(list, submission.score, submission.title, onChanged);
+          if (submission.kind === 'blank') {
+            setNewOpen(false);
+            newDocument(list, submission.score, submission.title, onChanged);
+            return;
+          }
+          void creation.create(submission).then(projectId => {
+            setNewOpen(false);
+            if (projectId !== null && navigationRef.isReady()) {
+              navigationRef.navigate('Editor', { projectId });
+            }
+          });
+        }}
+      />
+      <ServerProjectCreationFeedback
+        creation={creation}
+        onOpenCredits={() => {
+          if (navigationRef.isReady()) navigationRef.navigate('Credits');
         }}
       />
       {/*

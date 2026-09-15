@@ -351,10 +351,15 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   88.** `KeyboardPanel` passes no range at one point in its life and
   `PianoKeyboard` fell back to `FULL_RANGE`, so a piccolo part offered three
   octaves that could never sound and a drum kit offered a piano's compass. The
-  range comes from `trackKeyboardRange`, which takes a **`Track`** — asking
-  `midiProgram` directly is the drum-kit bug again, since the drums that do
-  sound (35-81) then sit partly off the end — widened by `snapToWhiteKeys`,
-  because a black key at either end has no white neighbour to hang off.
+  range comes from `trackKeyboardSpan` (music_drawing, the web keyboard's own
+  call), which takes a **`Track`** — asking `midiProgram` directly is the
+  drum-kit bug again, since the drums that do sound (35-81) then sit partly off
+  the end. It is the instrument's compass snapped to white keys, **widened to
+  reach every note the track holds**: an import can hold notes the instrument
+  cannot play, and those keys are drawn pale (`KEYBOARD_OUT_OF_RANGE_WHITE`)
+  and `disabled`, so they show the notes without letting a person play more of
+  them. Editing refuses the same notes through music_editing's
+  `range-refusal.ts`.
 - **MIDI asks before it imports; every other format does not.** A performance
   has no bar lines, no clefs and no key, and every one of those is a guess — a
   guess nobody was shown is a guess nobody can correct. `MidiImportSheet` opens

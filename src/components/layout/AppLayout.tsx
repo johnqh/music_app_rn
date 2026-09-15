@@ -36,6 +36,10 @@ import {
 import { ClipboardPromptSheets } from '@/features/score-editor/ClipboardPromptSheets';
 import type { LayoutMode } from '@sudobility/music_drawing';
 import type { ReplaceScope } from '@sudobility/music_types';
+import {
+  selectActiveTrackId,
+  selectVisibleTrackIds,
+} from '@sudobility/music_editing';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
 import { TransportBar } from '@/features/transport/TransportBar';
 import { useTransport } from '@/features/transport/useTransport';
@@ -44,7 +48,7 @@ import { InspectorPanel } from '@/features/inspector/InspectorPanel';
 import { ScoreActionsSheet } from '@/features/score-editor/ScoreActionsSheet';
 import type { ScoreAction } from '@/features/score-editor/ScoreActionsSheet';
 import { DocumentTabs } from '@/features/documents/DocumentTabs';
-import { useNoteColors } from '@/features/score/useNoteColors';
+import { useScoreSelection } from '@/features/score/useScoreSelection';
 import { EditorToolbar } from '@/features/score-editor/EditorToolbar';
 import { LyricEntryBar } from '@/features/score-editor/LyricEntryBar';
 import { TitleBar } from './TitleBar';
@@ -143,7 +147,18 @@ export function AppLayout({
   const [inspectorOpen, setInspectorOpen] = useState<boolean | null>(null);
   const inspectorVisible = inspectorOpen ?? sideBySide;
   const score = useStore(document.store, s => s.score);
-  const activeTrackId = useStore(document.store, s => s.activeTrackId ?? null);
+  /*
+    Through `selectActiveTrackId`, never the raw field: the field is empty until
+    somebody picks a track, and the selector's rule — the first visible track
+    when none is chosen, or when the chosen one is gone — is what makes one track
+    always active. Reading the field left a freshly opened score with no active
+    track, so every stave drew in the same ink and no note lit during playback.
+    The web editor reads the same selector.
+  */
+  const activeTrackId = useStore(document.store, selectActiveTrackId);
+  // Memoized in music_editing, so this is reference-stable between renders
+  // that did not change the score or the hidden set.
+  const visibleTrackIds = useStore(document.store, selectVisibleTrackIds);
   const zoom = useStore(document.store, s => s.zoom);
   const pitchDisplay = useStore(document.store, s => s.pitchDisplay);
   /*
@@ -184,7 +199,7 @@ export function AppLayout({
     a touch into a place in the music.
   */
   const [actionsOpen, setActionsOpen] = useState(false);
-  const { noteColors, selectedMeasureIds } = useNoteColors(document);
+  const scoreSelection = useScoreSelection(document);
   /*
     The bar a measure-range selection extends from.
 
@@ -259,8 +274,8 @@ export function AppLayout({
             <ScrollingScore
               score={score}
               activeTrackId={activeTrackId}
-              noteColors={noteColors}
-              selectedMeasureIds={selectedMeasureIds}
+              trackIds={visibleTrackIds}
+              selection={scoreSelection}
               /*
                 Tapping a note selects it — the whole chord — and aims the caret
                 at it. `selectNotes` is music_editing's, so this and the web app

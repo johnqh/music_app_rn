@@ -31,6 +31,12 @@ export type IconButtonProps = {
    * to somebody looking at it.
    */
   selected?: boolean;
+  /**
+   * Fill the button red while `selected`, rather than leaving the glyph to say
+   * it — for an on/off switch (see `FILLED`). The caller draws its glyph in
+   * inverse ink when on.
+   */
+  fill?: boolean;
   children: ReactNode;
 };
 
@@ -54,6 +60,12 @@ const DISABLED = 'rounded-md p-1.5 opacity-40';
   to anything not looking at it.
 */
 const SELECTED = 'rounded-md p-1.5';
+/*
+  The exception: a control that *is* an on/off switch for something on screen —
+  the piano keyboard — fills red when on, with inverse ink, the way the toolbar
+  chips do. Tinting the glyph alone read as "selected" rather than "on".
+*/
+const FILLED = 'rounded-md p-1.5 bg-primary';
 
 /**
  * The drawn size: an 18px glyph in 6px of padding.
@@ -97,6 +109,7 @@ export function IconButton({
   onPress,
   disabled = false,
   selected = false,
+  fill = false,
   children,
 }: IconButtonProps) {
   return (
@@ -106,10 +119,15 @@ export function IconButton({
       {...(hint ? { accessibilityHint: hint } : {})}
       accessibilityState={{ disabled, selected }}
       onPress={onPress}
+      // macOS has no synthesized-touch fallback for an assistive press, so a
+      // VoiceOver press would otherwise do nothing.
+      {...(disabled ? {} : { onAccessibilityTap: onPress })}
       disabled={disabled}
       hitSlop={SLOP}
       android_ripple={RIPPLE}
-      className={disabled ? DISABLED : selected ? SELECTED : BASE}
+      className={
+        disabled ? DISABLED : selected ? (fill ? FILLED : SELECTED) : BASE
+      }
       style={({ pressed }) =>
         pressed && !disabled ? { opacity: PRESSED_OPACITY } : null
       }

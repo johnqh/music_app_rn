@@ -1,0 +1,8 @@
+{
+  "name": "@moosiac/playhead",
+  "version": "0.0.0",
+  "description": "The playback caret on macOS, moved by the display link rather than by JavaScript.",
+  "main": "index.js",
+  "react-native": "index.js",
+  "types": "index.d.ts"
+}

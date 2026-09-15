@@ -120,6 +120,28 @@ describe('TrackTab', () => {
     ).toBe(true);
   });
 
+  it('withdraws Delete Track once the other tracks are removed elsewhere', () => {
+    /*
+      The rule is subscribed to rather than read once during render, so the
+      button follows a track removed from somewhere other than this tab.
+      (Today other subscriptions happen to re-render the tab as well; this pins
+      the behaviour, not which subscription delivers it.)
+    */
+    const { view, document } = setup(2);
+    const state = document.store.getState();
+    const active = activeTrack(document);
+    const other = state.score!.tracks.find(t => t.id !== active.id)!;
+    expect(
+      view.getByLabelText(/delete track/i).props.accessibilityState.disabled,
+    ).toBe(false);
+    act(() => {
+      document.store.getState().removeTrack(other.id, 'Delete track');
+    });
+    expect(
+      view.getByLabelText(/delete track/i).props.accessibilityState.disabled,
+    ).toBe(true);
+  });
+
   it('asks before deleting a track it can delete', () => {
     const { view, document } = setup(2);
     const before = document.store.getState().score!.tracks.length;

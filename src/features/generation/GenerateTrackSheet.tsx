@@ -13,7 +13,7 @@
  * two never agree — Brush is 40 and program 40 is Violin.
  */
 import { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Input, Select, Text } from '@sudobility/components-rn';
 import {
@@ -83,7 +83,7 @@ export function GenerateTrackSheet({
         },
       ]}
     >
-      <ScrollView keyboardShouldPersistTaps="handled">
+      <>
         <Text className="text-muted-foreground pb-3 text-base">
           {t('generateTrack.intro')}
         </Text>
@@ -120,7 +120,7 @@ export function GenerateTrackSheet({
             count: estimateGenerateTrackCredits(score),
           })}
         </Text>
-      </ScrollView>
+      </>
     </FormModal>
   );
 }

@@ -22,7 +22,6 @@ import {
   Text,
 } from '@sudobility/components-rn';
 import { useProjects } from '@sudobility/music_client';
-import { emptyScoreForRequest } from '@sudobility/music_lib';
 import type { NewProjectSubmission } from '@sudobility/music_lib';
 import type { ProjectSummary } from '@sudobility/music_types';
 import { useAuth } from '@/auth/AuthContext';
@@ -31,6 +30,10 @@ import type { NativeUploadFile } from '@sudobility/music_client';
 import { useServerContext } from '@/config/useServerContext';
 import { ImportButtons } from '@/features/documents/ImportButtons';
 import { NewProjectSheet } from '@/features/projects/NewProjectSheet';
+import {
+  ServerProjectCreationFeedback,
+  useServerProjectCreation,
+} from '@/features/projects/useServerProjectCreation';
 import { SyncToServerButton } from '@/features/documents/SyncToServerButton';
 import {
   ScreenScaffold,
@@ -69,6 +72,7 @@ export function DashboardScreen() {
       context={context}
       onOpen={openProject}
       onOpened={openProject}
+      onOpenCredits={() => navigation.navigate('Credits')}
     />
   );
 }
@@ -77,79 +81,36 @@ function ProjectList({
   context,
   onOpen,
   onOpened,
+  onOpenCredits,
 }: {
   context: NonNullable<ReturnType<typeof useServerContext>>;
   onOpen: (id: string) => void;
   /** Opens the project a finished upload created. */
   onOpened: (id: string) => void;
+  onOpenCredits: () => void;
 }) {
   const { t } = useTranslation();
   const { data, isLoading, error, refetch } = useProjects(context);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-
   /**
    * Turns what the sheet asked for into a project on the server, then opens it.
    *
    * The same shape as the web dashboard's, including the rule that a refused
-   * job **deletes the project it just created**: that project exists only to
-   * hold the generation, and without this a user with no credits collects an
-   * empty "Generated score" row on every attempt.
+   * job **deletes the project it just created** (`createServerProject`), that
+   * a 402 opens the paywall rather than failing silently, and that the sheet
+   * closes either way (`useServerProjectCreation`).
    */
+  const creation = useServerProjectCreation();
+  const { create } = creation;
   const createProject = useCallback(
     async (submission: NewProjectSubmission) => {
-      const client = getMusicClient();
-      // The sheet is only offered with a server behind it, but the token can
-      // still have expired between render and press.
-      if (!client || !context.token) return;
-      setCreating(true);
-      try {
-        if (submission.kind === 'blank') {
-          const project = await client.createProject(
-            { name: submission.title, score: submission.score },
-            context.token,
-          );
-          setNewProjectOpen(false);
-          await refetch();
-          onOpened(project.id);
-          return;
-        }
-        /*
-          Created up front rather than on completion, so it appears in this list
-          with its badge from the first second instead of materialising minutes
-          later. Not named after the prompt: prompts routinely begin "Create
-          a ...", which makes a list of near-identical names.
-        */
-        const project = await client.createProject(
-          {
-            name: submission.request.title?.trim() || 'Generated score',
-            score: emptyScoreForRequest(submission.request),
-          },
-          context.token,
-        );
-        try {
-          await client.createJob(
-            {
-              projectId: project.id,
-              kind: 'generate-score',
-              request: submission.request,
-            },
-            context.token,
-          );
-        } catch (jobError) {
-          await client.deleteProject(project.id, context.token).catch(() => {
-            // Best effort: the refusal is what the user needs to hear about.
-          });
-          throw jobError;
-        }
-        setNewProjectOpen(false);
-        await refetch();
-        onOpened(project.id);
-      } finally {
-        setCreating(false);
-      }
+      const projectId = await create(submission);
+      setNewProjectOpen(false);
+      if (projectId === null) return;
+      await refetch();
+      onOpened(projectId);
     },
-    [context.token, refetch, onOpened],
+    [create, refetch, onOpened],
   );
 
   /**
@@ -238,9 +199,14 @@ function ProjectList({
       />
       <NewProjectSheet
         open={newProjectOpen}
-        submitting={creating}
+        submitting={creation.creating}
+        outOfCredits={creation.outOfCredits}
         onClose={() => setNewProjectOpen(false)}
         onSubmit={submission => void createProject(submission)}
+      />
+      <ServerProjectCreationFeedback
+        creation={creation}
+        onOpenCredits={onOpenCredits}
       />
     </View>
   );

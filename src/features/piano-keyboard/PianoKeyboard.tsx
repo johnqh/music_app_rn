@@ -15,11 +15,12 @@
  * change. Writing the note happens on release, from the held time, which is
  * what lets a run of taps lay out a melody instead of overwriting one position.
  */
-import { memo, useCallback, useRef } from 'react';
+import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import {
   BLACK_KEY_HEIGHT_RATIO,
   FULL_RANGE,
+  KEYBOARD_OUT_OF_RANGE_WHITE,
   computeKeys,
   keyboardWidth,
   whiteKeyCount,
@@ -29,12 +30,19 @@ import type {
   KeyboardRange,
   PianoKey,
 } from '@sudobility/music_drawing';
+import type { MidiRange } from '@sudobility/music_types';
 
 export type PianoKeyboardProps = {
   /** Available width; the white-key width follows from it and the range. */
   width: number;
   height?: number;
   range?: KeyboardRange;
+  /**
+   * What the instrument can play. Keys outside it are drawn pale and do not
+   * respond: they are there because the track holds notes there, not so more
+   * can be written. Null marks none.
+   */
+  playable?: MidiRange | null;
   naming?: KeyNaming;
   /** Pitches currently sounding, lit while they play. */
   sounding?: ReadonlySet<number>;
@@ -49,8 +57,12 @@ export type PianoKeyboardProps = {
    */
   selected?: ReadonlySet<number>;
   onKeyDown?: (midi: number) => void;
-  /** Held milliseconds, so the caller can turn a tap into a note value. */
-  onKeyUp?: (midi: number, heldMs: number) => void;
+  /**
+   * The key was released. No held time: the caller times the gesture itself
+   * (`pressKey`/`releaseKey` in music_editing), because a chord is timed from
+   * its first key down to its last key up, which no single key can know.
+   */
+  onKeyUp?: (midi: number) => void;
 };
 
 const DEFAULT_HEIGHT = 120;
@@ -59,6 +71,7 @@ export function PianoKeyboard({
   width,
   height = DEFAULT_HEIGHT,
   range = FULL_RANGE,
+  playable = null,
   naming = 'pitch',
   sounding,
   selected,
@@ -68,28 +81,8 @@ export function PianoKeyboard({
   // The range is fitted to the width rather than scrolled: a keyboard you have
   // to scroll is one you cannot play a two-handed chord on.
   const whiteWidth = width / Math.max(1, whiteKeyCount(range));
-  const keys = computeKeys(whiteWidth, height, range, naming);
+  const keys = computeKeys(whiteWidth, height, range, naming, playable);
   const total = keyboardWidth(whiteWidth, range);
-  const pressedAt = useRef<Map<number, number>>(new Map());
-
-  const down = useCallback(
-    (midi: number) => {
-      // Wall-clock, because what is being measured is how long a finger was
-      // down — not how many frames elapsed.
-      pressedAt.current.set(midi, Date.now());
-      onKeyDown?.(midi);
-    },
-    [onKeyDown],
-  );
-
-  const up = useCallback(
-    (midi: number) => {
-      const started = pressedAt.current.get(midi);
-      pressedAt.current.delete(midi);
-      onKeyUp?.(midi, started === undefined ? 0 : Date.now() - started);
-    },
-    [onKeyUp],
-  );
 
   return (
     <View style={[styles.board, { width: total, height }]}>
@@ -100,8 +93,8 @@ export function PianoKeyboard({
           height={height}
           lit={sounding?.has(key.midi) ?? false}
           selected={selected?.has(key.midi) ?? false}
-          onDown={down}
-          onUp={up}
+          onDown={onKeyDown}
+          onUp={onKeyUp}
         />
       ))}
     </View>
@@ -120,16 +113,18 @@ const Key = memo(function Key({
   height: number;
   lit: boolean;
   selected: boolean;
-  onDown: (midi: number) => void;
-  onUp: (midi: number) => void;
+  onDown?: ((midi: number) => void) | undefined;
+  onUp?: ((midi: number) => void) | undefined;
 }) {
   const black = pianoKey.isBlack;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={pianoKey.label ?? String(pianoKey.midi)}
-      onPressIn={() => onDown(pianoKey.midi)}
-      onPressOut={() => onUp(pianoKey.midi)}
+      accessibilityState={{ disabled: pianoKey.outOfRange }}
+      disabled={pianoKey.outOfRange}
+      onPressIn={() => onDown?.(pianoKey.midi)}
+      onPressOut={() => onUp?.(pianoKey.midi)}
       style={[
         styles.key,
         black ? styles.black : styles.white,
@@ -142,6 +137,7 @@ const Key = memo(function Key({
           Sounding wins over selected: a note you are hearing right now is the
           more urgent fact, and the two rarely coincide.
         */
+        !black && pianoKey.outOfRange && styles.whiteOutOfRange,
         selected && (black ? styles.blackSelected : styles.whiteSelected),
         lit && (black ? styles.blackLit : styles.whiteLit),
       ]}
@@ -172,6 +168,7 @@ const styles = StyleSheet.create({
     borderColor: '#a1a1aa',
   },
   black: { backgroundColor: '#27272a' },
+  whiteOutOfRange: { backgroundColor: KEYBOARD_OUT_OF_RANGE_WHITE },
   whiteLit: { backgroundColor: '#93c5fd' },
   blackLit: { backgroundColor: '#2563eb' },
   // Amber, as the web marks a selected key — distinct from the blue of

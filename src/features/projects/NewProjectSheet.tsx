@@ -10,7 +10,7 @@
  * local document — which is why generation can be switched off entirely.
  */
 import { useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Switch, Text } from '@sudobility/components-rn';
 import {
@@ -136,59 +136,54 @@ export function NewProjectSheet({
         },
       ]}
     >
-      {/*
-        Scrolls inside the sheet: on a phone in landscape this is taller than
-        the screen, and a form whose Create button is off the bottom is a form
-        nobody can submit.
-      */}
-      <ScrollView keyboardShouldPersistTaps="handled">
-        {/*
-          Above the fields, because it is the first thing you decide: whether
-          anything is written for you, or you get the staves and write it.
-        */}
-        <View className="flex-row items-center gap-3 pb-3">
-          <Switch
-            checked={generateForMe}
-            onCheckedChange={next => {
-              setGenerateForMe(next);
-              // The roster and the style that overwrites it both live in the
-              // draft, so the singer is added and taken back there.
-              setup.setGenerating(next && generationAvailable);
-            }}
-            disabled={!generationAvailable}
-            accessibilityLabel={t('newProject.generateForMe')}
-          />
-          <View className="flex-1">
-            <Text className="text-foreground text-base">
-              {t('newProject.generateForMe')}
-            </Text>
-            <Text className="text-muted-foreground text-sm">
-              {generationAvailable
-                ? t('newProject.generateForMeHint')
-                : t('newProject.generationNeedsServer')}
-            </Text>
+      {/* No ScrollView of its own: FormModal's body already scrolls, and a
+          second one nested inside it grew to its content and never scrolled. */}
+      <ScoreSetupFields
+        draft={setup}
+        showAi={generating}
+        generateToggle={
+          <View className="flex-row items-center gap-3 pb-3">
+            <Switch
+              checked={generateForMe}
+              onCheckedChange={next => {
+                setGenerateForMe(next);
+                // The roster and the style that overwrites it both live in the
+                // draft, so the singer is added and taken back there.
+                setup.setGenerating(next && generationAvailable);
+              }}
+              disabled={!generationAvailable}
+              accessibilityLabel={t('newProject.generateForMe')}
+            />
+            <View className="flex-1">
+              <Text className="text-foreground text-base">
+                {t('newProject.generateForMe')}
+              </Text>
+              <Text className="text-muted-foreground text-sm">
+                {generationAvailable
+                  ? t('newProject.generateForMeHint')
+                  : t('newProject.generationNeedsServer')}
+              </Text>
+            </View>
           </View>
-        </View>
+        }
+      />
 
-        <ScoreSetupFields draft={setup} showAi={generating} />
-
-        {generating ? (
-          <Text className="text-muted-foreground text-sm">
-            {t('generate.estimate', { count: credits })}
-          </Text>
-        ) : null}
-        {/*
-          A courtesy gate, and only at zero. Deliberately not disabled when the
-          estimate merely exceeds the balance: a job may overdraw once by
-          design, and a stricter rule here would refuse work `POST /jobs` would
-          have accepted.
-        */}
-        {generating && outOfCredits ? (
-          <Text className="text-destructive text-sm">
-            {t('credits.outOfCreditsTitle')}
-          </Text>
-        ) : null}
-      </ScrollView>
+      {generating ? (
+        <Text className="text-muted-foreground text-sm">
+          {t('generate.estimate', { count: credits })}
+        </Text>
+      ) : null}
+      {/*
+        A courtesy gate, and only at zero. Deliberately not disabled when the
+        estimate merely exceeds the balance: a job may overdraw once by design,
+        and a stricter rule here would refuse work `POST /jobs` would have
+        accepted.
+      */}
+      {generating && outOfCredits ? (
+        <Text className="text-destructive text-sm">
+          {t('credits.outOfCreditsTitle')}
+        </Text>
+      ) : null}
     </FormModal>
   );
 }

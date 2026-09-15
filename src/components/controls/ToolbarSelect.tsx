@@ -20,7 +20,7 @@
  */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { FormModal, MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
 import { useTranslation } from 'react-i18next';
 import { NotationIcon } from '@/components/icons/NotationIcon';
@@ -84,7 +84,7 @@ export function ToolbarSelect({
         actions={[]}
         closeAriaLabel={t('common.closeDialog')}
       >
-        <ScrollView>
+        <>
           {options.map(option => (
             <Pressable
               key={option.value}
@@ -118,7 +118,7 @@ export function ToolbarSelect({
           ))}
           {/* A tail, so the last row is not flush against the sheet's edge. */}
           <View className="h-2" />
-        </ScrollView>
+        </>
       </FormModal>
     </>
   );

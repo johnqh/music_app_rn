@@ -97,3 +97,20 @@ build the dictionary from the classes that actually exist. Excluding those two
 libraries in `react-native.config.js` instead is not an option — see the
 comment there: a `platforms` entry replaces the package's own map and broke the
 Android build.
+
+The same patch also carries two macOS fixes to React Native itself:
+
+- **Dialogs are native sheets.** `RCTModalHostViewComponentView` compiles its
+  whole implementation out on macOS, so `<Modal>` rendered inline in the main
+  window. The patch adds the macOS half: each `<Modal>` is presented as a sheet
+  on its host window, its React children mounted into the sheet's content view,
+  the modal's state sized to the most the window allows, and the sheet shrunk
+  to what the content actually drew. Escape sends `onRequestClose`.
+  `@sudobility/components-rn`'s macOS `ModalHost` sends `presentation="sheet"`
+  dialogs here and keeps menus and popovers in-tree.
+- **Resizing the window no longer crashes.** `setNativeProps` replaced
+  `ShadowNodeFamily::nativeProps_DEPRECATED` on the JS thread with no lock,
+  while a window resize ran layout synchronously on the main thread and copied
+  the same value inside `ShadowNode::clone` — a use-after-free in
+  `folly::dynamic::type()`. Every read and write now happens under a new
+  `nativePropsMutex_DEPRECATED`.

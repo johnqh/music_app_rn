@@ -24,6 +24,25 @@ export function buildEditingCopy(): EditingCopy {
     validationProblem: (detail: string) =>
       i18next.t('editor.validationProblem', { detail }),
     lastMeasureKept: i18next.t('editor.lastMeasureKept'),
+    // The library hands over facts — the pitch, the instrument, its compass,
+    // the side and what was refused — and the sentence is ours, so its word
+    // order can follow the language rather than English. Same keys as the web
+    // app's `command-labels.ts`, which the cross-app parity test holds to.
+    outOfRange: ({ pitch, instrument, low, high, direction, refused }) =>
+      i18next.t(`editor.outOfRange.${direction}`, {
+        pitch,
+        instrument,
+        low,
+        high,
+        action: i18next.t(`editor.refused.${refused}`),
+      }),
+    tooManyNotes: ({ instrument, limit, refused }) =>
+      i18next.t(limit === 1 ? 'editor.polyphonyOne' : 'editor.polyphonyMany', {
+        instrument: instrument ?? i18next.t('editor.unknownInstrument'),
+        limit,
+        action: i18next.t(`editor.refused.${refused}`),
+      }),
+    undoAction: () => i18next.t('editor.undo'),
   };
 }
 

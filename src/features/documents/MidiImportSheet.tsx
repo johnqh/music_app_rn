@@ -22,7 +22,7 @@
  * along on the same row as secondary text rather than as columns of their own.
  */
 import { useEffect, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import {
   FormModal,
@@ -100,7 +100,7 @@ export function MidiImportSheet({
       closeAriaLabel={t('common.closeDialog')}
       size="large"
     >
-      <ScrollView>
+      <>
         <View className="gap-4 p-1">
           <Text className="text-muted-foreground text-base">
             {t('importMidi.description')}
@@ -273,7 +273,7 @@ export function MidiImportSheet({
             onChange={value => patch({ detectKey: value })}
           />
         </View>
-      </ScrollView>
+      </>
     </FormModal>
   );
 }

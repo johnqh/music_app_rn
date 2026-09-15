@@ -717,9 +717,27 @@
     "voice2Hint": "声部 2——同一谱表上另一条独立的旋律线",
     "voiceNumber": "声部 {{number}}",
     "zoomIn": "放大",
-    "zoomOut": "缩小"
+    "zoomOut": "缩小",
+    "outOfRange": {
+      "above": "{{pitch}} 高于{{instrument}}的音域（{{low}}–{{high}}），{{action}}",
+      "below": "{{pitch}} 低于{{instrument}}的音域（{{low}}–{{high}}），{{action}}"
+    },
+    "refused": {
+      "addNote": "因此未添加。",
+      "addChord": "因此未添加这个和弦。",
+      "changeNote": "因此未更改该音符。",
+      "changeAccidental": "因此未更改变音记号。",
+      "moveNote": "因此未移动该音符。",
+      "moveNotes": "因此未移动这些音符。",
+      "transpose": "因此未进行移调。",
+      "paste": "因此未粘贴任何内容。"
+    },
+    "polyphonyOne": "{{instrument}}一次只能演奏一个音，{{action}}",
+    "polyphonyMany": "{{instrument}}最多同时演奏 {{limit}} 个音，{{action}}",
+    "unknownInstrument": "该乐器"
   },
   "errors": {
+    "createProject": "创建项目失败",
     "loadProjects": "无法加载您的项目。"
   },
   "export": {
@@ -744,6 +762,10 @@
     "presets": "预设"
   },
   "generateScore": {
+    "duration": "时长",
+    "durationInvalid": "请输入时长，例如 0:45 或 1:30。",
+    "addInstrument": "添加乐器",
+    "removeInstrument": "移除{{instrument}}",
     "essential": "（必需）",
     "complexity": "复杂度",
     "instrumentation": "配器",

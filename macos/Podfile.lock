@@ -10,7 +10,11 @@ PODS:
   - hermes-engine/Pre-built (0.81.5)
   - MoosiacFilePicker (0.0.0):
     - React-Core
+  - MoosiacPlayhead (0.0.0):
+    - React-Core
   - MoosiacPrint (0.0.0):
+    - React-Core
+  - MoosiacSynth (0.0.0):
     - React-Core
   - RCT-Folly (2024.11.18.00):
     - boost
@@ -2832,7 +2836,9 @@ DEPENDENCIES:
   - glog (from `../node_modules/react-native-macos/third-party-podspecs/glog.podspec`)
   - hermes-engine (from `../node_modules/react-native-macos/sdks/hermes-engine/hermes-engine.podspec`)
   - "MoosiacFilePicker (from `../node_modules/@moosiac/file-picker`)"
+  - "MoosiacPlayhead (from `../node_modules/@moosiac/playhead`)"
   - "MoosiacPrint (from `../node_modules/@moosiac/print`)"
+  - "MoosiacSynth (from `../node_modules/@moosiac/synth`)"
   - RCT-Folly (from `../node_modules/react-native-macos/third-party-podspecs/RCT-Folly.podspec`)
   - RCTDeprecation (from `../node_modules/react-native-macos/ReactApple/Libraries/RCTFoundation/RCTDeprecation`)
   - RCTRequired (from `../node_modules/react-native-macos/Libraries/Required`)
@@ -2932,8 +2938,12 @@ EXTERNAL SOURCES:
     :tag: hermes-2025-07-07-RNv0.81.0-e0fc67142ec0763c6b6153ca2bf96df815539782
   MoosiacFilePicker:
     :path: "../node_modules/@moosiac/file-picker"
+  MoosiacPlayhead:
+    :path: "../node_modules/@moosiac/playhead"
   MoosiacPrint:
     :path: "../node_modules/@moosiac/print"
+  MoosiacSynth:
+    :path: "../node_modules/@moosiac/synth"
   RCT-Folly:
     :podspec: "../node_modules/react-native-macos/third-party-podspecs/RCT-Folly.podspec"
   RCTDeprecation:
@@ -3092,7 +3102,9 @@ SPEC CHECKSUMS:
   glog: 0b31c25149b9d350b2666c7d459229861a00ec07
   hermes-engine: 9f4dfe93326146a1c99eb535b1cb0b857a3cd172
   MoosiacFilePicker: 3e696f06f20cc8120b616dee4b9c4303117107d8
+  MoosiacPlayhead: 2c7ba72f7eddb186606ebdb7112e39b683e06e91
   MoosiacPrint: bad0d77f2dc6a6441c491b892bedcbc846ccf744
+  MoosiacSynth: b82a8616419012ad71053f75aaff7a924d9cb27e
   RCT-Folly: a3d9b23289a456c318f4814703664bdc33c771cc
   RCTDeprecation: ae9e1391708bf992a2a94fb724b0923015be995b
   RCTRequired: eb7a65dfaf816b64d40e1c96e4fc597bfa28bedc

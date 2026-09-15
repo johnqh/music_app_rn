@@ -108,35 +108,38 @@ export default function App() {
         */}
         <ThemeProvider>
           <ThemeVarsProvider>
-            {/*
-            Above everything that opens a picker: a portalled sheet draws here,
-            so it escapes the scrolling toolbar that would otherwise clip it —
-            and needs no `Modal`, which React Native macOS cannot mount.
-          */}
-            <PortalHost>
-              <QueryClientProvider client={queryClient}>
-                {/*
+            <QueryClientProvider client={queryClient}>
+              {/*
                 Auth wraps the navigator rather than gating it: the editor is
                 usable signed out, and only the screens that read the server
                 ask whether there is an account.
               */}
-                <AuthProvider>
-                  <DocumentsProvider
-                    list={list}
-                    onDocumentChanged={notifyChanged}
-                  >
+              <AuthProvider>
+                <DocumentsProvider
+                  list={list}
+                  onDocumentChanged={notifyChanged}
+                >
+                  {/*
+                    Above everything that opens a picker: a portalled sheet
+                    draws here, so it escapes the scrolling toolbar that would
+                    otherwise clip it. Inside the data providers, not above
+                    them: what is portalled is still part of the app, and a
+                    dialog drawn here that reads the server — the presets in
+                    New Project — failed with "No QueryClient set" when this
+                    sat outside `QueryClientProvider`.
+                  */}
+                  <PortalHost>
                     {/*
-                      Inside the documents provider and above the navigator: a
-                      File-menu import makes a new document from whatever screen
-                      is in front, so it can belong to none of them.
+                      A File-menu import makes a new document from whatever
+                      screen is in front, so it can belong to none of them.
                     */}
                     <MenuImportCommands />
                     <MenuFileCommands />
                     <Navigation />
-                  </DocumentsProvider>
-                </AuthProvider>
-              </QueryClientProvider>
-            </PortalHost>
+                  </PortalHost>
+                </DocumentsProvider>
+              </AuthProvider>
+            </QueryClientProvider>
           </ThemeVarsProvider>
         </ThemeProvider>
       </SafeAreaProvider>

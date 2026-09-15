@@ -48,6 +48,15 @@ const ALLOWED_NON_UI = new Set([
   // listens to is declared in this app's own `AppDelegate.mm`, so there is
   // no other package that could own it.
   'src/app/menu-commands.ts',
+  // What a `moosiac://open` link or a Finder open asks for: a path, checked
+  // against the extensions the app reads. Arrangement over the document and
+  // import tables, and the same kind of platform glue as the menu bar.
+  'src/app/open-links.ts',
+  // Server wiring for New Project: create the project row, start the job,
+  // undo the row if the job is refused. The same kind of network glue as
+  // `project-sync.ts`, shared by the dashboard and the macOS File menu so
+  // the two cannot disagree about what creating a generated project means.
+  'src/features/projects/create-server-project.ts',
   // Printing. `print-plan.ts` is the pagination decisions, which need no
   // renderer and are testable under node; `print-pages.ts` draws them with
   // Skia; `print-service.ts` hands the images to the platform. All three are

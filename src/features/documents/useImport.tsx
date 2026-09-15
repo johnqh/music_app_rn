@@ -67,17 +67,13 @@ export function useImport() {
     [list],
   );
 
-  const run = useCallback(
-    async (format: ImportFormat): Promise<void> => {
-      const picker = createFilePicker();
-      if (!picker.isSupported()) {
-        setFailure(t('import.unsupported'));
-        return;
-      }
+  /**
+   * Imports a file already chosen — by the picker below, or by an open link.
+   * MIDI still goes through its wizard either way.
+   */
+  const importFile = useCallback(
+    async (format: ImportFormat, uri: string): Promise<void> => {
       try {
-        const uri = await picker.pickFile(IMPORT_EXTENSIONS[format]);
-        // Cancelling is an ordinary outcome, not a failure to report.
-        if (!uri) return;
         if (format === 'midi') {
           // Analysed here rather than inside the sheet: reading the file can
           // fail, and a failure belongs in this hook's own report rather than
@@ -94,7 +90,26 @@ export function useImport() {
         setFailure(error instanceof Error ? error.message : String(error));
       }
     },
-    [t, finish],
+    [finish],
+  );
+
+  const run = useCallback(
+    async (format: ImportFormat): Promise<void> => {
+      const picker = createFilePicker();
+      if (!picker.isSupported()) {
+        setFailure(t('import.unsupported'));
+        return;
+      }
+      try {
+        const uri = await picker.pickFile(IMPORT_EXTENSIONS[format]);
+        // Cancelling is an ordinary outcome, not a failure to report.
+        if (!uri) return;
+        await importFile(format, uri);
+      } catch (error) {
+        setFailure(error instanceof Error ? error.message : String(error));
+      }
+    },
+    [t, importFile],
   );
 
   const confirmMidi = useCallback(
@@ -108,6 +123,7 @@ export function useImport() {
 
   return {
     run,
+    importFile,
     warnings,
     failure,
     setWarnings,
