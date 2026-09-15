@@ -22,13 +22,17 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { cursorTickAt } from '@sudobility/music_drawing';
-import type { CursorState } from './useScoreCanvas';
+import { useSignal } from './useScoreCanvas';
+import type { CursorState, ScrollOffset, Signal } from './useScoreCanvas';
 
 export type PlaybackCursorProps = {
-  cursor: CursorState;
+  /**
+   * What the canvas last described. A signal rather than a value, so a new
+   * description re-renders this line and not the score view that owns it.
+   */
+  cursor: Signal<CursorState>;
   /** Content px scrolled: the line is placed in content coordinates. */
-  scrollLeft: number;
-  scrollTop: number;
+  scroll: Signal<ScrollOffset>;
   /**
    * The line's colour: the render theme's `caret`, so it follows light and
    * dark with the notation it is drawn over. The theme is the one place every
@@ -48,11 +52,12 @@ export const CURSOR_WIDTH = 2;
 const HORIZON_SECONDS = 30;
 
 export function PlaybackCursor({
-  cursor,
-  scrollLeft,
-  scrollTop,
+  cursor: cursorSignal,
+  scroll,
   color,
 }: PlaybackCursorProps) {
+  const cursor = useSignal(cursorSignal);
+  const { left: scrollLeft, top: scrollTop } = useSignal(scroll);
   const clock = useRef(new Animated.Value(0)).current;
   const { path, motion } = cursor;
 

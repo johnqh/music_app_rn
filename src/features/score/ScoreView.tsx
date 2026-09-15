@@ -6,20 +6,24 @@
  * decides what to paint and when, records the renderer's output into an
  * `SkPicture`, and this replays it. That split is what keeps a frame cheap: a
  * scroll or a colour change records one picture off React's render path, and
- * React only swaps which picture is shown.
+ * only this component re-renders to show it — it reads the picture from a
+ * signal, so nothing above it does.
  */
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Canvas, Picture, useCanvasSize } from '@shopify/react-native-skia';
 import type { SkPicture } from '@shopify/react-native-skia';
+import { useSignal } from './useScoreCanvas';
+import type { Signal } from './useScoreCanvas';
 
 export type ScoreViewProps = {
-  picture: SkPicture | null;
+  picture: Signal<SkPicture | null>;
   /** The view's real size, measured — never the display's. */
   height: number;
 };
 
-export function ScoreView({ picture, height }: ScoreViewProps) {
+export function ScoreView({ picture: pictures, height }: ScoreViewProps) {
+  const picture = useSignal(pictures);
   /*
     A picture handed to a surface that does not exist yet is never painted, and
     nothing re-renders on its own afterwards. `useCanvasSize` reports a size only

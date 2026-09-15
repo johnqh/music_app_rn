@@ -6,14 +6,16 @@
  * while the web had them. Hidden tracks were still drawn, notes an instrument
  * cannot play were never marked, and the caret was a hardcoded red that
  * ignored the theme. Each is pinned against a recording canvas.
+ *
+ * And one thing about *when*: a new picture, cursor or scroll offset must not
+ * re-render the score view. During playback those change on every note, and a
+ * re-render per note was measured at 7% of the JavaScript thread.
  */
 import { jest } from '@jest/globals';
 import type { ReactNode } from 'react';
-import {
-  DARK_RENDER_THEME,
-  outOfRangeNoteIds,
-} from '@sudobility/music_drawing';
-import { createEmptyScore, displayScore } from '@sudobility/music_types';
+import { act } from '@testing-library/react-native';
+import { DARK_RENDER_THEME } from '@sudobility/music_drawing';
+import { createEmptyScore } from '@sudobility/music_types';
 import type { Pitch, Score } from '@sudobility/music_types';
 import { twinkleScore } from '@sudobility/music_types/test';
 import { renderWithApp } from '@/test/render';
@@ -21,9 +23,12 @@ import { renderWithApp } from '@/test/render';
 type Call = { method: string; args: unknown[] };
 const mockCalls: Call[] = [];
 const mockCursorColors: string[] = [];
-const mockScanned: (Score | null)[] = [];
+const mockRenders = { count: 0 };
 
 jest.mock('./useScoreCanvas', () => {
+  const actual = jest.requireActual(
+    './useScoreCanvas',
+  ) as typeof import('./useScoreCanvas');
   const record =
     (method: string) =>
     (...args: unknown[]) => {
@@ -31,6 +36,7 @@ jest.mock('./useScoreCanvas', () => {
     };
   const canvas = {
     setScore: record('setScore'),
+    setStoredScore: record('setStoredScore'),
     setView: record('setView'),
     setActiveTrack: record('setActiveTrack'),
     setSelectedNotes: record('setSelectedNotes'),
@@ -43,23 +49,28 @@ jest.mock('./useScoreCanvas', () => {
     contentSize: () => ({ width: 800, height: 600 }),
     hitTest: () => null,
   };
-  return {
-    useScoreCanvas: () => ({
-      canvas,
-      picture: null,
-      cursor: {
-        path: null,
-        motion: { tick: 0, atMs: 0, ticksPerSecond: 0 },
-        id: 0,
-      },
+  const signals = {
+    picture: actual.createSignal<unknown>(null),
+    cursor: actual.createSignal({
+      path: null,
+      motion: { tick: 0, atMs: 0, ticksPerSecond: 0 },
+      id: 0,
     }),
+    scroll: actual.createSignal({ left: 0, top: 0 }),
+  };
+  return {
+    ...actual,
+    mockSignals: signals,
+    useScoreCanvas: () => ({ canvas, ...signals }),
   };
 });
 
 // Measured from the first render: the view only sizes the canvas once it
 // knows its own size, and a test renderer measures nothing.
 jest.mock('@/features/layout/useContainerSize', () => ({
+  // Called once per render of the score view, which is what makes it a counter.
   useContainerSize: () => ({
+    ...(mockRenders.count++, {}),
     size: { width: 800, height: 600 },
     onLayout: () => undefined,
     measured: true,
@@ -84,16 +95,18 @@ jest.mock('@sudobility/music_drawing', () => {
   return {
     ...actual,
     bindPlaybackToCanvas: () => () => undefined,
-    // Recorded, so the test can say *which* score was scanned.
-    outOfRangeNoteIds: (score: Score | null) => {
-      mockScanned.push(score);
-      return actual.outOfRangeNoteIds(score);
-    },
   };
 });
 
 const { ScrollingScore } =
   require('./ScrollingScore') as typeof import('./ScrollingScore');
+const { mockSignals } = require('./useScoreCanvas') as {
+  mockSignals: {
+    picture: { set: (next: unknown) => void };
+    cursor: { set: (next: unknown) => void };
+    scroll: { set: (next: { left: number; top: number }) => void };
+  };
+};
 
 function lastCall(method: string): unknown[] | undefined {
   return [...mockCalls].reverse().find(call => call.method === method)?.args;
@@ -132,7 +145,7 @@ function clarinetScore(): Score {
 beforeEach(() => {
   mockCalls.length = 0;
   mockCursorColors.length = 0;
-  mockScanned.length = 0;
+  mockRenders.count = 0;
 });
 
 describe('ScrollingScore', () => {
@@ -149,20 +162,34 @@ describe('ScrollingScore', () => {
     expect(lastCall('setView')?.[0]).not.toHaveProperty('trackIds');
   });
 
-  it('marks out-of-range notes from the stored score, not the drawn one', () => {
+  it('hands the canvas the stored score and the reading mode, not a drawn score', () => {
     /*
-      In written pitch the lens moves a clarinet up a tone, so scanning the
-      drawn score would judge the part a tone away from where it sounds. The
-      ids survive the lens, which is why the stored scan is the right one.
+      In written pitch the lens moves a clarinet up a tone, so marking notes
+      from the drawn score would judge the part a tone away from where it
+      sounds. The canvas applies the lens and scans the stored pitches itself
+      (\`ScoreCanvas.setStoredScore\`, tested in music_drawing); what can go wrong
+      here is handing it the wrong one.
     */
     const score = clarinetScore();
-    const expected = outOfRangeNoteIds(score).ids;
-    expect(expected.length).toBeGreaterThan(0);
     renderWithApp(<ScrollingScore score={score} pitchDisplay="written" />);
-    expect(lastCall('setOutOfRangeNotes')?.[0]).toEqual(expected);
-    // The lens really did produce a different score, and it was not scanned.
-    expect(displayScore(score, 'written')).not.toBe(score);
-    expect(mockScanned.at(-1)).toBe(score);
+    expect(lastCall('setStoredScore')).toEqual([score, 'written']);
+    expect(lastCall('setScore')).toBeUndefined();
+  });
+
+  it('does not re-render for a new picture, cursor or scroll offset', () => {
+    const score = createEmptyScore({ title: 'Test', measures: 2 });
+    renderWithApp(<ScrollingScore score={score} />);
+    const settled = mockRenders.count;
+    act(() => {
+      mockSignals.picture.set({});
+      mockSignals.cursor.set({
+        path: null,
+        motion: { tick: 480, atMs: 0, ticksPerSecond: 960 },
+        id: 1,
+      });
+      mockSignals.scroll.set({ left: 0, top: 120 });
+    });
+    expect(mockRenders.count).toBe(settled);
   });
 
   it('colours the caret from the render theme', () => {

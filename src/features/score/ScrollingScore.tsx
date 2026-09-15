@@ -27,14 +27,13 @@ import {
   DARK_RENDER_THEME,
   LIGHT_RENDER_THEME,
   bindPlaybackToCanvas,
-  outOfRangeNoteIds,
 } from '@sudobility/music_drawing';
 import type {
   LayoutMode,
   MeasureHit,
   RenderTheme,
 } from '@sudobility/music_drawing';
-import { displayScore, getMusicPosition } from '@sudobility/music_types';
+import { getMusicPosition } from '@sudobility/music_types';
 import type { Pitch, PitchDisplay, Score } from '@sudobility/music_types';
 import { getAppServices } from '@/config/initialize';
 import { ScoreView } from './ScoreView';
@@ -173,32 +172,29 @@ export function ScrollingScore({
 
   const verticalRef = useRef<ScrollView | null>(null);
   const horizontalRef = useRef<ScrollView | null>(null);
-  const { canvas, picture, cursor } = useScoreCanvas({
+  const { canvas, picture, cursor, scroll } = useScoreCanvas({
     vertical: verticalRef,
     horizontal: horizontalRef,
     size: sizeRef,
   });
 
   /*
-    Scroll offsets, in content px. A ref for the touch handler (which must not
-    re-render to read it) and state for the cursor overlay, which is placed in
-    content coordinates and has to move with the sheet.
+    Scroll offsets, in content px. A ref for the touch handler, and a signal for
+    the cursor overlay, which is placed in content coordinates and has to move
+    with the sheet — neither re-renders this component.
   */
   const scrollRef = useRef({ left: 0, top: 0 });
-  const [scroll, setScroll] = useState({ left: 0, top: 0 });
   const continuous = layoutMode === 'continuous';
-
-  /*
-    The score as drawn, not as stored — octave brackets moved to where they are
-    written, and transposing instruments in written pitch if that is the mode.
-    The lens composition itself is music_types'; this is only where the app
-    applies it. It returns its input untouched when neither half applies.
-  */
-  const drawn = displayScore(score, pitchDisplay);
 
   const [contentSize, setContentSize] = useState({ width: 0, height: 0 });
   useLayoutEffect(() => {
-    canvas.setScore(drawn);
+    /*
+      The score as stored, and the reading mode. The canvas applies the display
+      lenses and scans the stored pitches for notes the instrument cannot play
+      — once per score, where computing the drawn score here did it on every
+      render of this component.
+    */
+    canvas.setStoredScore(score, pitchDisplay);
     if (measured && width > 0 && height > 0) {
       canvas.setView({
         width,
@@ -217,7 +213,8 @@ export function ScrollingScore({
     );
   }, [
     canvas,
-    drawn,
+    score,
+    pitchDisplay,
     measured,
     width,
     height,
@@ -226,17 +223,6 @@ export function ScrollingScore({
     resolvedTheme,
     trackIds,
   ]);
-
-  /*
-    Notes the instrument cannot play, marked in the notation as the web marks
-    them. Scanned on the STORED score, never `drawn`: the compass is sounding
-    pitch, and the lenses have moved a clarinet a tone and an `8va` an octave.
-    The ids survive both lenses, which is why the stored scan colours the drawn
-    notes correctly in either display mode.
-  */
-  useLayoutEffect(() => {
-    canvas.setOutOfRangeNotes(outOfRangeNoteIds(score).ids);
-  }, [canvas, score]);
 
   useLayoutEffect(() => {
     canvas.setActiveTrack(activeTrackId);
@@ -276,13 +262,12 @@ export function ScrollingScore({
     (left: number, top: number) => {
       scrollRef.current = { left, top };
       canvas.setScroll(left, top);
-      setScroll(previous =>
-        previous.left === left && previous.top === top
-          ? previous
-          : { left, top },
-      );
+      const previous = scroll.get();
+      if (previous.left !== left || previous.top !== top) {
+        scroll.set({ left, top });
+      }
     },
-    [canvas],
+    [canvas, scroll],
   );
 
   const onScroll = useCallback(
@@ -414,8 +399,7 @@ export function ScrollingScore({
           <ScoreView picture={picture} height={height} />
           <PlaybackCursor
             cursor={cursor}
-            scrollLeft={scroll.left}
-            scrollTop={scroll.top}
+            scroll={scroll}
             color={resolvedTheme.caret}
           />
         </View>

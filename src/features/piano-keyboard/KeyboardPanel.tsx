@@ -20,6 +20,7 @@ import {
   EMPTY_GROUP,
   playKeyGroup,
   playingPitchesForTrack,
+  samePitchSet,
   pressKey,
   releaseKey,
   selectSelectedNotes,
@@ -55,6 +56,8 @@ export type KeyboardPanelProps = {
 export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
   const { size, onLayout, measured } = useContainerSize();
   const [sounding, setSounding] = useState<ReadonlySet<number>>(new Set());
+  /** What `sounding` holds, readable from the player's callback without a render. */
+  const shownSounding = useRef(sounding);
   const activeTrackId = useStore(document.store, selectActiveTrackId);
 
   /**
@@ -75,7 +78,14 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
       `playingPitchesForTrack` is where it lives so the two agree.
     */
     return player.onSounding(notes => {
-      setSounding(playingPitchesForTrack(notes, activeTrackId));
+      const next = playingPitchesForTrack(notes, activeTrackId);
+      // Nothing to do when no key of this track moved: the player reports
+      // every track's notes, and a new set each time re-rendered all the keys
+      // for notes this keyboard does not show. Compared before `setSounding`
+      // rather than inside an updater, which React still renders to evaluate.
+      if (samePitchSet(shownSounding.current, next)) return;
+      shownSounding.current = next;
+      setSounding(next);
     });
   }, [activeTrackId]);
 

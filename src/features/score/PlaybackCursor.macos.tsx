@@ -12,15 +12,17 @@ import { StyleSheet, View } from 'react-native';
 import { PlayheadView } from '@moosiac/playhead';
 import { CURSOR_WIDTH } from './PlaybackCursor';
 import type { PlaybackCursorProps } from './PlaybackCursor';
+import { useSignal } from './useScoreCanvas';
 
 export type { PlaybackCursorProps } from './PlaybackCursor';
 
 export function PlaybackCursor({
-  cursor,
-  scrollLeft,
-  scrollTop,
+  cursor: cursorSignal,
+  scroll,
   color,
 }: PlaybackCursorProps) {
+  const cursor = useSignal(cursorSignal);
+  const { left: scrollLeft, top: scrollTop } = useSignal(scroll);
   const { path, motion } = cursor;
   if (!path || !PlayheadView) return null;
 

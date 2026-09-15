@@ -52,6 +52,7 @@ import { LevelSlider } from '@/components/controls/LevelSlider';
 import { ToolbarSelect } from '@/components/controls/ToolbarSelect';
 import { SynthLoadIndicator, useSynthLoad } from './SynthLoadIndicator';
 import { IconButton } from '@/components/layout/IconButton';
+import { usePositionReadout } from './useTransport';
 import type { TransportApi } from './useTransport';
 
 const ICON_SIZE = 18;
@@ -413,9 +414,9 @@ export const MeasureBeatReadout = memo(function MeasureBeatReadout({
   transport: TransportApi;
 }) {
   const { t } = useTranslation();
-  const [tick, setTick] = useState(0);
-  useEffect(() => transport.onPosition(setTick), [transport]);
-  const at = barBeatForTick(score, tick);
+  const readout = usePositionReadout(transport, tick =>
+    formatBarBeat(barBeatForTick(score, tick)),
+  );
   return (
     // The name sits on a wrapper: this package's `Text` styles text and takes
     // no accessibility props of its own.
@@ -424,7 +425,7 @@ export const MeasureBeatReadout = memo(function MeasureBeatReadout({
         {/* Shared with the web transport: this app floored the beat inline
             and the web one did not, so the same position rendered "1.1" here
             and "1.1.3333333333333333" there. */}
-        {formatBarBeat(at)}
+        {readout}
       </Text>
     </View>
   );
@@ -443,13 +444,13 @@ const Timecode = memo(function Timecode({
   totalSeconds: number;
 }) {
   const { t } = useTranslation();
-  const [tick, setTick] = useState(0);
-  useEffect(() => transport.onPosition(setTick), [transport]);
-  const seconds = tempoMap.ticksToSeconds(Math.min(tick, maxTick));
+  const elapsed = usePositionReadout(transport, tick =>
+    formatTimecode(tempoMap.ticksToSeconds(Math.min(tick, maxTick))),
+  );
   return (
     <View accessibilityLabel={t('transport.time')} className="w-32">
       <Text className="text-foreground text-right text-sm tabular-nums">
-        {`${formatTimecode(seconds)} / ${formatTimecode(totalSeconds)}`}
+        {`${elapsed} / ${formatTimecode(totalSeconds)}`}
       </Text>
     </View>
   );

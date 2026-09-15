@@ -12,7 +12,7 @@
  * with it; readouts subscribe individually instead, exactly as the web app's
  * `PlaybackCaret` and `StatusPosition` do.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import type { Score, TransportPlaybackState } from '@sudobility/music_types';
 import { getAppServices } from '@/config/initialize';
 
@@ -64,4 +64,35 @@ export function useTransport(score: Score | null): TransportApi {
   );
 
   return { state, play, pause, stop, seek, onPosition };
+}
+
+/**
+ * Text derived from the playhead, re-rendering only when the text changes.
+ *
+ * Reports arrive about thirty times a second and a readout shows far less: a
+ * bar and beat changes a few times a second, a timecode ten. Each report is
+ * formatted and compared with what is on screen, and only a difference renders
+ * — the readouts used to hold the tick in state and re-render on every report.
+ * `format` is read at render, so a new score or tempo map applies at once.
+ */
+export function usePositionReadout(
+  transport: TransportApi,
+  format: (tick: number) => string,
+): string {
+  const formatRef = useRef(format);
+  formatRef.current = format;
+  const tick = useRef(0);
+  const shown = useRef<string | null>(null);
+  const [, rerender] = useReducer((count: number) => count + 1, 0);
+  useEffect(
+    () =>
+      transport.onPosition(next => {
+        tick.current = next;
+        if (formatRef.current(next) !== shown.current) rerender();
+      }),
+    [transport],
+  );
+  const text = format(tick.current);
+  shown.current = text;
+  return text;
 }
