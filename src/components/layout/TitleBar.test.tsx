@@ -17,16 +17,18 @@ function setup(overrides: Partial<Parameters<typeof TitleBar>[0]> = {}) {
   const onSave = jest.fn();
   const onExport = jest.fn();
   const onSettings = jest.fn();
+  const onDocuments = jest.fn();
   const view = renderWithApp(
     <TitleBar
       document={document}
       onSave={onSave}
       onExport={onExport}
       onSettings={onSettings}
+      onDocuments={onDocuments}
       {...overrides}
     />,
   );
-  return { view, document, onSave, onExport, onSettings };
+  return { view, document, onSave, onExport, onSettings, onDocuments };
 }
 
 describe('TitleBar', () => {
@@ -62,6 +64,20 @@ describe('TitleBar', () => {
     const { view, onSettings } = setup();
     fireEvent.press(view.getByLabelText('Settings'));
     expect(onSettings).toHaveBeenCalled();
+  });
+
+  it('always offers Projects, because it is the only way to that screen', () => {
+    /*
+      Same shape as Settings, and the same reason: the projects list carries
+      New Project and every import, and *nothing* in the app navigated to it —
+      `screens-reachable.test.ts` is what found that. The Mac reaches the same
+      things from the File menu; iOS and Android have no menu bar, so without
+      this button the only document a phone could ever open was the scratch one
+      made at launch.
+    */
+    const { view, onDocuments } = setup();
+    fireEvent.press(view.getByLabelText('Projects'));
+    expect(onDocuments).toHaveBeenCalled();
   });
 
   it('omits Snapshots for the same reason', () => {

@@ -52,6 +52,16 @@ const ALLOWED_NON_UI = new Set([
   // against the extensions the app reads. Arrangement over the document and
   // import tables, and the same kind of platform glue as the menu bar.
   'src/app/open-links.ts',
+  // Whether the inspector column starts open. **App layout geometry**, which
+  // is the line music_drawing draws at the canvas edge: anything about the
+  // *drawn score* is the library's, anything about the app around it stays
+  // here. This is a fact about this app's own chrome — its column width and
+  // its safe-area insets — and says nothing about music, the same way
+  // `autoscroll` is a fact about a scroll box. A plain module rather than part
+  // of `AppLayout.tsx` on purpose: importing that file pulls React Native in
+  // and vitest cannot parse it, so the arithmetic would be untestable exactly
+  // where it shipped wrong.
+  'src/features/layout/inspector-default.ts',
   // Printing. `print-pages.ts` draws music_drawing's `printPlan` with Skia;
   // `print-service.ts` hands the images to the platform. Both are arrangement
   // over `music_drawing`, which owns every rule about what a printed page is —

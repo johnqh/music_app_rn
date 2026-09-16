@@ -6,14 +6,25 @@
  * order, and matching it is the point: the two are the same product, and
  * somebody who knows where the transport is should not have to look for it.
  *
- * The one deliberate difference is *where the inspector goes*. On the web it is
- * always a right-hand column; here it is a column only when there is room for
- * one, and a strip beneath the score when there is not. A 400pt phone in
- * landscape has no room for a 280pt panel beside a system of music.
+ * The inspector is a right-hand column, as it is on the web, and on a touch
+ * device it **trades places with the canvas track gutter**: shown, the gutter
+ * is off; hidden, the gutter is back. See `TRADES_GUTTER_FOR_INSPECTOR`.
+ *
+ * It used to be a column only above 760×600 and a strip beneath the score
+ * below that, which is a rule that made sense while a portrait tablet was
+ * possible. Every device here is landscape-only now, and in landscape a column
+ * is the cheap arrangement and a strip is the expensive one: height is what is
+ * scarce (the title bar, tabs, editing bar, transport, keyboard and status
+ * strip are all fixed rows and only the score absorbs the rest), and a column
+ * costs none of it. The strip arrangement was taking the one thing the phone
+ * could not spare.
  */
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import type { NoteEvent } from '@sudobility/music_types';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { useCallback, useRef, useState } from 'react';
 import { useStore } from 'zustand';
 import {
@@ -46,25 +57,44 @@ import { devicePrefs, useDevicePrefs } from '@/config/useDevicePrefs';
 import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
 import { StatusBar } from './StatusBar';
 import { useContainerSize } from '@/features/layout/useContainerSize';
+import { inspectorOpensByDefault } from '@/features/layout/inspector-default';
 import type { ReactNode } from 'react';
 import type { MusicDocument } from '@/documents/document';
 import type { ScoreCanvasHit, LayoutMode } from '@sudobility/music_types';
 
 /**
- * Below this the inspector moves under the score.
+ * On a touch device the inspector and the track gutter never share the screen.
  *
- * Chosen from the content, not from a device class: the inspector wants ~280pt
- * and a system of music is unreadable under about 480pt, so a column costs more
- * than it gives before ~760pt.
+ * The canvas reserves `TRACK_INFO_WIDTH` (220) at the left of every system for
+ * each track's name, instrument and mute/solo. On a landscape phone measured at
+ * 874×402 — 756 inside the safe area — a 320pt inspector plus that 220pt
+ * column left **216pt of music**: one bar per system. The arithmetic simply
+ * does not close on a phone, and it does not close on a tablet either once the
+ * reader has opened the panel they opened it to use.
+ *
+ * So they trade: inspector shown → no gutter, inspector hidden → gutter. What
+ * the gutter was telling you is exactly what the inspector's Track tab tells
+ * you — the name, the instrument, mute and solo — so nothing is lost while it
+ * is off, and the active track is still changed from the toolbar's track
+ * picker (`TrackVisibilitySelect`), which is not the gutter and never was the
+ * only route.
+ *
+ * **macOS keeps both**, which is why this is a platform question and not a
+ * width one: the desktop window is large enough for a gutter, a panel and a
+ * readable system at once, and a rule derived purely from width would have to
+ * pick a threshold that quietly re-enabled the gutter on an 11" iPad — which
+ * is the device this was decided against.
  */
-const INSPECTOR_COLUMN_MIN_WIDTH = 760;
+const TRADES_GUTTER_FOR_INSPECTOR = Platform.OS !== 'macos';
 
 export type AppLayoutProps = {
   document: MusicDocument;
   onSave: () => void;
   onExport: () => void;
-  /** Opens Settings — the title bar's only app-wide action. See `TitleBar`. */
+  /** Opens Settings. See `TitleBar`. */
   onSettings: () => void;
+  /** Opens the projects list — the only route to New Project and to imports. */
+  onDocuments: () => void;
   /**
    * The export sheet, mounted here rather than built here.
    *
@@ -115,6 +145,7 @@ export function AppLayout({
   onSave,
   onExport,
   onSettings,
+  onDocuments,
   exportSheet,
   overlay,
   generation,
@@ -126,6 +157,17 @@ export function AppLayout({
   initialScroll,
   onLeaveScroll,
 }: AppLayoutProps) {
+  /*
+    The **whole editor** inside the safe area, not the row the score sits in.
+
+    This used to measure that row, which is the score and the inspector side by
+    side — and its height is the window's *minus* every fixed row above and
+    below it, the piano keyboard included. So the number it answered with
+    depended on whether the keyboard happened to be expanded (516pt against
+    640pt on an 11" iPad, 109 against 234 on an iPhone), and a rule about how
+    much room there is would have changed its mind every time somebody opened
+    the keyboard. Measured on the frame, the answer is a fact about the device.
+  */
   const { size, onLayout } = useContainerSize();
   /*
     A device pref, expanded by default and remembered, as on the web. It was a
@@ -140,13 +182,22 @@ export function AppLayout({
   */
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('page');
   /*
-    The inspector is shown by default only where there is a column for it. On a
-    phone it is a strip under the score that costs height the notation needs, so
-    it starts hidden and the toolbar's toggle brings it up.
+    Open by default only where the music still reads beside it.
+
+    Width alone, and height nowhere in it: a column takes no height, so opening
+    one costs the notation nothing but width. An unmeasured 0 answers false,
+    which is the same first-render behaviour as before. The insets have to come
+    off the frame first — see `inspectorOpensByDefault`.
   */
-  const sideBySide = size.width >= INSPECTOR_COLUMN_MIN_WIDTH;
+  const insets = useSafeAreaInsets();
+  const roomForBoth = inspectorOpensByDefault(size.width, insets);
   const [inspectorOpen, setInspectorOpen] = useState<boolean | null>(null);
-  const inspectorVisible = inspectorOpen ?? sideBySide;
+  const inspectorVisible = inspectorOpen ?? roomForBoth;
+  /*
+    The trade. On macOS both are drawn, so this is always true there; on touch
+    the gutter is the inspector's other half and only one of them is on screen.
+  */
+  const showTrackInfo = !(TRADES_GUTTER_FOR_INSPECTOR && inspectorVisible);
   const score = useStore(document.store, s => s.score);
   /*
     Through `selectActiveTrackId`, never the raw field: the field is empty until
@@ -255,12 +306,31 @@ export function AppLayout({
 
   if (!score) return null;
   return (
-    <SafeAreaView className="bg-background flex-1" edges={['top', 'bottom']}>
+    /*
+      All four edges, and `left`/`right` are the ones that matter here.
+
+      Phones are landscape-only (see the Info.plist), so on every notched
+      iPhone the sensor housing is on a *side* rather than the top — and with
+      only `top`/`bottom` the app drew straight under it. Measured on an
+      iPhone 16 Pro simulator with the display mask on: the Dynamic Island
+      covered the transport's Go-to-start button completely, the first control
+      of the editing bar, and the word "Acoustic" in the canvas track gutter;
+      the rounded screen corners clipped the title bar's glyph at one end and
+      the Settings button at the other. The top inset is 0 in landscape (the
+      status bar is hidden), which is why this looked fine on the Mac and on
+      the iPad, where there is no housing at all.
+    */
+    <SafeAreaView
+      className="bg-background flex-1"
+      edges={['top', 'bottom', 'left', 'right']}
+      onLayout={onLayout}
+    >
       <TitleBar
         document={document}
         onSave={onSave}
         onExport={onExport}
         onSettings={onSettings}
+        onDocuments={onDocuments}
         {...(onSnapshots ? { onSnapshots } : {})}
         {...(onPrint ? { onPrint } : {})}
         {...(printing === undefined ? {} : { printing })}
@@ -276,20 +346,16 @@ export function AppLayout({
         onToggleInspector={() => setInspectorOpen(!inspectorVisible)}
       />
 
-      <View className="min-h-0 flex-1" onLayout={onLayout}>
+      <View className="min-h-0 flex-1">
         {/*
-          Two complete class strings, never a template with a hole in it.
-          Tailwind extracts classes by scanning source text, so
-          `` `flex-1 ${row ? 'flex-row' : ''}` `` yields no `flex-row` utility —
-          the class never appears whole in the file. It fails silently: the
-          colours still work (those literals are elsewhere), the layout does
-          not, and the score renders into a box of zero height.
+          Always a row: the inspector is a right-hand column wherever it is
+          shown. This was two complete class strings chosen at render, never a
+          template with a hole in it, because Tailwind extracts classes by
+          scanning source text — worth remembering before writing
+          `` `flex-1 ${row ? 'flex-row' : ''}` ``, which yields no `flex-row`
+          utility at all and fails silently into a box of zero height.
         */}
-        <View
-          className={
-            sideBySide ? 'min-h-0 flex-1 flex-row' : 'min-h-0 flex-1 flex-col'
-          }
-        >
+        <View className="min-h-0 flex-1 flex-row">
           <View className="min-h-0 min-w-0 flex-1">
             {overlay}
             <ScrollingScore
@@ -300,6 +366,7 @@ export function AppLayout({
               zoom={zoom}
               layoutMode={layoutMode}
               pitchDisplay={pitchDisplay}
+              showTrackInfo={showTrackInfo}
               onPress={onScorePress}
               onLongPress={onScoreLongPress}
               {...(initialScroll === undefined ? {} : { initialScroll })}
@@ -307,23 +374,11 @@ export function AppLayout({
             />
           </View>
           {inspectorVisible ? (
-            <View
-              className={
-                sideBySide
-                  ? /*
-                    `w-80` (320px), not `w-72` (288). The tab strip is a real
-                    `UISegmentedControl` on iPad, which divides its width
-                    equally and elides a label that does not fit — at 288 the
-                    four tabs left ~66px each and "Measure" rendered as
-                    "Measu…", which reads as a bug rather than as a long word.
-                    320 is also the ordinary width of a property sheet, and the
-                    score area beside it has the room. Side-by-side only: on a
-                    phone this panel is a full-width sheet along the bottom.
-                  */
-                    'border-border w-80 border-l'
-                  : 'border-border border-t'
-              }
-            >
+            /*
+              `w-80` is `INSPECTOR_COLUMN_WIDTH`, which is what decides whether
+              this opens by default — keep the two in step.
+            */
+            <View className="border-border w-80 border-l">
               {/*
                 Replace goes to the property sheet, not the toolbar: the scope
                 is the tab. Replace Notes sits beside the note you selected,

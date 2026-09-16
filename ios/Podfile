@@ -87,8 +87,32 @@ target 'MoosiacRN' do
     # makes those cacheable, which ccache disables by default because it can
     # serve an incorrect object file. Warm DerivedData and the prebuilt
     # artifacts do this job; a compiler wrapper on every invocation does not.
+    # ---- Deployment target floor -----------------------------------------
+    #
+    # Xcode 27's iOS SDK **refuses** a deployment target below 15.0, and two of
+    # the targets CocoaPods generates carry their pod's own historical minimum
+    # rather than the Podfile's: `RNSVG-RNSVGFilters` at 12.4 and
+    # `RNCAsyncStorage-RNCAsyncStorage_resources` at 13.4. Both are *resource
+    # bundles*, which is why this was invisible until the SDK started refusing
+    # them — and why it is a hard error rather than a warning:
+    #
+    #   error: The iOS Simulator deployment target 'IPHONEOS_DEPLOYMENT_TARGET'
+    #   is set to 12.4, but the range of supported deployment target versions
+    #   is 15.0 to 27.0.x. (in target 'RNSVG-RNSVGFilters' from project 'Pods')
+    #
+    # `react_native_post_install` raises the *pod* targets and leaves the
+    # bundles alone, so this walks everything and lifts anything below the
+    # project's own minimum. Raising a resource bundle changes nothing about
+    # what is produced — a bundle has no code — so this is a floor rather than
+    # a choice.
+    minimum = min_ios_version_supported
+
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
+        current = config.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
+        if current.nil? || Gem::Version.new(current.to_s) < Gem::Version.new(minimum.to_s)
+          config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = minimum
+        end
         # The index store feeds Xcode's editor — symbol navigation and
         # autocomplete. A command-line build generates it and then throws it
         # away, so this is pure waste for `xcodebuild` and costs nothing real.

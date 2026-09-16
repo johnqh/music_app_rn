@@ -35,7 +35,12 @@ jest.mock('@/documents/file-picker', () => ({
   }),
 }));
 jest.mock('@/documents/import', () => ({
-  IMPORT_EXTENSIONS: { midi: ['mid'], musicxml: ['xml'], tracker: ['xm'] },
+  IMPORT_EXTENSIONS: {
+    midi: ['mid'],
+    musicxml: ['xml'],
+    tracker: ['xm'],
+    project: ['moo', 'moosiac', 'json'],
+  },
   importDocument: () => mockImportDocument(),
 }));
 /*
@@ -103,6 +108,9 @@ describe('ImportButtons', () => {
       'Import MusicXML',
       'Import Tracker Module',
       'Import Audio',
+      // A `.moo` could be written from the export sheet and never read back:
+      // Open lives on the macOS File menu, which touch platforms have not got.
+      'Import project file',
     ]) {
       expect(view.getByText(label)).toBeTruthy();
     }

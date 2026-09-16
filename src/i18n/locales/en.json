@@ -115,7 +115,14 @@
     "syncToServer": "Save to the server",
     "importMusicXml": "Import MusicXML",
     "importAudio": "Import Audio",
-    "importModule": "Import Tracker Module"
+    "importModule": "Import Tracker Module",
+    "importProject": "Import project file",
+    "projectFileError": {
+      "invalidJson": "That file is not a project: it could not be read as JSON.",
+      "notAProject": "That file is not a Moosiac project.",
+      "newerVersion": "That project was saved by a newer version of Moosiac. Update the app to open it.",
+      "invalidScore": "The score in that project could not be read."
+    }
   },
   "docs": {
     "editor": {
@@ -585,10 +592,12 @@
     "close": "Close",
     "unsavedTitle": "Unsaved changes",
     "unsavedBody": "\"{{title}}\" has changes that have not been saved.",
+    "unsavedQuitBody": "{{count}} open documents have changes that have not been saved.",
     "closeDocument": "Close {{title}}",
     "exportAs": "Export {{format}}",
     "saveFailedTitle": "Could not save",
-    "closeWithoutSaving": "Close without saving"
+    "closeWithoutSaving": "Close without saving",
+    "quitWithoutSaving": "Quit without saving"
   },
   "duration": {
     "eighth": "Eighth",

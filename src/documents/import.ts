@@ -1,5 +1,12 @@
 /**
- * Bringing a MIDI or MusicXML file in as a new document.
+ * Bringing a file in as a new document: MIDI, MusicXML, a tracker module, or a
+ * Moosiac project file.
+ *
+ * The project file is here rather than behind an Open of its own because iOS
+ * and Android have no File menu: `file.open` exists only on the macOS menu bar,
+ * which is how a `.moo` came to be a document those two platforms could write
+ * and then never read back. Importing one makes a project like every other
+ * import does, which is also what the web app does with the same file.
  *
  * Each is one call on `music_io` — it owns both the codec and the file layer,
  * so nothing here pairs a decode with a read. What this module owns is the
@@ -23,8 +30,10 @@ import {
   authorizedServer,
   AuthRequiredError,
   defaultMidiImportOptions,
+  DOCUMENT_EXTENSIONS,
   hasServer,
   importedTitle,
+  parseProjectFile,
 } from '@sudobility/music_lib';
 import type { MidiImportOptions, MidiSummary } from '@sudobility/music_lib';
 import type { Score } from '@sudobility/music_types';
@@ -32,7 +41,12 @@ import { newDocument } from './document';
 import type { DocumentServices, MusicDocument } from './document';
 import type { DocumentList } from './document-list';
 
-export const IMPORT_FORMATS = ['midi', 'musicxml', 'tracker'] as const;
+export const IMPORT_FORMATS = [
+  'midi',
+  'musicxml',
+  'tracker',
+  'project',
+] as const;
 export type ImportFormat = (typeof IMPORT_FORMATS)[number];
 
 /**
@@ -41,11 +55,17 @@ export type ImportFormat = (typeof IMPORT_FORMATS)[number];
  * Tracker modules are six formats read by one decoder, chosen by magic bytes
  * rather than by extension — so a mis-named module still imports, and this list
  * only decides what the picker greys out.
+ *
+ * `project` is `DOCUMENT_EXTENSIONS` rather than three strings typed out again:
+ * `.moo` is what this build writes, `.moosiac` and `.json` are what earlier
+ * ones wrote, and `parseProjectFile` reads all three — a picker offering fewer
+ * would grey out a document this app can open perfectly well.
  */
 export const IMPORT_EXTENSIONS: Record<ImportFormat, readonly string[]> = {
   midi: ['mid', 'midi'],
   musicxml: ['musicxml', 'xml', 'mxl'],
   tracker: ['mod', 'dsm', 's3m', 'xm', 'it', 'mptm'],
+  project: DOCUMENT_EXTENSIONS,
 };
 
 /** What music_io provides for reading a notation file. */
@@ -157,6 +177,15 @@ export async function importDocument(
 ): Promise<ImportResult> {
   let score: Score;
   let warnings: readonly string[];
+  /**
+   * A name the file itself stated, where the format has one.
+   *
+   * Only a project file does. Everything else is named by `importedTitle` off
+   * the score and the file name, which is the right answer for a `.mid` — but a
+   * `.moo` carries the name the reader gave it, and deriving one over the top
+   * would rename somebody's document on the way in.
+   */
+  let statedTitle: string | null = null;
 
   if (format === 'midi') {
     const bytes = await source.readBytes(uri);
@@ -169,6 +198,27 @@ export async function importDocument(
     const bytes = await source.readBytes(uri);
     score = importer.openTracker(bytes).score;
     warnings = [];
+  } else if (format === 'project') {
+    /*
+      A Moosiac document, read by music_codecs' own parser (through music_lib,
+      which re-exports it — this app may not depend on music_codecs directly).
+      It is not a call on `music_io` like the other three, because a project
+      file is not a *notation* format: it is this app's own document, and
+      `parseProjectFile` is the same reader the macOS File → Open uses and the
+      same one that reads a `moosiac://` link.
+
+      Text, not bytes: it is JSON. A file this parser refuses throws a
+      `ProjectFileError` carrying a `reason`, which the caller words — a
+      newer-version document is refused rather than read hopefully, because
+      losing half a score on the next save is worse than not opening it.
+
+      No warnings: the format holds everything this app can express, so unlike
+      MIDI or MusicXML there is nothing that had to be dropped to get it in.
+    */
+    const file = parseProjectFile(await source.readText(uri));
+    score = file.score;
+    statedTitle = file.title;
+    warnings = [];
   } else {
     const text = await source.readText(uri);
     const result = await importer.openMusicXml(text, warningCopy);
@@ -178,7 +228,7 @@ export async function importDocument(
 
   const fileName = uri.split('/').pop() ?? '';
   const document = list.open(
-    await place(services, score, importedTitle(score, fileName)),
+    await place(services, score, statedTitle || importedTitle(score, fileName)),
   );
   return { document, warnings };
 }

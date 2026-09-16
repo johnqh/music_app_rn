@@ -6,8 +6,18 @@
  * an Import menu inside a project could only throw you out of the project you
  * had open. The same reasoning holds here.
  *
- * Requires a server *and* an account, and says which is missing rather than
- * showing an empty list either way.
+ * The *project list* requires a server and an account, and says which is
+ * missing rather than showing an empty list either way. **Import does not, and
+ * used to be gated behind both.** MIDI, MusicXML and a tracker module are
+ * decoded on the device by `useImport` and become a local document; nothing
+ * about them needs a row on a server. They were inside `ProjectList`, which
+ * only renders for a signed-in user with a server configured — and since this
+ * app opens straight into a scratch document, the empty state in `EditorScreen`
+ * that also carries them is never reached. Measured on Android: a signed-out
+ * install could not open a file of any kind, on a build whose whole premise
+ * (`App.tsx` has no auth gate) is that a local document needs no account.
+ * Audio is the one exception and stays behind the gate, because it is
+ * transcribed server-side.
  */
 import { useCallback, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
@@ -56,6 +66,14 @@ export function DashboardScreen() {
   if (!context) {
     return (
       <ScreenScaffold title={t('nav.projects')}>
+        {/*
+          Above the gate on purpose: a MIDI, MusicXML or module file is decoded
+          here and becomes a local document, so it is available with no server
+          and no account. `onTranscribeAudio` is left off, which is what makes
+          the sheet say a recording cannot be transcribed rather than offering
+          a button that fails.
+        */}
+        <ImportButtons />
         <ServerUnavailable />
       </ScreenScaffold>
     );
@@ -63,6 +81,7 @@ export function DashboardScreen() {
   if (!user) {
     return (
       <ScreenScaffold title={t('nav.projects')}>
+        <ImportButtons />
         <SignInRequired onSignIn={() => navigation.navigate('SignIn')} />
       </ScreenScaffold>
     );

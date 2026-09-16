@@ -69,6 +69,17 @@ export type ScrollingScoreProps = {
    */
   pitchDisplay?: PitchDisplay;
   /**
+   * Whether the canvas reserves and paints the track-info gutter. Default true.
+   *
+   * The editor turns it off while the inspector column is open — the two carry
+   * the same facts about a track and there is not room for both beside a
+   * readable system. It is a *layout* option in `ScoreCanvas`, so the 220pt
+   * column goes back to the music rather than merely going unpainted, and the
+   * hit test, the content size, the caret's clip and the follow-scroll all move
+   * with it. The published view leaves it alone.
+   */
+  showTrackInfo?: boolean;
+  /**
    * A tap: what the canvas says is under it, and the tick at that point.
    *
    * One callback for every kind of hit — the track gutter, the bar-number band,
@@ -130,6 +141,7 @@ export function ScrollingScore({
   trackIds,
   selection,
   pitchDisplay = 'concert',
+  showTrackInfo = true,
   onPress,
   onLongPress,
   initialScroll,
@@ -183,6 +195,7 @@ export function ScrollingScore({
         zoom,
         layoutMode,
         theme: resolvedTheme,
+        showTrackInfo,
         ...(trackIds ? { trackIds } : {}),
       });
     }
@@ -202,6 +215,7 @@ export function ScrollingScore({
     zoom,
     layoutMode,
     resolvedTheme,
+    showTrackInfo,
     trackIds,
   ]);
 

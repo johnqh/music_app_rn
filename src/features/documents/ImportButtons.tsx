@@ -29,15 +29,24 @@ import { AudioImportSheet } from './AudioImportSheet';
  * because a control that comes and goes teaches the reader nothing about where
  * to find it.
  *
- * A project document is deliberately absent. Opening one of those is File →
- * Open and Recent Documents, not an import — an import makes a new document out
- * of somebody else's format.
+ * **A Moosiac project file is offered here too**, and used not to be, on the
+ * grounds that opening one is File → Open rather than an import. That held on
+ * macOS and nowhere else: `file.new`/`file.open` live on the menu bar, which
+ * iOS and Android do not have — so `.moo` was a format those two could write
+ * from the export sheet and then never read back. Opening one *is* an import
+ * here for the same reason every other import is: it ends in a new document.
+ * The web app's dashboard offers it in the same menu.
+ *
+ * It needs no account. A `.moo` is a local document decoded on the device, so
+ * this control stays useful signed out — which is why it sits above the
+ * sign-in gate.
  */
 const OFFERED = [
   { value: 'midi', labelKey: 'dashboard.importMidi' },
   { value: 'musicxml', labelKey: 'dashboard.importMusicXml' },
   { value: 'tracker', labelKey: 'dashboard.importModule' },
   { value: 'audio', labelKey: 'dashboard.importAudio' },
+  { value: 'project', labelKey: 'dashboard.importProject' },
 ] as const;
 
 export type ImportButtonsProps = {

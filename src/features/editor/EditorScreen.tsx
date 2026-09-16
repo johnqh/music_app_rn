@@ -19,6 +19,7 @@ import { defaultDocumentUri } from '@/documents/rn-storage';
 import { createFilePicker } from '@/documents/file-picker';
 import { RecentDocuments } from '@/features/documents/RecentDocuments';
 import { ImportButtons } from '@/features/documents/ImportButtons';
+import { UnsavedQuitGuard } from '@/features/documents/UnsavedQuitGuard';
 import { exportDocument } from '@/documents/export';
 import type { ExportFormat } from '@/documents/export';
 import { ExportSheet } from '@/features/documents/ExportSheet';
@@ -371,6 +372,14 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
         native change.
       */
       onSettings={() => navigation.navigate('Settings')}
+      /*
+        And the projects list, which nothing navigated to at all. That screen
+        carries New Project, every import and the server project list, and on
+        iOS and Android it was unreachable — the Mac reaches the same things
+        from the File menu, which a phone does not have, so this platform had
+        no way to open any document but the scratch one made at launch.
+      */
+      onDocuments={() => navigation.navigate('Dashboard')}
       {...(canPrint() ? { onPrint, printing } : {})}
       {...(projectId && lastGeneration
         ? {
@@ -474,6 +483,13 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
             onClose={() => setExportOpen(false)}
             onExport={runExport}
           />
+          {/*
+            Android's Back button, guarded. Mounted here because this is where
+            `AppLayout` puts anything modal — inside the safe area, above the
+            toolbars that would otherwise clip it — and it renders nothing at
+            all until Back is pressed with work unwritten.
+          */}
+          <UnsavedQuitGuard />
         </>
       }
     />

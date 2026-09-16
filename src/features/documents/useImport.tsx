@@ -14,6 +14,7 @@ import { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
+import { ProjectFileError } from '@sudobility/music_lib';
 import type { MidiImportOptions, MidiSummary } from '@sudobility/music_lib';
 import { IMPORT_EXTENSIONS, importDocument } from '@/documents/import';
 import type { ImportFormat } from '@/documents/import';
@@ -25,6 +26,27 @@ import {
 } from '@/documents/DocumentsContext';
 import { getAppServices, libraryCopy } from '@/config/initialize';
 import { MidiImportSheet } from './MidiImportSheet';
+
+/**
+ * A failure, in the reader's language where the failure has a reason.
+ *
+ * `ProjectFileError` is the one refusal this path makes on purpose — an
+ * unreadable, foreign or newer-version `.moo` — and it carries a `reason`
+ * rather than a sentence, precisely so each host can say it in its own words.
+ * Reporting `error.message` instead prints the library's English at a Chinese
+ * reader, which is the thing the warning contract exists to prevent. The keys
+ * are `dashboard.projectFileError.*`, the same keys and the same words the web
+ * app uses, so the two cannot come to disagree about what a bad file is.
+ *
+ * Anything else is a decoder or a filesystem throwing, where the message is all
+ * there is.
+ */
+function describeFailure(error: unknown, t: (key: string) => string): string {
+  if (error instanceof ProjectFileError) {
+    return t(`dashboard.projectFileError.${error.reason}`);
+  }
+  return error instanceof Error ? error.message : String(error);
+}
 
 export function useImport() {
   const { t } = useTranslation();
@@ -67,10 +89,10 @@ export function useImport() {
         );
         if (result.warnings.length > 0) setWarnings(result.warnings);
       } catch (error) {
-        setFailure(error instanceof Error ? error.message : String(error));
+        setFailure(describeFailure(error, t));
       }
     },
-    [list, services],
+    [list, services, t],
   );
 
   /**

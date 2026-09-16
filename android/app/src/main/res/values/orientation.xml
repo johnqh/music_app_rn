@@ -1,8 +1,0 @@
-<resources>
-    <!--
-        A phone is landscape-only: a system of music is wide, and a portrait
-        phone shows about two bars of it. Overridden to false for sw600dp,
-        where the screen is wide enough either way.
-    -->
-    <bool name="lock_landscape">true</bool>
-</resources>

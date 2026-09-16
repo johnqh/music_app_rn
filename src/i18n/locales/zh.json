@@ -115,7 +115,14 @@
     "syncToServer": "保存到服务器",
     "importMusicXml": "导入 MusicXML",
     "importAudio": "导入音频",
-    "importModule": "导入 Tracker 模块"
+    "importModule": "导入 Tracker 模块",
+    "importProject": "导入项目文件",
+    "projectFileError": {
+      "invalidJson": "该文件不是项目：无法作为 JSON 读取。",
+      "notAProject": "该文件不是 Moosiac 项目。",
+      "newerVersion": "该项目由更新版本的 Moosiac 保存，请更新应用后再打开。",
+      "invalidScore": "无法读取该项目中的乐谱。"
+    }
   },
   "docs": {
     "editor": {
@@ -585,10 +592,12 @@
     "close": "关闭",
     "unsavedTitle": "未保存的更改",
     "unsavedBody": "“{{title}}”有尚未保存的更改。",
+    "unsavedQuitBody": "有 {{count}} 个打开的文档存在尚未保存的更改。",
     "closeDocument": "关闭 {{title}}",
     "exportAs": "导出 {{format}}",
     "saveFailedTitle": "无法保存",
-    "closeWithoutSaving": "不保存并关闭"
+    "closeWithoutSaving": "不保存并关闭",
+    "quitWithoutSaving": "不保存并退出"
   },
   "duration": {
     "eighth": "八分音符",

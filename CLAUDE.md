@@ -528,8 +528,10 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   *display*, not the app's window — measured: a 1280pt window on a 3440pt
   screen laid the keyboard out at 3440 and clipped it, so the app showed three
   octaves of an eighty-eight-key keyboard and a score whose bars ran off the
-  right edge. The same bug appears on iPad in Split View and in any resizable
-  window. `useContainerSize()` measures the view with `onLayout`, which is the
+  right edge. The same bug appears in any resizable window. (It used to appear
+  on iPad in Split View too; `UIRequiresFullScreen` has since taken Split View
+  away — see the landscape-only entry below — so macOS is the live case.)
+  `useContainerSize()` measures the view with `onLayout`, which is the
   honest number everywhere and updates on resize.
 - **A container that waits to be measured must state its own height.** If its
   size comes from a child that only renders once measured, it collapses to zero
@@ -550,12 +552,62 @@ renderer per view, and `hit-test` in the library, is what fixed it.
 - **`bun add` reinstalls `node_modules` from the registry**, silently replacing
   any `@sudobility/*` build you rsynced in during cross-repo work. Re-sync after
   one, or the next typecheck fails on a symbol you just added upstream.
-- **Phones are landscape-only; tablets are free.** On iOS that is declarative —
-  `UISupportedInterfaceOrientations` is landscape and
-  `UISupportedInterfaceOrientations~ipad` carries the full set — so the OS never
-  animates into an orientation the app is about to reject. Android cannot ask
-  "is this a tablet" from the manifest, so `MainActivity` reads
-  `R.bool.lock_landscape`, which `values-sw600dp` overrides to false.
+- **The inspector is always a right-hand column, and on touch it trades places
+  with the canvas track gutter.** Shown → no gutter; hidden → gutter. The
+  arithmetic is why: an iPhone 16 Pro in landscape is 874pt wide and 750 inside
+  the safe area, and a 320pt panel beside a 220pt `TRACK_INFO_WIDTH` column
+  leaves **210pt of music** — one bar per system. What the gutter says (name,
+  instrument, mute, solo) is what the inspector's Track tab says, so nothing is
+  lost while it is off, and the active track is changed from the toolbar's
+  `TrackVisibilitySelect`, which was never the gutter's job anyway. **macOS
+  keeps both** — hence `TRADES_GUTTER_FOR_INSPECTOR = Platform.OS !== 'macos'`
+  rather than a width threshold, which would have to pick a number that quietly
+  re-enabled the gutter on an 11" iPad. Hiding it is `ScoreCanvasView.showTrackInfo`
+  → `RenderOptions.showTrackInfo`, the one mechanism for this and the same one
+  `printRenderOptions` uses: a **layout** option, so the 220 goes back to the
+  music and the hit test, `contentSize`, the caret's `clipLeft` and the
+  continuous-mode follow clearance all move with it. A canvas that only stopped
+  *painting* would leave the score inset by an invisible column.
+  This replaced a 760×600 threshold that put the panel in a **strip beneath the
+  score** on anything smaller. That rule made sense while a portrait tablet was
+  possible; in landscape it is backwards — a column costs width, which is
+  plentiful, and a strip costs height, which is the only thing the score has
+  none of (every other row is fixed). `INSPECTOR_COLUMN_MIN_WIDTH`/`_MIN_HEIGHT`
+  are gone; what is left is `features/layout/inspector-default.ts` —
+  `INSPECTOR_COLUMN_WIDTH` (320, the `w-80`, now in the arithmetic),
+  `MIN_SCORE_WIDTH` (480) and `inspectorOpensByDefault`, which decide only
+  whether it *opens* by default. **That helper must subtract the safe-area
+  insets, and it is a module of its own so vitest can say so.** `onLayout`
+  reports a view's own frame and `SafeAreaView` pads *inside* it, so the width
+  it is handed is the whole 874 of a landscape iPhone, not the 750 the content
+  gets — and 874 − 320 clears 480 while 750 − 320 does not. Measured on the
+  simulator with the insets left in: the panel opened by default on the phone,
+  the score got 430pt and the column came out 105pt tall with "Piano" cut off
+  halfway. `AppLayout.test.tsx` cannot catch that — it renders with no layout,
+  so `useContainerSize` answers 0×0 and the rule never runs.
+- **Mobile is landscape-only — every device, phone and tablet alike.** A system
+  of music is wide, and a portrait tablet is no better than a portrait phone
+  once a 320pt inspector column and a 220pt track gutter come out of it: the
+  measured leftover was 260pt of music. So it is declarative on both platforms
+  and there is no screen-size question left to ask. iOS lists the two landscape
+  values under **both** `UISupportedInterfaceOrientations` and
+  `UISupportedInterfaceOrientations~ipad`, plus `UIRequiresFullScreen` — without
+  that last one an iPad app is multitasking-capable, and a multitasking app is
+  required to support every orientation, so the restriction is one iPadOS is
+  entitled to ignore. Android is `android:screenOrientation="sensorLandscape"`
+  on the manifest's `<activity>`: `sensorLandscape` rather than `landscape`
+  because both landscape directions are upright here and a device turned 180°
+  should follow, and rather than `userLandscape`, which obeys the system
+  rotation lock — that setting is an answer about portrait, and this app has no
+  portrait. **Nothing calls `setRequestedOrientation`**, and that is the part
+  that shipped broken: `MainActivity` used to read an `R.bool.lock_landscape`
+  that `values-sw600dp` overrode to false, and a runtime
+  `setRequestedOrientation` **beats the manifest** — so the tablet emulator
+  launched in portrait while the manifest said it could not. `app/orientation.test.ts`
+  pins all of it, because a declaration in a manifest is invisible to every
+  other test in the suite: nothing renders one, and the only symptom of a
+  regression is that the music gets narrow one day. macOS is a desktop window
+  and none of this applies to it.
 - **A failed save must leave the document dirty.** music_lib's saver clears
   `dirty` only after a write succeeds *and* the score written is still the one
   open; the reverse leaves a document that looks safe to close after the write
@@ -592,10 +644,52 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   music_lib's `decideClose` over the store's `dirty`; leaving the foreground
   flushes every open document (`flushAll`), because a phone may kill a
   backgrounded app inside the debounce window.
+- **Android's Back asks before it throws work away** (`UnsavedQuitGuard.tsx`).
+  The editor is the stack's `initialRouteName`, so there is nothing to pop and
+  Back finishes the activity — reproduced on a Pixel 9 Pro XL: two notes, title
+  bar reads "Unsaved", Back, launcher, relaunch, empty score, no prompt. The
+  `AppState` flush covers *backgrounding*, which a finished activity does not
+  reliably reach. The decision is music_lib's `decideQuit` — the sibling of the
+  `decideClose` a tab's × uses, which had no production caller at all — because
+  Back at the root is a **quit** rather than a tab close and asks about every
+  open document at once. Same guard module, same `ConfirmSheet`, same
+  `document.unsaved*` copy: one rule and one dialog. Answering it calls
+  `BackHandler.exitApp()` rather than dismissing and waiting for a second press.
+  Registered through **`useFocusEffect`**, which is the whole of "do not hijack
+  Back anywhere else": `BackHandler` subscriptions are global and run newest
+  first, so one left registered while Settings or Docs is on top swallows the
+  pop that should return to the editor. Sheets need no allowance — a React
+  Native `Modal` is a dialog holding the window focus, so Android hands Back to
+  its `onRequestClose` and these listeners never run.
 - **An import becomes a server project when somebody is signed in** (decision 2
   of the parity plan), built from the create response rather than re-read. Signed
   out, or when the server cannot be reached, it is a local unsaved document; a
   server that answers and refuses (`ApiError`) is reported, not hidden.
+- **A `.moo` is imported, not opened, because only macOS has a File menu.**
+  `file.new`/`file.open` live on the menu bar, so a project file was a format
+  iOS and Android could *write* from the export sheet and then never read back.
+  It is the fifth entry in the dashboard's Import menu now — reachable signed
+  out, since a `.moo` is decoded on the device and needs no account — reading
+  through music_lib's re-export of `parseProjectFile` rather than a call on
+  `music_io`, because a project file is this app's own document and not a
+  notation format. It is the one import that **keeps the name the file states**:
+  `importedTitle` is right for a `.mid`, where the only names available are the
+  score's and the file's, but a `.moo` carries the project name the reader gave
+  it. Export needed nothing: `WRITABLE_EXPORT_FORMATS` already carries
+  `project`/`moo` and `ExportSheet` lists the lot on every platform.
+- **A file picker filtered on a bare extension filters on nothing** — silently,
+  on both touch platforms, and this is a trap worth knowing before adding a
+  format. `pickFile` used to pass `['.mid', '.midi']`. iOS builds its allowed
+  list with `UTType(identifier)` and `compactMap`s the nils away, so `.mid` is
+  not a UTI and simply vanishes; Android normalises each entry into
+  `EXTRA_MIME_TYPES` and matches it against each document's real MIME type,
+  where the literal `.mid` matches nothing. Either way the file the reader
+  tapped Import for is the one greyed out, with nothing on screen saying why.
+  `pickerTypes` asks the device instead, through the picker's own
+  `isKnownType` (`UTType(filenameExtension:)` / `MimeTypeMap`), and **widens to
+  `types.allFiles` the moment one extension has no name there**. That is `.moo`:
+  registered nowhere, so there is nothing to filter on, and a list of its
+  siblings alone would grey out the one file the menu entry exists to open.
 - **Device prefs are one store; only pitch display is mirrored into documents.**
   Theme, language, pitch display, developer mode, the developer settings
   (`devSettings`) and keyboard-collapsed are music_lib's

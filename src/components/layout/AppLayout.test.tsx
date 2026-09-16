@@ -28,11 +28,14 @@ jest.mock('@/features/documents/DocumentTabs', () => ({
 const mockScoreProps: {
   onPress?: (hit: unknown, pointTick: number | null) => void;
   onLongPress?: (hit: unknown) => void;
+  /** Whether the canvas was asked to draw the track-info gutter. */
+  showTrackInfo?: boolean;
 } = {};
 jest.mock('@/features/score/ScrollingScore', () => ({
   ScrollingScore: (props: typeof mockScoreProps) => {
     mockScoreProps.onPress = props.onPress;
     mockScoreProps.onLongPress = props.onLongPress;
+    mockScoreProps.showTrackInfo = props.showTrackInfo;
     return null;
   },
 }));
@@ -56,6 +59,7 @@ describe('AppLayout', () => {
         onSave={jest.fn()}
         onExport={jest.fn()}
         onSettings={jest.fn()}
+        onDocuments={jest.fn()}
       />,
     );
 
@@ -86,6 +90,7 @@ describe('AppLayout', () => {
         onSave={jest.fn()}
         onExport={jest.fn()}
         onSettings={jest.fn()}
+        onDocuments={jest.fn()}
       />,
     );
     expect(view.queryByTestId('piano-keyboard-panel')).not.toBeNull();
@@ -93,6 +98,36 @@ describe('AppLayout', () => {
     expect(devicePrefs.getState().keyboardCollapsed).toBe(true);
     expect(view.queryByTestId('piano-keyboard-panel')).toBeNull();
     act(() => devicePrefs.getState().setKeyboardCollapsed(false));
+  });
+
+  it('insets every edge, because a landscape phone wears its notch on a side', () => {
+    /*
+      Phones are landscape-only, so the sensor housing is never at the top and
+      the top inset is 0 — which is exactly why `edges={['top','bottom']}`
+      looked right on the Mac and on the iPad and was wrong on every iPhone.
+      Measured on an iPhone 16 Pro simulator with the display mask on: the
+      Dynamic Island covered the transport's Go-to-start button completely, the
+      first control of the editing bar, and the word "Acoustic" in the canvas
+      track gutter.
+
+      Asserted on the prop rather than on a rendered inset: a test renderer has
+      no safe area to measure, and the bug was the *declaration*.
+    */
+    const view = renderWithApp(
+      <AppLayout
+        document={testDocument()}
+        onSave={jest.fn()}
+        onExport={jest.fn()}
+        onSettings={jest.fn()}
+        onDocuments={jest.fn()}
+      />,
+    );
+    const edges = view
+      .UNSAFE_getAllByProps({})
+      .map(node => node.props.edges as string[] | undefined)
+      .find(value => Array.isArray(value));
+    expect(edges).toBeDefined();
+    expect([...edges!].sort()).toEqual(['bottom', 'left', 'right', 'top']);
   });
 
   describe('touches on the score', () => {
@@ -104,6 +139,7 @@ describe('AppLayout', () => {
           onSave={jest.fn()}
           onExport={jest.fn()}
           onSettings={jest.fn()}
+          onDocuments={jest.fn()}
         />,
       );
       return { document, view };
@@ -148,5 +184,68 @@ describe('AppLayout', () => {
       // The menu names what it acts on.
       expect(view.getByText('Bar')).toBeTruthy();
     });
+  });
+});
+
+/**
+ * The inspector is a right-hand column, and on touch it trades places with the
+ * canvas track gutter.
+ *
+ * Both halves matter and neither is visible in the other. It used to be a
+ * column above 760×600 and a strip beneath the score below that — a rule that
+ * made sense while a portrait tablet was possible and does not now that every
+ * device is landscape-only, where a column costs width (plentiful) and a strip
+ * costs height (the only thing the score has none of). And a column beside a
+ * 220pt gutter left 216pt of music on a landscape phone, which is one bar per
+ * system: the gutter has to go while the panel is up.
+ */
+describe('AppLayout inspector', () => {
+  function render() {
+    return renderWithApp(
+      <AppLayout
+        document={testDocument()}
+        onSave={jest.fn()}
+        onExport={jest.fn()}
+        onSettings={jest.fn()}
+        onDocuments={jest.fn()}
+      />,
+    );
+  }
+
+  /** The wrapper `View` the inspector sits in, by walking up from its label. */
+  function inspectorWrapper(view: ReturnType<typeof render>) {
+    // `getAllBy…`: the name reaches the tree more than once on the way through
+    // the component and its host view, and either is the same place in it.
+    let node = view.getAllByLabelText('Inspector')[0]?.parent ?? null;
+    while (node) {
+      const className = node.props?.className as string | undefined;
+      if (className?.includes('border-l') || className?.includes('border-t')) {
+        return className;
+      }
+      node = node.parent;
+    }
+    return undefined;
+  }
+
+  it('is a column on the right, never a strip underneath', () => {
+    const view = render();
+    fireEvent.press(view.getByLabelText('Toggle inspector panel'));
+    const wrapper = inspectorWrapper(view);
+    expect(wrapper).toBeDefined();
+    // A left border and a stated width: a column. `border-t`/`flex-1` was the
+    // strip, and there is no arrangement that produces one any more.
+    expect(wrapper).toContain('border-l');
+    expect(wrapper).toContain('w-80');
+    expect(wrapper).not.toContain('border-t');
+  });
+
+  it('hides the track gutter while it is shown, and brings it back', () => {
+    const view = render();
+    // Unmeasured, so it opens closed: the gutter is what is on screen.
+    expect(mockScoreProps.showTrackInfo).toBe(true);
+    fireEvent.press(view.getByLabelText('Toggle inspector panel'));
+    expect(mockScoreProps.showTrackInfo).toBe(false);
+    fireEvent.press(view.getByLabelText('Toggle inspector panel'));
+    expect(mockScoreProps.showTrackInfo).toBe(true);
   });
 });

@@ -1,11 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DocumentList } from './document-list.js';
-import { importDocument } from './import.js';
+import { IMPORT_EXTENSIONS, importDocument } from './import.js';
 import type { DocumentServices } from './document.js';
 import { ApiError } from '@sudobility/music_client';
 import type { MusicClient } from '@sudobility/music_client';
 import type { ImportSource, ScoreImporter } from './import.js';
-import { createEmptyScore, MusicPosition } from '@sudobility/music_types';
+import {
+  createEmptyScore,
+  DOCUMENT_EXTENSIONS,
+  MusicPosition,
+} from '@sudobility/music_types';
 import { OFFLINE_DOCUMENT_SERVICES } from './document.js';
 
 function harness(scoreTitle = 'From File') {
@@ -150,6 +154,101 @@ describe('a tracker module', () => {
     expect(result.warnings).toEqual([]);
     expect(importer.openTracker).toHaveBeenCalled();
     expect(result.document.store.getState().title).toBe('Jig');
+  });
+});
+
+/**
+ * A Moosiac project file, imported.
+ *
+ * It exists as an import at all because `file.open` is a macOS *menu* command,
+ * which iOS and Android have not got — so `.moo` was a format those two could
+ * write from the export sheet and then never read back.
+ *
+ * Unlike the other three it is not a call on `music_io`: a project file is not
+ * a notation format but this app's own document, read by music_codecs'
+ * `parseProjectFile` — the same reader File → Open and a `moosiac://` link use.
+ */
+describe('a project file', () => {
+  const written = JSON.stringify({
+    version: 1,
+    title: 'Wedding March',
+    score: createEmptyScore({ title: 'String Quartet' }),
+  });
+
+  it('offers every extension a project file has ever had', () => {
+    /*
+      `.moo` is what this build writes; `.moosiac` and `.json` are what earlier
+      ones wrote, and `parseProjectFile` reads all three. A picker offering
+      fewer greys out a document this app opens perfectly well — and the
+      failure is a file the reader can see and cannot tap, with nothing saying
+      why. Asserted against `DOCUMENT_EXTENSIONS` rather than a list repeated
+      here, which is the same list under a second name waiting to disagree.
+    */
+    expect(IMPORT_EXTENSIONS.project).toEqual(DOCUMENT_EXTENSIONS);
+    expect(IMPORT_EXTENSIONS.project.length).toBeGreaterThan(1);
+  });
+
+  it('reads the document without going near a notation codec', async () => {
+    const { list, services, source, importer } = harness();
+    source.readText = vi.fn(async () => written);
+    const result = await importDocument(
+      list,
+      services,
+      source,
+      importer,
+      'project',
+      '/a.moo',
+    );
+    expect(source.readText).toHaveBeenCalledWith('/a.moo');
+    expect(importer.openMusicXml).not.toHaveBeenCalled();
+    expect(importer.openMidi).not.toHaveBeenCalled();
+    expect(importer.openTracker).not.toHaveBeenCalled();
+    // Nothing had to be dropped to get it in: the format holds everything.
+    expect(result.warnings).toEqual([]);
+  });
+
+  it('keeps the name the file states, rather than deriving one', async () => {
+    /*
+      The one format that carries its own name. `importedTitle` is the right
+      answer for a `.mid`, where the only names available are the score's and
+      the file's — but a `.moo` holds the name the reader gave the project, and
+      the score inside it is titled separately. Deriving over the top renames
+      somebody's document on the way in: this file would come back as "String
+      Quartet", the score's own title, which is exactly what `renameProject`
+      deliberately does not touch.
+    */
+    const { list, services, source, importer } = harness();
+    source.readText = vi.fn(async () => written);
+    const result = await importDocument(
+      list,
+      services,
+      source,
+      importer,
+      'project',
+      '/a.moo',
+    );
+    expect(result.document.store.getState().title).toBe('Wedding March');
+  });
+
+  it('refuses a document from a newer build rather than reading it hopefully', async () => {
+    // Losing half a score on the next save is worse than not opening it.
+    const { list, services, source, importer } = harness();
+    source.readText = vi.fn(async () =>
+      JSON.stringify({ ...JSON.parse(written), version: 99 }),
+    );
+    await expect(
+      importDocument(list, services, source, importer, 'project', '/a.moo'),
+    ).rejects.toMatchObject({ reason: 'newerVersion' });
+  });
+
+  it('refuses a file that is not a project, by reason', async () => {
+    // The reason is what the host words; a message would be the library's
+    // English printed at a Chinese reader.
+    const { list, services, source, importer } = harness();
+    source.readText = vi.fn(async () => 'not json at all');
+    await expect(
+      importDocument(list, services, source, importer, 'project', '/a.moo'),
+    ).rejects.toMatchObject({ reason: 'invalidJson' });
   });
 });
 

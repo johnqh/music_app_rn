@@ -14,11 +14,21 @@
  * and the note range are all lossy, and a reader about to lose a bassline's
  * bottom octave should be told rather than shown afterwards. A clean fit costs
  * no extra tap, which is the common case for XM.
+ *
+ * **The formats are rows in the body, not buttons in the footer.** They were
+ * `actions`, and `FormModal` lays a footer out as one row that neither wraps
+ * nor scrolls — so six of them fit the full-screen sheet a phone gets and
+ * overflowed the centred dialog a tablet gets. Measured on a Medium Tablet
+ * (landscape, dialog ~1040px wide): the row needed ~1180px, MIDI came back
+ * from the accessibility tree with `bounds` whose right edge was *left* of its
+ * left edge — clipped to nothing and impossible to press — and MusicXML was
+ * half gone. A list of peer choices is what `ScoreActionsSheet` already puts
+ * in the body, and a column cannot be clipped by a width.
  */
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { FormModal, Text } from '@sudobility/components-rn';
+import { Button, FormModal, Text } from '@sudobility/components-rn';
 import { isCleanFit, trackerFitLosses } from '@sudobility/music_lib';
 import type { TrackerFitReport } from '@sudobility/music_lib';
 import type { ExportFormat } from '@/documents/export';
@@ -69,15 +79,27 @@ export function ExportSheet({
         title={t('editor.export')}
         onClose={onClose}
         closeAriaLabel={t('common.closeDialog')}
-        actions={WRITABLE_EXPORT_FORMATS.map(format => ({
-          label: t(format.labelKey),
-          onPress: () => choose(format.id),
-          variant: 'secondary' as const,
-        }))}
+        /*
+          No bottom bar: every row acts, and a Cancel would duplicate the ×
+          the shell carries — the same arrangement `ScoreActionsSheet` uses.
+        */
+        actions={[]}
       >
-        <Text className="text-muted-foreground text-base">
-          {t('export.explain')}
-        </Text>
+        <View className="gap-2 p-1">
+          <Text className="text-muted-foreground text-base">
+            {t('export.explain')}
+          </Text>
+          {WRITABLE_EXPORT_FORMATS.map(format => (
+            <Button
+              key={format.id}
+              variant="secondary"
+              onPress={() => choose(format.id)}
+              accessibilityLabel={t(format.labelKey)}
+            >
+              {t(format.labelKey)}
+            </Button>
+          ))}
+        </View>
       </FormModal>
 
       <FormModal

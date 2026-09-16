@@ -46,6 +46,25 @@ describe('SettingsScreen', () => {
     expect(view.getByLabelText(/theme/i)).toBeTruthy();
   });
 
+  it('shows what each picker is set to', () => {
+    /*
+      Both printed **nothing** on both simulators — a bare chevron in a box,
+      with no "English" and no "Follows the system" anywhere on the screen —
+      because `Select`'s trigger label carried `flex: 1`, a flex basis of zero,
+      and every row here sizes itself to its content (`justify-between`). This
+      app carried a stated width per picker until `@sudobility/components-rn`
+      1.0.104 fixed the trigger itself; the widths are gone, so what is worth
+      pinning here is the outcome rather than the workaround.
+
+      A test renderer performs no layout, so this cannot catch a label that
+      measures zero — only one that is not rendered at all. The width of a
+      trigger is the library's to guarantee, and its own tests do.
+    */
+    const view = setup();
+    expect(view.getByText('English')).toBeTruthy();
+    expect(view.getByText('Follows the system')).toBeTruthy();
+  });
+
   it('offers no developer settings, because there are none left to offer', () => {
     /*
       There was a Developer settings row here, opening a sheet of six toggles —
