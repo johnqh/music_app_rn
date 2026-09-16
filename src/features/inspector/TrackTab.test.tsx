@@ -9,7 +9,12 @@
  */
 import { jest } from '@jest/globals';
 import { act, fireEvent } from '@testing-library/react-native';
-import { addBlankTrack } from '@sudobility/music_editing';
+import {
+  addBlankTrack,
+  defaultInsertPitch,
+  insertNoteAtCaret,
+} from '@sudobility/music_editing';
+import { isNoteEvent } from '@sudobility/music_types';
 import { renderWithApp, testDocument } from '@/test/render';
 import type { MusicDocument } from '@/documents/document';
 
@@ -67,6 +72,47 @@ describe('TrackTab', () => {
       severity: 'error',
     });
     expect(view.queryByText(/cannot cover/i)).toBeNull();
+  });
+
+  /*
+    The notation marks a note its instrument cannot play in its own colour,
+    which says something is wrong; this line says what, beside the instrument
+    picker — the other half of the fix. The web's Track tab has always had it.
+  */
+  it('counts the notes its instrument cannot play', () => {
+    const { view, document } = setup();
+    const outside = /outside this instrument's range/;
+    expect(view.queryByText(outside)).toBeNull();
+
+    act(() => {
+      const store = document.store;
+      insertNoteAtCaret(store, defaultInsertPitch(store));
+      const score = store.getState().score!;
+      store.getState().setScore({
+        ...score,
+        tracks: score.tracks.map(track => ({
+          ...track,
+          midiProgram: 73, // a flute, which cannot reach C1
+          measures: track.measures.map(measure => ({
+            ...measure,
+            voices: measure.voices.map(voice => ({
+              ...voice,
+              events: voice.events.map(event =>
+                isNoteEvent(event)
+                  ? { ...event, pitch: { ...event.pitch, octave: 1 } }
+                  : event,
+              ),
+            })),
+          })),
+        })),
+      });
+    });
+
+    expect(
+      view.getByText(
+        /^1 note is outside this instrument's range of [A-G][#b]*\d-[A-G][#b]*\d and cannot be played on it\.$/,
+      ),
+    ).toBeTruthy();
   });
 
   it('puts a declined rename back to the name the track has', () => {

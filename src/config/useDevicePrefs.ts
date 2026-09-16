@@ -9,12 +9,14 @@
  * music_lib's `createDevicePrefsStore` and the composition root
  * (`bindDevicePrefs`) loads them at start-up and writes every change back.
  *
- * Three of them are read by *editing* — note entry inverts the written-pitch
- * lens, the canvas takes the theme — off each document's own store, so the
- * document list mirrors them into every open store (`mirrorDevicePrefs`). The
- * mirror runs one way: a control that changes one of them writes **here**, and
- * writing it to a document store instead would change one tab, persist nothing
- * and be overwritten by the next change made here.
+ * One of them is read by *editing* — note entry inverts the written-pitch lens
+ * — off each document's own store, so the document list mirrors it into every
+ * open store (`mirrorDevicePrefs`, which mirrors `pitchDisplay` only). The
+ * mirror runs one way: a control that changes it writes **here**, and writing
+ * it to a document store instead would change one tab, persist nothing and be
+ * overwritten by the next change made here. Everything else — the theme,
+ * developer mode and the developer settings included — is read from this store
+ * directly; the document stores no longer hold any of it.
  *
  * They used to be scattered: the theme in a key of its own, the keyboard a
  * `useState(true)` in the layout that forgot itself on every launch (and

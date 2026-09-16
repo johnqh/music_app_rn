@@ -22,13 +22,14 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
 import type { NativeUploadFile } from '@sudobility/music_client';
-import { AUDIO_IMPORT_EXTENSIONS, audioMimeFor } from '@sudobility/music_io';
+import { audioMimeFor } from '@sudobility/music_io';
 import { createFilePicker } from '@/documents/file-picker';
+import { AUDIO_IMPORT_EXTENSIONS } from '@sudobility/music_types';
 
 /**
  * The formats as a reader names them, for the description.
  *
- * The list is music_io's `AUDIO_IMPORT_EXTENSIONS`, the one the web picker
+ * The list is music_types' `AUDIO_IMPORT_EXTENSIONS`, the one the web picker
  * offers — this sheet kept its own copy of it and of the MIME table beside it —
  * and the words are the web's: the description takes `{{formats}}`, so the
  * two apps describe the import in one sentence rather than two.

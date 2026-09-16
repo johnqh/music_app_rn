@@ -1,7 +1,7 @@
 /**
  * The documentation reads the same in both apps.
  *
- * `DOCS_TOPICS` moved into `music_editing` so the *structure* is shared, but
+ * `DOCS_TOPICS` moved into `music_lib` so the *structure* is shared, but
  * the prose stays in each host's locale files — the libraries hold no strings
  * in any language, and that rule is what lets a Chinese reader get Chinese
  * documentation rather than the library's idea of English.
@@ -17,7 +17,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { DOCS_TOPICS } from '@sudobility/music_editing';
+import { DOCS_TOPICS } from '@sudobility/music_lib';
 
 const WEB_LOCALES = join(__dirname, '../../../music_app/public/locales');
 

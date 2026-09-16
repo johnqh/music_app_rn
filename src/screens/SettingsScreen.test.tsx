@@ -46,10 +46,17 @@ describe('SettingsScreen', () => {
     expect(view.getByLabelText(/theme/i)).toBeTruthy();
   });
 
-  it('offers the developer toggles', () => {
-    // Behind their own sheet: they change how the app is *inspected*, not what
-    // the score is, so they do not belong beside the editing tools.
-    expect(setup().getByText(/developer/i)).toBeTruthy();
+  it('offers no developer settings, because there are none left to offer', () => {
+    /*
+      There was a Developer settings row here, opening a sheet of six toggles —
+      `showIds`, `showTicks`, `showMeasureBoundaries`, `showPlaybackScheduling`,
+      `enableDiagnostics` and `enableValidationWarnings` — that no package in
+      the family read, so every one of them did nothing at all. They are gone
+      from `DevSettings` upstream, and the one setting left
+      (`generationVariant`) has no control in this app, so the row could only
+      have opened an empty modal.
+    */
+    expect(setup().queryByText(/developer/i)).toBeNull();
   });
 
   it('shows a sign-in route when there is no account', () => {

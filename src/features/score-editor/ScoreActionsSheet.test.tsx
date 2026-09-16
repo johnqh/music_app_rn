@@ -16,10 +16,10 @@
 import { jest } from '@jest/globals';
 import { fireEvent } from '@testing-library/react-native';
 import { scoreContextMenuModel } from '@sudobility/music_editing';
-import type { ClipboardData } from '@sudobility/music_editing';
 import type { ScoreSelection } from '@sudobility/music_types';
 import { renderWithApp } from '@/test/render';
 import { ScoreActionsSheet } from './ScoreActionsSheet';
+import type { ClipboardData } from '@sudobility/music_types';
 
 const ids = (prefix: string, n: number) =>
   Array.from({ length: n }, (_, i) => `${prefix}${i}`);

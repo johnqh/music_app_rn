@@ -10,7 +10,7 @@
  * a document that had been edited until something unrelated re-rendered it.
  *
  * **Closing asks first when work would be lost.** `decideClose` is
- * music_editing's, shared with the web app, and reads the store's `dirty` —
+ * music_lib's, shared with the web app, and reads the store's `dirty` —
  * which music_lib clears only once a write has succeeded *and* the score saved
  * is still the one open, so a save that raced an edit still asks. The question
  * names the document, because a tab bar is exactly where somebody closes the
@@ -22,10 +22,10 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import { decideClose } from '@sudobility/music_editing';
 import { ConfirmSheet } from '@/components/controls/ConfirmSheet';
 import { useDocumentList, useDocuments } from '@/documents/DocumentsContext';
 import type { MusicDocument } from '@/documents/document';
+import { decideClose } from '@sudobility/music_lib';
 
 export function DocumentTabs() {
   const { t } = useTranslation();

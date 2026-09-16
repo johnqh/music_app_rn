@@ -14,6 +14,8 @@ import { useTranslation } from 'react-i18next';
 import { Spinner, Text } from '@sudobility/components-rn';
 import {
   communityItemTitle,
+  getMusicPosition,
+  getMusicPositionSource,
   publishedSnapshotUrl,
 } from '@sudobility/music_types';
 import type { PublishedSnapshot } from '@sudobility/music_types';
@@ -97,7 +99,7 @@ export function PublishedScreen() {
  * should offer the system share sheet rather than making somebody copy a URL
  * out of a browser they are not in.
  */
-function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
+export function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
   const { t, i18n } = useTranslation();
   const store = useMemo(
     () =>
@@ -110,6 +112,20 @@ function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
   );
   useEffect(() => () => store.getState().dispose(), [store]);
   const transport = usePlayerBinding(store);
+  /*
+    The playhead is the app's one position, and the editor underneath this
+    screen keeps its caret there. Opening a document store does not move it
+    (`resetPosition` defaults to false), so this page's Play started wherever
+    the editor's caret was and its playback then carried that caret off. So:
+    the piece starts at its top, and the editor's caret is put back on the way
+    out — the web page's rule. Declared after the binding so its cleanup runs
+    after the binding's, whose unbind pauses and reports where it paused.
+  */
+  useEffect(() => {
+    const editorCaret = getMusicPosition().tick;
+    getMusicPositionSource().moveTo(0);
+    return () => getMusicPositionSource().moveTo(editorCaret);
+  }, [store]);
   const playing = useStore(store, s => s.state) === 'playing';
 
   return (

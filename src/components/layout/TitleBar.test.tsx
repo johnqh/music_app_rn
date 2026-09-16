@@ -16,15 +16,17 @@ function setup(overrides: Partial<Parameters<typeof TitleBar>[0]> = {}) {
   const document = testDocument({ title: 'Quartet' });
   const onSave = jest.fn();
   const onExport = jest.fn();
+  const onSettings = jest.fn();
   const view = renderWithApp(
     <TitleBar
       document={document}
       onSave={onSave}
       onExport={onExport}
+      onSettings={onSettings}
       {...overrides}
     />,
   );
-  return { view, document, onSave, onExport };
+  return { view, document, onSave, onExport, onSettings };
 }
 
 describe('TitleBar', () => {
@@ -47,6 +49,19 @@ describe('TitleBar', () => {
       });
     });
     expect(view.getByText('Saving…')).toBeTruthy();
+  });
+
+  it('always offers Settings, because it is the only way to that screen', () => {
+    /*
+      Unlike Snapshots and Print this has no prerequisite and no alternative
+      route: theme, language, sign-in and the links to Docs, Shortcuts,
+      Resources, About and Credits are all behind it, and the Mac's own
+      "Settings…" item is the generated template item that answers to nothing.
+      Nothing navigated there at all before this button existed.
+    */
+    const { view, onSettings } = setup();
+    fireEvent.press(view.getByLabelText('Settings'));
+    expect(onSettings).toHaveBeenCalled();
   });
 
   it('omits Snapshots for the same reason', () => {

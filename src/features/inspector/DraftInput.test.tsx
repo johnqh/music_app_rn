@@ -12,7 +12,7 @@ import { renderWithApp } from '@/test/render';
 import { DraftInput, NumberDraftInput } from './DraftInput';
 
 function setup(value = 'C7') {
-  const onCommit = jest.fn();
+  const onCommit = jest.fn<(text: string) => void>();
   const view = renderWithApp(
     <DraftInput value={value} onCommit={onCommit} accessibilityLabel="Chord" />,
   );
@@ -49,7 +49,7 @@ describe('DraftInput', () => {
       The draft follows `value`, so switching to another note does not carry a
       half-typed entry across — which would then commit onto the wrong note.
     */
-    const onCommit = jest.fn();
+    const onCommit = jest.fn<(text: string) => void>();
     const view = renderWithApp(
       <DraftInput value="C7" onCommit={onCommit} accessibilityLabel="Chord" />,
     );
@@ -59,11 +59,30 @@ describe('DraftInput', () => {
     );
     expect(view.getByLabelText('Chord').props.value).toBe('Fm');
   });
+
+  it('puts the stored text back when the commit is refused', () => {
+    /*
+      A commit answers false when the store wrote nothing — blank space trimmed
+      to what is already there, a refusal. Left alone the field would go on
+      showing text the note does not carry.
+    */
+    const view = renderWithApp(
+      <DraftInput
+        value="2"
+        onCommit={() => false}
+        accessibilityLabel="Chord"
+      />,
+    );
+    const field = view.getByLabelText('Chord');
+    fireEvent.changeText(field, '2 ');
+    fireEvent(field, 'blur');
+    expect(view.getByLabelText('Chord').props.value).toBe('2');
+  });
 });
 
 describe('NumberDraftInput', () => {
   function numberSetup(value: number | null = 80) {
-    const onCommit = jest.fn();
+    const onCommit = jest.fn<(value: number) => void>();
     const view = renderWithApp(
       <NumberDraftInput
         value={value}
@@ -100,6 +119,22 @@ describe('NumberDraftInput', () => {
     fireEvent.changeText(field, '400');
     fireEvent(field, 'blur');
     expect(onCommit).toHaveBeenCalledWith(127);
+  });
+
+  it('puts the stored number back when the commit is refused', () => {
+    // An octave outside the instrument's compass is refused by the store; the
+    // field must not keep showing the octave that was not written.
+    const view = renderWithApp(
+      <NumberDraftInput
+        value={4}
+        onCommit={() => false}
+        accessibilityLabel="Octave"
+      />,
+    );
+    const field = view.getByLabelText('Octave');
+    fireEvent.changeText(field, '1');
+    fireEvent(field, 'blur');
+    expect(view.getByLabelText('Octave').props.value).toBe('4');
   });
 
   it('shows a disagreeing selection as Mixed, not as a number', () => {

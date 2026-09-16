@@ -22,8 +22,8 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Text, touchSlop } from '@sudobility/components-rn';
-import type { Toast } from '@sudobility/music_editing';
 import type { ToastSink } from '@sudobility/music_lib';
+import type { Toast } from '@sudobility/music_types';
 
 export type ToastQueue = ToastSink & {
   /** The toasts waiting, oldest first. A stable reference between changes. */
@@ -99,6 +99,10 @@ export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
 
   if (!current) return null;
   const dismiss = () => queue.dismiss(current.id);
+  const runAction = () => {
+    current.action?.onClick();
+    dismiss();
+  };
   const assertive =
     current.severity === 'error' || current.severity === 'warning';
 
@@ -119,10 +123,11 @@ export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
           <Pressable
             accessibilityRole="button"
             hitSlop={touchSlop(0, 0)}
-            onPress={() => {
-              current.action?.onClick();
-              dismiss();
-            }}
+            onPress={runAction}
+            // macOS has no synthesized-touch fallback for an assistive press,
+            // so a VoiceOver activation reaches a Pressable only through
+            // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+            onAccessibilityTap={runAction}
           >
             <Text className="text-primary-foreground text-sm font-semibold">
               {current.action.label}
@@ -134,6 +139,7 @@ export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
           accessibilityLabel={t('common.close')}
           hitSlop={touchSlop(0, 0)}
           onPress={dismiss}
+          onAccessibilityTap={dismiss}
         >
           <Text className="text-primary-foreground text-lg">×</Text>
         </Pressable>

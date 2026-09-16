@@ -16,15 +16,12 @@
  * holds all of them.
  */
 import { SectionList } from 'react-native';
-import {
-  SHORTCUTS,
-  SHORTCUT_GROUPS,
-  shortcutGroupLabelKey,
-} from '@sudobility/music_editing';
+import { SHORTCUTS, shortcutGroupLabelKey } from '@sudobility/music_editing';
 import i18next from 'i18next';
 
 import { renderWithApp } from '@/test/render';
 import { ShortcutsScreen } from './ShortcutsScreen';
+import { SHORTCUT_GROUPS } from '@sudobility/music_types';
 
 /*
   `group` is not on `ShortcutRow`: `SHORTCUTS` is declared as

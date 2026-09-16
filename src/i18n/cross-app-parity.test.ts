@@ -8,7 +8,7 @@
  * the moment one is edited, silently, because both apps still render.
  *
  * `docs-parity.test.ts` pinned the documentation prose that way. This pins
- * everything else, in three checks that each catch a different failure:
+ * everything else, in four checks that each catch a different failure:
  *
  * - **Where the English agrees, the Chinese must agree too.** A key whose
  *   English is identical in both apps and whose Chinese is not is a *translation*
@@ -24,6 +24,13 @@
  *   the exemption is written down with its reason, the way
  *   `locale-parity.test.ts`'s `SHARED_BY_DESIGN` is. A new disagreement fails
  *   until somebody decides it is one.
+ *
+ * - **One string, one key.** The same English under a key only the web has and
+ *   a key only this app has is one label keyed twice — `editor.octave` beside
+ *   `inspector.octave` was twenty-eight of those — and the two drift the moment
+ *   one is edited, invisibly to the check above, which compares key by key.
+ *   Rename to one key set, or list the key in `SAME_WORDS_DIFFERENT_KEYS` with
+ *   the reason the two are not one label.
  *
  * - **Every key `music_types` publishes must resolve in both apps and both
  *   languages.** `ACCIDENTAL_OPTIONS` and friends carry an i18n *key*, not a
@@ -114,6 +121,29 @@ const WORDED_DIFFERENTLY: Record<string, string> = {
   'inspector.pickup': 'the web has room for the noun',
 };
 
+/**
+ * Keys that carry the same English as a key only the other app has, and are
+ * deliberately not that key — each with its reason.
+ *
+ * Keyed by the key in *either* app. A common word turning up under two keys is
+ * not by itself a drift; two keys for one label is. What goes here is the
+ * first kind.
+ */
+const SAME_WORDS_DIFFERENT_KEYS: Record<string, string> = {
+  // A link in the web's footer and the heading of a settings row here: two
+  // different controls that happen to share a word, not one label.
+  'footer.account': 'footer link vs settings row',
+  'settings.account': 'footer link vs settings row',
+  /*
+    The web's is a link out of its Settings *page*, and belongs to that page.
+    The native one is the shell's: on macOS the navigator draws no header at
+    all, so `ScreenBackBar` is the only way out of *any* pushed screen — Docs
+    and Shortcuts included — which is why it is not named after settings.
+  */
+  'settings.page.backButton': 'a settings page link vs the shell control',
+  'nav.back': 'a settings page link vs the shell control',
+};
+
 type Flat = Record<string, string>;
 
 function flatten(o: unknown, prefix = ''): Flat {
@@ -161,6 +191,50 @@ describe.skipIf(!haveWeb)('the two apps say the same thing', () => {
     ).toEqual([]);
   });
 
+  it('keys one string once across the two apps', () => {
+    const [we, re] = [webEn(), rnEn()];
+    const onlyIn = (strings: Flat, other: Flat) => {
+      const byValue = new Map<string, string[]>();
+      for (const [key, value] of Object.entries(strings)) {
+        if (other[key] !== undefined || SAME_WORDS_DIFFERENT_KEYS[key])
+          continue;
+        byValue.set(value, [...(byValue.get(value) ?? []), key]);
+      }
+      return byValue;
+    };
+    const webOnly = onlyIn(we, re);
+    const nativeOnly = onlyIn(re, we);
+    const twice = [...webOnly]
+      .filter(([value]) => nativeOnly.has(value))
+      .map(
+        ([value, keys]) =>
+          `${JSON.stringify(value)}: web ${keys.join(
+            ', ',
+          )} / native ${nativeOnly.get(value)!.join(', ')}`,
+      );
+    expect(
+      twice,
+      'rename to one key in both apps, or add it to SAME_WORDS_DIFFERENT_KEYS with its reason',
+    ).toEqual([]);
+  });
+
+  it('has no stale one-string exemption', () => {
+    const [we, re] = [webEn(), rnEn()];
+    const settled = Object.keys(SAME_WORDS_DIFFERENT_KEYS).filter(key => {
+      const [mine, other] =
+        we[key] !== undefined && re[key] === undefined
+          ? [we, re]
+          : re[key] !== undefined && we[key] === undefined
+          ? [re, we]
+          : [null, null];
+      if (!mine || !other) return true;
+      return !Object.entries(other).some(
+        ([k, value]) => mine[k] === undefined && value === mine[key],
+      );
+    });
+    expect(settled, 'these no longer share a string — drop them').toEqual([]);
+  });
+
   it('has no stale exemption', () => {
     const [we, re] = [webEn(), rnEn()];
     const settled = Object.keys(WORDED_DIFFERENTLY).filter(
@@ -184,15 +258,11 @@ const LIBRARY_KEYS = [
   ...DYNAMIC_OPTIONS,
   ...MIDI_GRID_OPTIONS,
 ]
-  .map(option => option.labelKey)
   /*
-    Except a dynamic's own marking, which neither app translates and neither
-    should: `pp` is `pp` in every language, so both render the value itself and
-    only `DYNAMIC_OPTIONS`' "no dynamic" entry needs a word. The library asks
-    for `dynamic.<member>` anyway, which is a key nobody can usefully fill —
-    worth removing there rather than answering here.
+    A dynamic's own marking carries no key: `pp` is `pp` in every language, so
+    only `DYNAMIC_OPTIONS`' "no dynamic" entry names one.
   */
-  .filter(key => !key.startsWith('dynamic.'));
+  .flatMap(option => ('labelKey' in option ? [option.labelKey] : []));
 
 describe('every key music_types publishes resolves', () => {
   it.each(['en', 'zh'])('in this app (%s)', lang => {

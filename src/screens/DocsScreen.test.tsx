@@ -22,14 +22,11 @@
 import { jest } from '@jest/globals';
 import i18next from 'i18next';
 import { fireEvent } from '@testing-library/react-native';
-import {
-  DOCS_GROUPS,
-  DOCS_TOPICS,
-  docsGroupLabelKey,
-} from '@sudobility/music_editing';
 import { gmInstrumentRows } from '@sudobility/music_types';
 import { renderWithApp } from '@/test/render';
 import { DocsScreen } from './DocsScreen';
+import { DOCS_GROUPS } from '@sudobility/music_types';
+import { DOCS_TOPICS, docsGroupLabelKey } from '@sudobility/music_lib';
 
 /*
   The docs page cross-references the Shortcuts screen, which means it asks for a

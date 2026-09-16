@@ -11,9 +11,16 @@ import { Input } from '@sudobility/components-rn';
 import { parseNumericDraft } from '@sudobility/music_types';
 import type { NumericDraftOptions } from '@sudobility/music_types';
 
+/**
+ * A commit that answers `false` wrote nothing — a refusal, or text the store
+ * trimmed to what it already held — and the field goes back to `value`.
+ * Answering nothing (`void`) keeps the draft, for callers with no answer.
+ */
+export type DraftCommit<T> = (value: T) => boolean | void;
+
 export type DraftInputProps = {
   value: string;
-  onCommit: (text: string) => void;
+  onCommit: DraftCommit<string>;
   placeholder?: string;
   editable?: boolean;
   accessibilityLabel?: string;
@@ -36,7 +43,7 @@ export function DraftInput({
       onBlur={() => {
         // Nothing to dispatch when it has not changed — an unchanged commit
         // would still push an undo entry.
-        if (draft !== value) onCommit(draft);
+        if (draft !== value && onCommit(draft) === false) setDraft(value);
       }}
       editable={editable}
       {...(placeholder ? { placeholder } : {})}
@@ -52,7 +59,7 @@ export type NumberDraftInputProps = NumericDraftOptions & {
    * object's value presented as everyone's.
    */
   value: number | null;
-  onCommit: (value: number) => void;
+  onCommit: DraftCommit<number>;
   mixedPlaceholder?: string;
   editable?: boolean;
   accessibilityLabel?: string;
@@ -71,9 +78,9 @@ export type NumberDraftInputProps = NumericDraftOptions & {
  * The text goes through music_types' `parseNumericDraft`, never `Number()`.
  * Blank is "no change" rather than 0 — an emptied velocity field once wrote
  * silence that way — and out-of-range text is clamped to the bounds given
- * here. Whatever does not commit (blank, nonsense, the value already held)
- * puts the field back to what the store holds, so it never shows a number the
- * score does not have.
+ * here. Whatever does not commit (blank, nonsense, the value already held, or
+ * a commit the store refused) puts the field back to what the store holds, so
+ * it never shows a number the score does not have.
  */
 export function NumberDraftInput({
   value,
@@ -99,7 +106,7 @@ export function NumberDraftInput({
       setDraft(shown);
       return;
     }
-    onCommit(parsed);
+    if (onCommit(parsed) === false) setDraft(shown);
   };
 
   return (

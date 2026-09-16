@@ -239,6 +239,29 @@ describe('EditorToolbar', () => {
     expect(document.store.getState().activeVoiceIndex).toBe(1);
   });
 
+  /*
+    The bar shows the mode a write will use and leaves the stored choice alone:
+    the library's write paths read the effective mode themselves. It used to
+    write the effective mode back from an effect, so a visit to a part that
+    cannot stack lost Stack for good.
+  */
+  it('shows Replace on a part that cannot stack, keeping the stored Stack', () => {
+    const { view, document } = setup();
+    const store = document.store;
+    act(() => store.getState().setEditMode('stack'));
+    act(() => {
+      const score = store.getState().score!;
+      store.getState().setScore({
+        ...score,
+        tracks: score.tracks.map(track => ({ ...track, midiProgram: 73 })),
+      });
+    });
+    expect(
+      view.getByLabelText('Replace').props.accessibilityState.selected,
+    ).toBe(true);
+    expect(store.getState().editMode).toBe('stack');
+  });
+
   it('toggles between written and concert pitch, as a device pref', () => {
     // The label names what tapping *does*, not the current state — so the two
     // names are two states of one control, not two controls. It writes the

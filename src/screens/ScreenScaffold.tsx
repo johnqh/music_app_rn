@@ -1,14 +1,15 @@
 /**
  * The shell every non-editor screen shares.
  *
- * Scrolling body, consistent padding, and one place for the "this needs a
- * server" state — which several screens have and which must read the same way
- * in each, or it looks like a different failure every time.
+ * Scrolling body, consistent padding, the way back out, and one place for the
+ * "this needs a server" state — which several screens have and which must read
+ * the same way in each, or it looks like a different failure every time.
  */
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Heading, Text, touchSlop } from '@sudobility/components-rn';
+import { ScreenBackBar } from '@/components/layout/ScreenBackBar';
 
 export function ScreenScaffold({
   title,
@@ -22,6 +23,12 @@ export function ScreenScaffold({
       className="bg-background flex-1"
       contentContainerClassName="p-4 gap-4"
     >
+      {/*
+        The way back. Nothing on iOS and Android, whose stack draws its own
+        header; on macOS that header is not drawn at all, so without this every
+        screen the editor pushes is a room with no door.
+      */}
+      <ScreenBackBar />
       {title ? <Heading className="text-foreground">{title}</Heading> : null}
       {children}
     </ScrollView>
@@ -57,6 +64,10 @@ export function SignInRequired({ onSignIn }: { onSignIn: () => void }) {
       <Pressable
         accessibilityRole="button"
         onPress={onSignIn}
+        // macOS has no synthesized-touch fallback for an assistive press, so a
+        // VoiceOver activation reaches a Pressable only through
+        // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+        onAccessibilityTap={onSignIn}
         hitSlop={touchSlop(0, 0)}
       >
         <Text className="text-primary">{t('nav.signIn')}</Text>

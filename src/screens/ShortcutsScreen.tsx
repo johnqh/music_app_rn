@@ -12,13 +12,11 @@
  */
 import { SectionList, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { ScreenBackBar } from '@/components/layout/ScreenBackBar';
 import { Text } from '@sudobility/components-rn';
-import {
-  SHORTCUTS,
-  SHORTCUT_GROUPS,
-  shortcutGroupLabelKey,
-} from '@sudobility/music_editing';
-import type { ShortcutRow } from '@sudobility/music_editing';
+import { SHORTCUTS, shortcutGroupLabelKey } from '@sudobility/music_editing';
+import { SHORTCUT_GROUPS } from '@sudobility/music_types';
+import type { ShortcutRow } from '@sudobility/music_types';
 
 export function ShortcutsScreen() {
   const { t } = useTranslation();
@@ -34,30 +32,36 @@ export function ShortcutsScreen() {
   })).filter(section => section.data.length > 0);
 
   return (
-    <SectionList<ShortcutRow, { title: string }>
-      className="bg-background flex-1"
-      contentContainerClassName="p-4"
-      sections={sections}
-      keyExtractor={(row: ShortcutRow, index: number) =>
-        `${row.actionKey}-${index}`
-      }
-      renderSectionHeader={({ section }: { section: { title: string } }) => (
-        <Text className="text-muted-foreground bg-background pt-4 pb-1 text-sm font-semibold uppercase">
-          {section.title}
-        </Text>
-      )}
-      renderItem={({ item }: { item: ShortcutRow }) => (
-        <View className="border-border/50 flex-row items-center justify-between border-b py-2">
-          <Text className="text-foreground flex-1 text-base">
-            {t(item.actionKey)}
+    <View className="bg-background flex-1">
+      {/* The way back; nothing at all where the stack draws its own header. */}
+      <View className="px-4">
+        <ScreenBackBar />
+      </View>
+      <SectionList<ShortcutRow, { title: string }>
+        className="flex-1"
+        contentContainerClassName="p-4"
+        sections={sections}
+        keyExtractor={(row: ShortcutRow, index: number) =>
+          `${row.actionKey}-${index}`
+        }
+        renderSectionHeader={({ section }: { section: { title: string } }) => (
+          <Text className="text-muted-foreground bg-background pt-4 pb-1 text-sm font-semibold uppercase">
+            {section.title}
           </Text>
-          <Text className="text-muted-foreground text-base">
-            {/* Either literal keys, or a translated description of a gesture
+        )}
+        renderItem={({ item }: { item: ShortcutRow }) => (
+          <View className="border-border/50 flex-row items-center justify-between border-b py-2">
+            <Text className="text-foreground flex-1 text-base">
+              {t(item.actionKey)}
+            </Text>
+            <Text className="text-muted-foreground text-base">
+              {/* Either literal keys, or a translated description of a gesture
                 that is not a chord — a drag, say. */}
-            {item.keys ?? (item.keysKey ? t(item.keysKey) : '')}
-          </Text>
-        </View>
-      )}
-    />
+              {item.keys ?? (item.keysKey ? t(item.keysKey) : '')}
+            </Text>
+          </View>
+        )}
+      />
+    </View>
   );
 }

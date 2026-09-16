@@ -43,7 +43,7 @@ import type {
 } from '@sudobility/music_lib';
 import type { Clef, DurationName } from '@sudobility/music_types';
 import {
-  CLEFS,
+  CLEF_OPTIONS,
   MIDI_GRID_OPTIONS,
   NO_MARK,
   parseNumericDraft,
@@ -183,13 +183,13 @@ export function MidiImportSheet({
                   </View>
                   {selection.include ? (
                     <Select
-                      accessibilityLabel={`${t('importMidi.colClef')}: ${
-                        track.name || track.instrumentName
-                      }`}
+                      accessibilityLabel={t('importMidi.clefOfTrack', {
+                        name: track.name || track.instrumentName,
+                      })}
                       value={selection.clef}
-                      options={CLEFS.map((c: Clef) => ({
-                        value: c,
-                        label: c,
+                      options={CLEF_OPTIONS.map(option => ({
+                        value: option.value,
+                        label: t(option.labelKey),
                       }))}
                       onValueChange={(value: string) =>
                         setTrack(track.index, { clef: value as Clef })

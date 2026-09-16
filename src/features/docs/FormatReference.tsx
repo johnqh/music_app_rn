@@ -1,7 +1,7 @@
 /**
  * What the app reads and writes, from the one declaration of it.
  *
- * `IMPORT_FORMATS` and `EXPORT_FORMATS` are `@sudobility/music_editing`'s and
+ * `IMPORT_FORMATS` and `EXPORT_FORMATS` are `@sudobility/music_types`' and
  * shared with the web page: a paragraph naming the formats would be a copy of
  * that list, and would stop being true the first time one was added. The docs
  * topic that carries `widget: 'formats'` rendered nothing at all here, so the
@@ -14,8 +14,8 @@
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Text } from '@sudobility/components-rn';
-import { EXPORT_FORMATS, IMPORT_FORMATS } from '@sudobility/music_editing';
-import type { FormatEntry } from '@sudobility/music_editing';
+import { EXPORT_FORMATS, IMPORT_FORMATS } from '@sudobility/music_types';
+import type { FormatEntry } from '@sudobility/music_types';
 
 function FormatList({
   titleKey,

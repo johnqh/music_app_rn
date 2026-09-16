@@ -39,11 +39,13 @@ export function SignInScreen() {
     }
   }, [creating, email, password, signIn, signUp]);
 
+  const toggleCreating = () => setCreating(value => !value);
+
   if (user) {
     return (
       <ScreenScaffold title={t('auth.signedIn')}>
         <Text className="text-foreground">{user.email ?? user.uid}</Text>
-        <Button onPress={() => void signOut()}>{t('auth.signOut')}</Button>
+        <Button onPress={() => void signOut()}>{t('nav.signOut')}</Button>
       </ScreenScaffold>
     );
   }
@@ -64,9 +66,9 @@ export function SignInScreen() {
         <Input
           value={password}
           onChangeText={setPassword}
-          placeholder={t('auth.password')}
+          placeholder={t('auth.passwordLabel')}
           secureTextEntry
-          accessibilityLabel={t('auth.password')}
+          accessibilityLabel={t('auth.passwordLabel')}
         />
         {error ? (
           <Text className="text-destructive text-base">{error}</Text>
@@ -76,7 +78,11 @@ export function SignInScreen() {
         </Button>
         <Pressable
           accessibilityRole="button"
-          onPress={() => setCreating(value => !value)}
+          onPress={toggleCreating}
+          // macOS has no synthesized-touch fallback for an assistive press, so
+          // a VoiceOver activation reaches a Pressable only through
+          // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+          onAccessibilityTap={toggleCreating}
           style={{ minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' }}
         >
           <Text className="text-primary text-center text-base">

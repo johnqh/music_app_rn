@@ -62,6 +62,11 @@ export function ToolbarSelect({
   const ink = useNotationInk();
   const [open, setOpen] = useState(false);
 
+  const choose = (option: ToolbarOption): void => {
+    setOpen(false);
+    onChange(option.value);
+  };
+
   return (
     <>
       <IconButton
@@ -95,10 +100,22 @@ export function ToolbarSelect({
                 selected: value !== undefined && option.value === value,
               }}
               disabled={option.disabled === true}
-              onPress={() => {
-                setOpen(false);
-                onChange(option.value);
-              }}
+              onPress={() => choose(option)}
+              /*
+                On macOS assistive technology reaches a `Pressable` only
+                through `onAccessibilityTap` — `onPress` is a touch/mouse
+                responder and an AXPress does not run it. Without this every
+                row of every toolbar menu (durations, accidentals, the More
+                actions list, the export formats) announced itself and then did
+                nothing when activated. `IconButton` and the document tabs
+                already carry it; these rows were the gap.
+
+                Not wired when the row is disabled, the way `IconButton` does
+                it: a disabled `Pressable` still receives an accessibility tap.
+              */
+              {...(option.disabled === true
+                ? {}
+                : { onAccessibilityTap: () => choose(option) })}
               className="border-border flex-row items-center gap-3 border-b px-1 py-3"
               style={[
                 { minHeight: MIN_TOUCH_TARGET },

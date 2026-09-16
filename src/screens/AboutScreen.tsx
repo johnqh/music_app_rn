@@ -21,19 +21,27 @@ import { ScreenScaffold } from './ScreenScaffold';
 export function AboutScreen() {
   const { t } = useTranslation();
   const features = [
-    { key: 'editor', title: 'about.editorTitle', body: 'about.editorBody' },
-    { key: 'ai', title: 'about.aiTitle', body: 'about.aiBody' },
-    { key: 'formats', title: 'about.formatsTitle', body: 'about.formatsBody' },
+    {
+      key: 'editor',
+      title: 'home.featureEditorTitle',
+      body: 'home.featureEditorBody',
+    },
+    { key: 'ai', title: 'home.featureAiTitle', body: 'home.featureAiBody' },
+    {
+      key: 'formats',
+      title: 'home.featureFormatsTitle',
+      body: 'home.featureFormatsBody',
+    },
   ];
 
   return (
     <ScreenScaffold title={t('about.title')}>
       <View className="gap-2">
         <Text className="text-foreground text-lg font-semibold">
-          {t('about.tagline')}
+          {t('home.heroTitle')}
         </Text>
         <Text className="text-muted-foreground text-base">
-          {t('about.body', { appName: t('app.name') })}
+          {t('home.heroBody', { appName: t('app.name') })}
         </Text>
       </View>
 

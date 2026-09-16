@@ -9,7 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import en from './locales/en.json';
 import zh from './locales/zh.json';
-import { languageFor, resolveLanguage } from './index.js';
+import { languageFor } from './index.js';
 
 function flatten(o: unknown, prefix = ''): Record<string, string> {
   const out: Record<string, string> = {};
@@ -57,22 +57,36 @@ describe('locales', () => {
   });
 });
 
-describe('resolveLanguage', () => {
-  it('reads the device tags, and falls back to English', () => {
-    expect(resolveLanguage(['zh-Hans-CN', 'en-US'])).toBe('zh');
-    expect(resolveLanguage(['en-GB'])).toBe('en');
-    expect(resolveLanguage(['fr-FR'])).toBe('en');
-    expect(resolveLanguage([])).toBe('en');
-  });
-});
-
+/**
+ * The resolution rule itself is music_types' `preferredLanguage` and is tested
+ * there, since both apps call it. What is left here is that this app hands it
+ * this build's list — and the case that rule was brought in to fix.
+ */
 describe('languageFor', () => {
   it("follows the device until the reader chooses, then keeps the reader's choice", () => {
     expect(languageFor(null, ['zh-Hans-CN'])).toBe('zh');
     expect(languageFor('en', ['zh-Hans-CN'])).toBe('en');
   });
 
+  it('reads the device tags, and falls back to English', () => {
+    expect(languageFor(null, ['zh-Hans-CN', 'en-US'])).toBe('zh');
+    expect(languageFor(null, ['en-GB'])).toBe('en');
+    expect(languageFor(null, ['fr-FR'])).toBe('en');
+    expect(languageFor(null, [])).toBe('en');
+  });
+
   it('ignores a stored language this build does not ship', () => {
     expect(languageFor('fr', ['zh-TW'])).toBe('zh');
+  });
+
+  it('keeps a stored regional or scripted tag, which it used to drop', () => {
+    /*
+      A stored `zh-Hans` matched no entry in `SUPPORTED_LANGUAGES` when the
+      comparison was whole-tag, so it fell through to the device — and a reader
+      who had chosen Chinese on an English phone got English back.
+    */
+    expect(languageFor('zh-Hans', ['en-US'])).toBe('zh');
+    expect(languageFor('zh-Hant-TW', ['en-US'])).toBe('zh');
+    expect(languageFor('en-GB', ['zh-CN'])).toBe('en');
   });
 });

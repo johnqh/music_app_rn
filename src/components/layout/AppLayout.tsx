@@ -24,15 +24,14 @@ import {
   selectForContextMenu,
   useClipboardPrompts,
 } from '@sudobility/music_editing';
-import type { ScoreCanvasHit } from '@sudobility/music_drawing';
 import { ClipboardPromptSheets } from '@/features/score-editor/ClipboardPromptSheets';
-import type { LayoutMode } from '@sudobility/music_drawing';
 import type { ReplaceScope } from '@sudobility/music_types';
 import {
   selectActiveTrackId,
   selectVisibleTrackIds,
 } from '@sudobility/music_editing';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
+import type { ScrollOffset } from '@/features/score/useScoreCanvas';
 import { TransportBar } from '@/features/transport/TransportBar';
 import { usePlayerBinding } from '@/features/transport/usePlayerBinding';
 import { KeyboardPanel } from '@/features/piano-keyboard/KeyboardPanel';
@@ -49,6 +48,7 @@ import { StatusBar } from './StatusBar';
 import { useContainerSize } from '@/features/layout/useContainerSize';
 import type { ReactNode } from 'react';
 import type { MusicDocument } from '@/documents/document';
+import type { ScoreCanvasHit, LayoutMode } from '@sudobility/music_types';
 
 /**
  * Below this the inspector moves under the score.
@@ -63,6 +63,8 @@ export type AppLayoutProps = {
   document: MusicDocument;
   onSave: () => void;
   onExport: () => void;
+  /** Opens Settings — the title bar's only app-wide action. See `TitleBar`. */
+  onSettings: () => void;
   /**
    * The export sheet, mounted here rather than built here.
    *
@@ -100,12 +102,19 @@ export type AppLayoutProps = {
   onPrint?: () => void;
   /** True while the pages are being rendered, which is not instant. */
   printing?: boolean;
+  /**
+   * Where the score opens scrolled to, and where to report it on the way out —
+   * the document list's memory for this tab (see `ScrollingScore`).
+   */
+  initialScroll?: ScrollOffset | null;
+  onLeaveScroll?: (offset: ScrollOffset) => void;
 };
 
 export function AppLayout({
   document,
   onSave,
   onExport,
+  onSettings,
   exportSheet,
   overlay,
   generation,
@@ -114,6 +123,8 @@ export function AppLayout({
   onGenerateTrack,
   onPrint,
   printing,
+  initialScroll,
+  onLeaveScroll,
 }: AppLayoutProps) {
   const { size, onLayout } = useContainerSize();
   /*
@@ -152,7 +163,7 @@ export function AppLayout({
   const zoom = useStore(document.store, s => s.zoom);
   const pitchDisplay = useStore(document.store, s => s.pitchDisplay);
   /*
-    music_editing's `bindPlayer`, bound to this document's store: loading each
+    music_lib's `bindPlayer`, bound to this document's store: loading each
     score, mirroring the transport into the store, looping the selection and
     reporting failures as toasts — the web adapter's rules, not a copy of them.
   */
@@ -249,6 +260,7 @@ export function AppLayout({
         document={document}
         onSave={onSave}
         onExport={onExport}
+        onSettings={onSettings}
         {...(onSnapshots ? { onSnapshots } : {})}
         {...(onPrint ? { onPrint } : {})}
         {...(printing === undefined ? {} : { printing })}
@@ -290,6 +302,8 @@ export function AppLayout({
               pitchDisplay={pitchDisplay}
               onPress={onScorePress}
               onLongPress={onScoreLongPress}
+              {...(initialScroll === undefined ? {} : { initialScroll })}
+              {...(onLeaveScroll ? { onLeaveScroll } : {})}
             />
           </View>
           {inspectorVisible ? (

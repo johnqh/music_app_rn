@@ -37,7 +37,7 @@
  * `runMoreAction`), the add-track answers (`addTrackChoices` /
  * `runAddTrackChoice`) and the edit modes (`EDIT_MODE_OPTIONS`).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
@@ -69,11 +69,6 @@ import {
   voiceHintKey,
   zoomIn,
   zoomOut,
-  EDIT_MODE_OPTIONS,
-  EDITOR_MORE_ACTIONS,
-  EDITOR_VOICE_COUNT,
-  QUANTIZE_GRIDS,
-  QUANTIZE_GRID_SHORT,
 } from '@sudobility/music_editing';
 import {
   ACCIDENTAL_ICON,
@@ -96,12 +91,6 @@ import type {
   NotationIconName,
   Ornament,
 } from '@sudobility/music_types';
-import type {
-  AddTrackChoice,
-  EditorMoreAction,
-  QuantizeGrid,
-} from '@sudobility/music_editing';
-import type { LayoutMode } from '@sudobility/music_drawing';
 import {
   ChevronDoubleLeftIcon,
   ChevronDoubleRightIcon,
@@ -122,6 +111,19 @@ import { GoToBarSheet } from './GoToBarSheet';
 import type { ReactNode } from 'react';
 import type { MusicDocument } from '@/documents/document';
 import { devicePrefs } from '@/config/useDevicePrefs';
+import {
+  EDIT_MODE_OPTIONS,
+  EDITOR_MORE_ACTIONS,
+  EDITOR_VOICE_COUNT,
+  QUANTIZE_GRIDS,
+  QUANTIZE_GRID_SHORT,
+} from '@sudobility/music_types';
+import type {
+  AddTrackChoice,
+  EditorMoreAction,
+  QuantizeGrid,
+} from '@sudobility/music_types';
+import type { LayoutMode } from '@sudobility/music_types';
 
 const ICON_SIZE = 18;
 
@@ -130,7 +132,7 @@ const TOOLBAR_HEIGHT = 44;
 
 /*
   Which glyph each note value, accidental and edit mode draws is music_types'
-  (`DURATION_ICON`, `ACCIDENTAL_ICON`) and music_editing's (`EDIT_MODE_OPTIONS`)
+  (`DURATION_ICON`, `ACCIDENTAL_ICON`, `EDIT_MODE_OPTIONS`)
   — records keyed by the vocabulary, shared with the web bar. This file held
   three lists of its own that agreed with the web's only because nobody had
   redrawn one. `NOTATION_ICONS` holds the shapes, so a semiquaver here is the
@@ -170,7 +172,6 @@ export function EditorToolbar({
   const store = document.store;
   const score = useStore(store, s => s.score);
   const snapGrid = useStore(store, s => s.snapGrid);
-  const editMode = useStore(store, s => s.editMode);
   const effectiveEditMode = useStore(store, selectEffectiveEditMode);
   const zoom = useStore(store, s => s.zoom);
   const noteInput = useStore(store, s => s.noteInput);
@@ -194,18 +195,12 @@ export function EditorToolbar({
     chord reads as replace (asked through the *track*, because a drum track's
     program is a kit — Brush sits at 40, the Violin address).
 
-    The stored mode is still corrected from an effect, exactly as the web bar
-    does, and that is not a leftover: the library's write paths
-    (`insertNoteAtCaret`, `paste`) read the *stored* `editMode`, not the
-    effective one, so without the correction a mode chosen before the track
-    changed would refuse every edit — a refusal that only surfaces after
-    something has been played. The rule for *when* is the library's; only the
-    write-back is here.
+    Shown, never written back. The library's write paths (`insertNoteAtCaret`,
+    `paste`) read the effective mode themselves, so the stored choice survives a
+    visit to a part that cannot stack: Stack chosen on a piano is still Stack
+    after selecting a flute and coming back. This bar used to overwrite the
+    stored mode from an effect, which is what lost that choice.
   */
-  useEffect(() => {
-    if (effectiveEditMode !== editMode)
-      chooseEditMode(store, effectiveEditMode);
-  }, [editMode, effectiveEditMode, store]);
 
   /**
    * What the one duration control shows: the armed length with nothing

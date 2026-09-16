@@ -7,8 +7,8 @@
  * portrait A4 — a US Letter printer got a page laid out for a sheet it does not
  * have, and a player could not print their own part at all.
  *
- * The options are music_drawing's (`PAPER_OPTIONS`, `ORIENTATION_OPTIONS`,
- * `WHOLE_SCORE`) and so are their label keys; what each choice *does* is
+ * The options are music_types' (`PAPER_OPTIONS`, `ORIENTATION_OPTIONS`, with
+ * their label keys) and music_drawing's (`WHOLE_SCORE`); what each choice *does* is
  * `printPlan`'s. A part is written for its instrument with the score's
  * rehearsal marks and page turns laid out for that player; the whole score is
  * the visible tracks in concert pitch. This sheet only collects the answers.
@@ -20,18 +20,12 @@ import { useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Select } from '@sudobility/components-rn';
-import {
-  ORIENTATION_OPTIONS,
-  PAPER_OPTIONS,
-  WHOLE_SCORE,
-} from '@sudobility/music_drawing';
-import type {
-  PaperOrientation,
-  PaperSize,
-  PrintPlanOptions,
-} from '@sudobility/music_drawing';
+import { WHOLE_SCORE } from '@sudobility/music_drawing';
+import type { PrintPlanOptions } from '@sudobility/music_drawing';
 import type { Score } from '@sudobility/music_types';
 import { Field } from '@/features/inspector/Field';
+import { ORIENTATION_OPTIONS, PAPER_OPTIONS } from '@sudobility/music_types';
+import type { PaperOrientation, PaperSize } from '@sudobility/music_types';
 
 export type PrintSheetProps = {
   open: boolean;

@@ -179,20 +179,27 @@ function ProjectList({
             {t('dashboard.empty')}
           </Text>
         }
-        renderItem={({ item }: { item: ProjectSummary }) => (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={item.name}
-            onPress={() => onOpen(item.id)}
-            className="border-border bg-card rounded-lg border p-3"
-            style={{ minHeight: MIN_TOUCH_TARGET }}
-          >
-            <Text className="text-foreground font-medium">{item.name}</Text>
-            <Text className="text-muted-foreground text-sm">
-              {new Date(item.updatedAt).toLocaleString()}
-            </Text>
-          </Pressable>
-        )}
+        renderItem={({ item }: { item: ProjectSummary }) => {
+          const activate = () => onOpen(item.id);
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={item.name}
+              onPress={activate}
+              // macOS has no synthesized-touch fallback for an assistive press,
+              // so a VoiceOver activation reaches a Pressable only through
+              // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+              onAccessibilityTap={activate}
+              className="border-border bg-card rounded-lg border p-3"
+              style={{ minHeight: MIN_TOUCH_TARGET }}
+            >
+              <Text className="text-foreground font-medium">{item.name}</Text>
+              <Text className="text-muted-foreground text-sm">
+                {new Date(item.updatedAt).toLocaleString()}
+              </Text>
+            </Pressable>
+          );
+        }}
       />
       <NewProjectSheet
         open={newProjectOpen}

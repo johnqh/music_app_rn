@@ -122,7 +122,7 @@ describe('MeasureTab', () => {
     });
     const view = renderWithApp(<MeasureTab document={document} />);
     fireEvent.press(view.getByLabelText('Clef from here'));
-    fireEvent.press(view.getByText('bass'));
+    fireEvent.press(view.getByText('Bass'));
     const score = document.store.getState().score!;
     expect(score.tracks[1].measures[1].clef).toBe('bass');
     expect(score.tracks[0].measures[1].clef).toBeUndefined();

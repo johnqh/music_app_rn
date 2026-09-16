@@ -22,6 +22,13 @@
  * Pressing a key auditions it and nothing else — no caret move, no transport
  * change. Writing the note happens on release, from the held time, which is
  * what lets a run of taps lay out a melody instead of overwriting one position.
+ *
+ * A key is press-and-hold, and an assistive activation is not: VoiceOver sends
+ * `onAccessibilityTap` and never `onPressIn`/`onPressOut`, so a key that
+ * handles only the press pair can be focused and read out and will never sound
+ * or write anything. `onKeyTap` is that activation — one event, no duration in
+ * it — and it is attached only where the key is playable, the way `IconButton`
+ * withholds it from a disabled button.
  */
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -60,6 +67,16 @@ export type PianoKeyboardProps = {
    * its first key down to its last key up, which no single key can know.
    */
   onKeyUp?: (midi: number) => void;
+  /**
+   * The key was activated by assistive technology — a whole gesture in one
+   * event, with no held time to measure.
+   *
+   * Separate from `onKeyDown`/`onKeyUp` rather than synthesized as a pair,
+   * because the pair carries a length the caller turns into a note value and
+   * this carries none: the difference is the caller's to resolve, not this
+   * component's to invent.
+   */
+  onKeyTap?: (midi: number) => void;
 };
 
 export function PianoKeyboard({
@@ -71,6 +88,7 @@ export function PianoKeyboard({
   selected,
   onKeyDown,
   onKeyUp,
+  onKeyTap,
 }: PianoKeyboardProps) {
   return (
     <View style={[styles.board, { width, height }]}>
@@ -83,6 +101,7 @@ export function PianoKeyboard({
           theme={theme}
           onDown={onKeyDown}
           onUp={onKeyUp}
+          onTap={onKeyTap}
         />
       ))}
     </View>
@@ -96,6 +115,7 @@ const Key = memo(function Key({
   theme,
   onDown,
   onUp,
+  onTap,
 }: {
   pianoKey: PianoKey;
   lit: boolean;
@@ -103,6 +123,7 @@ const Key = memo(function Key({
   theme: RenderTheme;
   onDown?: ((midi: number) => void) | undefined;
   onUp?: ((midi: number) => void) | undefined;
+  onTap?: ((midi: number) => void) | undefined;
 }) {
   const black = pianoKey.isBlack;
   return (
@@ -117,6 +138,13 @@ const Key = memo(function Key({
         disabled={pianoKey.outOfRange}
         onPressIn={() => onDown?.(pianoKey.midi)}
         onPressOut={() => onUp?.(pianoKey.midi)}
+        // macOS has no synthesized-touch fallback for an assistive press, so a
+        // VoiceOver activation reaches a Pressable only here. Withheld on a key
+        // the instrument cannot play: `disabled` stops the press pair and would
+        // leave this the one way past the compass.
+        {...(pianoKey.outOfRange
+          ? {}
+          : { onAccessibilityTap: () => onTap?.(pianoKey.midi) })}
         style={[
           styles.key,
           black ? styles.black : styles.white,

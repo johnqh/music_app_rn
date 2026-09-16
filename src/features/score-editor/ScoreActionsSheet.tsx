@@ -29,7 +29,7 @@ import { useTranslation } from 'react-i18next';
 import type {
   ScoreContextAction,
   ScoreContextMenuModel,
-} from '@sudobility/music_editing';
+} from '@sudobility/music_types';
 
 export type ScoreActionsSheetProps = {
   open: boolean;

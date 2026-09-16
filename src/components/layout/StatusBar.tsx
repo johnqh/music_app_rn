@@ -36,6 +36,7 @@ export function StatusBar({ document }: { document: MusicDocument }) {
   const issues = useStore(document.store, s => s.validationIssues);
   const errors = issues.filter(i => i.severity === 'error').length;
   const [issuesOpen, setIssuesOpen] = useState(false);
+  const openIssues = () => setIssuesOpen(true);
 
   return (
     <View className="border-border bg-card flex-row items-center gap-3 border-t px-3 py-1">
@@ -47,7 +48,11 @@ export function StatusBar({ document }: { document: MusicDocument }) {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('editor.validationIssues')}
-          onPress={() => setIssuesOpen(true)}
+          onPress={openIssues}
+          // macOS has no synthesized-touch fallback for an assistive press, so
+          // a VoiceOver activation reaches a Pressable only through
+          // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+          onAccessibilityTap={openIssues}
           // A bare run of text, so the drawn size is the text's — the slop is
           // the whole touch target here rather than a top-up.
           hitSlop={touchSlop(0, 0)}

@@ -1,5 +1,5 @@
 /**
- * The transport, bound to one document — through music_editing's `bindPlayer`.
+ * The transport, bound to one document — through music_lib's `bindPlayer`.
  *
  * This file used to be `useTransport`, a binder of this app's own: it mirrored
  * the transport state and loaded each new score, and did nothing else. No
@@ -7,7 +7,7 @@
  * selection on the way into playing, no hidden tracks pushed to the player and
  * no report when a load or a play failed — every one of which the web's
  * `PlaybackAdapter` did. Those are rules about how editing and playback meet,
- * not about either app, so music_editing states them once in `bindPlayer` and
+ * not about either app, so music_lib states them once in `bindPlayer` and
  * both apps bind to it: the web through music_lib's adapter over its single
  * store, this app per document, since a document store carries the same
  * transport settings (`loopRange`, `metronome`, `tempoMultiplier`,
@@ -25,12 +25,13 @@
  * with it; readouts subscribe individually through `usePositionReadout`.
  */
 import { useEffect, useMemo, useRef } from 'react';
-import { bindPlayer } from '@sudobility/music_editing';
-import type { PlayerBinding, PlayerFailure } from '@sudobility/music_editing';
 import { libraryMessage } from '@sudobility/music_lib';
 import type { DocumentStore } from '@sudobility/music_lib';
 import { getAppServices } from '@/config/initialize';
 import type { PositionSource } from './usePositionReadout';
+import { bindPlayer } from '@sudobility/music_lib';
+import type { PlayerBinding } from '@sudobility/music_lib';
+import type { PlayerFailure } from '@sudobility/music_types';
 
 /**
  * A store the player can be bound to: a document store, which carries the

@@ -12,16 +12,17 @@
  * the group closes when the last finger lifts rather than the first.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { chordSelection, pitchToMidi } from '@sudobility/music_types';
+import {
+  auditionVoiceFor,
+  chordSelection,
+  pitchToMidi,
+} from '@sudobility/music_types';
 import type { SoundingNote, UUID } from '@sudobility/music_types';
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import {
   EMPTY_GROUP,
-  litKeys,
   playKeyGroup,
-  playingPitchesForTrack,
-  samePitchSet,
   pressKey,
   releaseKey,
   selectActiveTrackId,
@@ -39,7 +40,12 @@ import type { MusicDocument } from '@/documents/document';
 import { PianoKeyboard } from './PianoKeyboard';
 import { useContainerSize } from '@/features/layout/useContainerSize';
 
-import type { KeyGroup } from '@sudobility/music_editing';
+import {
+  litKeys,
+  playingPitchesForTrack,
+  samePitchSet,
+} from '@sudobility/music_drawing';
+import type { KeyGroup } from '@sudobility/music_types';
 
 /**
  * The keyboard's whole height, label gutter included — `keyboardKeys` takes the
@@ -47,6 +53,16 @@ import type { KeyGroup } from '@sudobility/music_editing';
  * measured.
  */
 const KEYBOARD_HEIGHT = 120;
+
+/**
+ * How long an assistive activation sounds for.
+ *
+ * A press auditions for as long as the finger is down; an activation is an
+ * instant, so there is nothing to hold it open and the note has to be given a
+ * length of its own. Unrelated to what gets *written*, which is the toolbar's
+ * note value — this is only long enough to be heard.
+ */
+const TAP_AUDITION_MS = 300;
 
 export type KeyboardPanelProps = {
   document: MusicDocument;
@@ -83,6 +99,18 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
    * all, where the web's always has.
    */
   const [held, setHeld] = useState<ReadonlySet<number>>(NO_PITCHES);
+  /**
+   * Auditions still ringing from an assistive activation, so unmounting can
+   * silence them — nothing else ever switches them off.
+   */
+  const soundingTaps = useRef(new Set<ReturnType<typeof setTimeout>>());
+  useEffect(
+    () => () => {
+      for (const timer of soundingTaps.current) clearTimeout(timer);
+      soundingTaps.current.clear();
+    },
+    [],
+  );
 
   useEffect(() => {
     const player = getAppServices().player;
@@ -107,7 +135,7 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
   }, [activeTrackId]);
 
   /*
-    What is drawn pressed is music_editing's `litKeys`, the web keyboard's rule:
+    What is drawn pressed is music_drawing's `litKeys`, the web keyboard's rule:
     the active track's sounding pitches **only while playing** — the engine
     clears sounding notes on stop but not on pause, so without the gate a paused
     chord stayed lit here — plus the keys held down.
@@ -146,8 +174,14 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
   const track = useStore(document.store, s =>
     s.score?.tracks.find(t => t.id === activeTrackId),
   );
-  const program = track?.midiProgram ?? 0;
-  const isPercussion = track?.clef === 'percussion';
+  /*
+    What a pressed key sounds as — music_types' `auditionVoiceFor`, the web
+    keyboard's call. The clef is as load-bearing as the program: it decides
+    whether that number is an instrument or a drum kit, and a percussion address
+    GM defines no kit at resolves to the kit whose region holds it, as playback
+    does.
+  */
+  const { program, isPercussion } = auditionVoiceFor(track);
 
   /**
    * The keys, their size, names and label rows — music_drawing's
@@ -174,23 +208,34 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
   );
   const { playable } = keyboard;
 
+  /**
+   * A key went down. Answers whether it took — the compass refusal is stated
+   * here once, and an assistive activation reads it rather than repeating it.
+   */
   const onKeyDown = useCallback(
-    (midi: number) => {
+    (midi: number): boolean => {
       // Out of the instrument's compass: neither sounded nor written.
-      if (playable && !midiIsInRange(midi, playable)) return;
+      if (playable && !midiIsInRange(midi, playable)) return false;
       group.current = pressKey(group.current, midi, Date.now());
       setHeld(current => new Set(current).add(midi));
-      // Audition only: `noteOn` touches no transport state. The clef is as
-      // load-bearing as the program — it decides whether that number is an
-      // instrument or a drum kit.
+      // Audition only: `noteOn` touches no transport state.
       getAppServices().player.noteOn(midi, program, isPercussion);
+      return true;
     },
     [program, isPercussion, playable],
   );
 
-  const onKeyUp = useCallback(
-    (midi: number) => {
-      getAppServices().player.noteOff(midi);
+  /**
+   * The key is no longer down.
+   *
+   * `timed` is whether there was a hold to measure at all: a finger lifting
+   * has one, an assistive activation has none. Handing `heldMs: null` over is
+   * what makes the second write the toolbar's note value, and it is the same
+   * call either way — a second write path here would be a second copy of the
+   * caret advance, the chord toggle and the edit lock to keep in step.
+   */
+  const release = useCallback(
+    (midi: number, timed: boolean) => {
       setHeld(current => {
         if (!current.has(midi)) return current;
         const next = new Set(current);
@@ -206,9 +251,49 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
       // Only once the last finger lifts. `playKeyGroup` decides the rest —
       // whether these join a chord, replace a selected note or enter at the
       // caret, and what note value the held time comes to.
-      if (finished) playKeyGroup(document.store, finished);
+      if (!finished) return;
+      playKeyGroup(
+        document.store,
+        timed ? finished : { ...finished, heldMs: null },
+      );
     },
     [document],
+  );
+
+  const onKeyUp = useCallback(
+    (midi: number) => {
+      getAppServices().player.noteOff(midi);
+      release(midi, true);
+    },
+    [release],
+  );
+
+  /*
+    An assistive activation: one event, no press and no release.
+
+    It runs the press and the release the ordinary gesture runs — the same
+    range refusal, the same audition, the same `playKeyGroup` — so nothing
+    about what a key does is stated twice. The two differences are forced by
+    the event's shape rather than chosen: there is no held time, so the note
+    takes the toolbar's value, and there is no moment the finger lifts, so the
+    audition is switched off on a timer instead. Without that timer the note
+    would be stopped in the instant it started and a VoiceOver user would hear
+    nothing at all — which is most of what an audition is for.
+  */
+  const onKeyTap = useCallback(
+    (midi: number) => {
+      // The compass refusal is `onKeyDown`'s, asked rather than restated: a
+      // key the instrument cannot play sounds nothing and writes nothing here
+      // too.
+      if (!onKeyDown(midi)) return;
+      release(midi, false);
+      const timer = setTimeout(() => {
+        soundingTaps.current.delete(timer);
+        getAppServices().player.noteOff(midi);
+      }, TAP_AUDITION_MS);
+      soundingTaps.current.add(timer);
+    },
+    [onKeyDown, release],
   );
 
   /*
@@ -238,6 +323,7 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
             selected={selectedMidis}
             onKeyDown={onKeyDown}
             onKeyUp={onKeyUp}
+            onKeyTap={onKeyTap}
           />
         ) : null}
       </View>

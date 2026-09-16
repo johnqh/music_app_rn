@@ -3,7 +3,7 @@
  *
  * The web app has a menu on its title bar; a phone has no menu bar, so this is
  * a sheet — the same destinations in the same order and under the same words,
- * because both read music_editing's `WRITABLE_EXPORT_FORMATS`. This sheet had
+ * because both read music_types' `WRITABLE_EXPORT_FORMATS`. This sheet had
  * its own list of five with its own labels, and so never offered the project
  * file the web's menu did. Notation first (MIDI, MusicXML), then the tracker
  * module, then audio, then the project itself.
@@ -21,10 +21,10 @@ import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
 import { isCleanFit, trackerFitLosses } from '@sudobility/music_lib';
 import type { TrackerFitReport } from '@sudobility/music_lib';
-import { WRITABLE_EXPORT_FORMATS } from '@sudobility/music_editing';
 import type { ExportFormat } from '@/documents/export';
 import { prepareTrackerExport } from '@/documents/export';
 import type { MusicDocument } from '@/documents/document';
+import { WRITABLE_EXPORT_FORMATS } from '@sudobility/music_types';
 
 export type ExportSheetProps = {
   open: boolean;
@@ -92,7 +92,7 @@ export function ExportSheet({
             variant: 'ghost' as const,
           },
           {
-            label: t('trackerFit.confirm'),
+            label: t('trackerFit.exportAnyway'),
             onPress: () => {
               setPendingFit(null);
               onExport('xm');

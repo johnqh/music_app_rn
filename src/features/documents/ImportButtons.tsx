@@ -34,10 +34,10 @@ import { AudioImportSheet } from './AudioImportSheet';
  * of somebody else's format.
  */
 const OFFERED = [
-  { value: 'midi', labelKey: 'import.midi' },
-  { value: 'musicxml', labelKey: 'import.musicXml' },
-  { value: 'tracker', labelKey: 'import.tracker' },
-  { value: 'audio', labelKey: 'import.audio' },
+  { value: 'midi', labelKey: 'dashboard.importMidi' },
+  { value: 'musicxml', labelKey: 'dashboard.importMusicXml' },
+  { value: 'tracker', labelKey: 'dashboard.importModule' },
+  { value: 'audio', labelKey: 'dashboard.importAudio' },
 ] as const;
 
 export type ImportButtonsProps = {

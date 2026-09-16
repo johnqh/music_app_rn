@@ -12,9 +12,9 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { COMMAND_LABEL_KEYS } from '@sudobility/music_editing';
 import en from './locales/en.json';
 import zh from './locales/zh.json';
+import { COMMAND_LABEL_KEYS } from '@sudobility/music_types';
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap(entry => {

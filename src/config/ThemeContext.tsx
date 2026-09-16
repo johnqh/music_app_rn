@@ -18,9 +18,9 @@
 import { createContext, useCallback, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useColorScheme } from 'react-native';
-import { resolveThemeMode } from '@sudobility/music_editing';
-import type { ThemeMode } from '@sudobility/music_editing';
 import { devicePrefs, useDevicePrefs } from './useDevicePrefs';
+import { resolveThemeMode } from '@sudobility/music_lib';
+import type { ThemeMode } from '@sudobility/music_types';
 
 export type ThemeState = {
   /** What the reader asked for, which may be "follow the OS". */

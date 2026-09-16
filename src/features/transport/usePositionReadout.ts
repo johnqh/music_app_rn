@@ -9,7 +9,7 @@
  * rate. `format` is read at render, so a new score or tempo map applies at once.
  *
  * It lived in `useTransport.ts` until that binder was replaced by
- * music_editing's `bindPlayer`; the smoothness rule is this app's, so it stayed.
+ * music_lib's `bindPlayer`; the smoothness rule is this app's, so it stayed.
  */
 import { useEffect, useReducer, useRef } from 'react';
 

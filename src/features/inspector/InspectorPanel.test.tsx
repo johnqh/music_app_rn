@@ -1,8 +1,8 @@
 /**
  * The property sheet's four tabs.
  *
- * The order and the opening tab are music_editing's (`INSPECTOR_TABS`,
- * `defaultInspectorTab`), shared with the web: Score, Track, Note, Bar — and a
+ * The order and the opening tab are music_types' (`INSPECTOR_TABS`) and
+ * music_editing's (`defaultInspectorTab`), shared with the web: Score, Track, Note, Bar — and a
  * fresh selection opens the tab it is *of*, Track when nothing is selected,
  * because the Note and Bar tabs are an empty state until something is. This
  * panel listed Track, Note, Bar, Score and always opened on Track, so a reader

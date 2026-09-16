@@ -45,20 +45,27 @@ export function RecentDocuments({ keyValue }: { keyValue: KeyValueStore }) {
   if (recent.length === 0) return null;
   return (
     <View style={styles.wrap}>
-      {recent.map(entry => (
-        <Pressable
-          key={entry.uri}
-          accessibilityRole="button"
-          accessibilityLabel={entry.title}
-          onPress={() => void open(entry)}
-          style={[
-            styles.row,
-            { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
-          ]}
-        >
-          <Text style={styles.title}>{entry.title}</Text>
-        </Pressable>
-      ))}
+      {recent.map(entry => {
+        const activate = () => void open(entry);
+        return (
+          <Pressable
+            key={entry.uri}
+            accessibilityRole="button"
+            accessibilityLabel={entry.title}
+            onPress={activate}
+            // macOS has no synthesized-touch fallback for an assistive press,
+            // so a VoiceOver activation reaches a Pressable only through
+            // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+            onAccessibilityTap={activate}
+            style={[
+              styles.row,
+              { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
+            ]}
+          >
+            <Text style={styles.title}>{entry.title}</Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }

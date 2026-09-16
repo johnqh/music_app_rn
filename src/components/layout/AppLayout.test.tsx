@@ -55,6 +55,7 @@ describe('AppLayout', () => {
         document={testDocument()}
         onSave={jest.fn()}
         onExport={jest.fn()}
+        onSettings={jest.fn()}
       />,
     );
 
@@ -84,6 +85,7 @@ describe('AppLayout', () => {
         document={testDocument()}
         onSave={jest.fn()}
         onExport={jest.fn()}
+        onSettings={jest.fn()}
       />,
     );
     expect(view.queryByTestId('piano-keyboard-panel')).not.toBeNull();
@@ -101,6 +103,7 @@ describe('AppLayout', () => {
           document={document}
           onSave={jest.fn()}
           onExport={jest.fn()}
+          onSettings={jest.fn()}
         />,
       );
       return { document, view };

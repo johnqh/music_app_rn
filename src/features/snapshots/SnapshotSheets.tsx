@@ -214,29 +214,36 @@ export function OpenSnapshotSheet({
         <Text className="text-muted-foreground pb-2 text-base">
           {t('snapshot.openWarning')}
         </Text>
-        {nodes.map(node => (
-          <Pressable
-            key={node.id}
-            accessibilityRole="button"
-            accessibilityLabel={node.name}
-            accessibilityState={{ selected: selected === node.id }}
-            onPress={() => setSelected(node.id)}
-            style={{
-              marginLeft: node.depth * DEPTH_INDENT,
-              minHeight: MIN_TOUCH_TARGET,
-              justifyContent: 'center',
-            }}
-            className={
-              selected === node.id ? 'bg-accent rounded p-2' : 'rounded p-2'
-            }
-          >
-            <Text className="text-foreground text-base">
-              {/* The live project is in the tree so the branch point is
+        {nodes.map(node => {
+          const activate = () => setSelected(node.id);
+          return (
+            <Pressable
+              key={node.id}
+              accessibilityRole="button"
+              accessibilityLabel={node.name}
+              accessibilityState={{ selected: selected === node.id }}
+              onPress={activate}
+              // macOS has no synthesized-touch fallback for an assistive press,
+              // so a VoiceOver activation reaches a Pressable only through
+              // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+              onAccessibilityTap={activate}
+              style={{
+                marginLeft: node.depth * DEPTH_INDENT,
+                minHeight: MIN_TOUCH_TARGET,
+                justifyContent: 'center',
+              }}
+              className={
+                selected === node.id ? 'bg-accent rounded p-2' : 'rounded p-2'
+              }
+            >
+              <Text className="text-foreground text-base">
+                {/* The live project is in the tree so the branch point is
                   visible, and it says so rather than showing a name. */}
-              {node.isLive ? t('snapshot.currentWork') : node.name}
-            </Text>
-          </Pressable>
-        ))}
+                {node.isLive ? t('snapshot.currentWork') : node.name}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
     </FormModal>
   );

@@ -8,26 +8,18 @@
  */
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
+import { preferredLanguage } from '@sudobility/music_types';
 import en from './locales/en.json';
 import zh from './locales/zh.json';
 
 export const SUPPORTED_LANGUAGES = ['en', 'zh'] as const;
 export type Language = (typeof SUPPORTED_LANGUAGES)[number];
 
-/** Chinese for any zh tag; English otherwise. */
-export function resolveLanguage(tags: readonly string[]): Language {
-  for (const tag of tags) {
-    if (tag.toLowerCase().startsWith('zh')) return 'zh';
-    if (tag.toLowerCase().startsWith('en')) return 'en';
-  }
-  return 'en';
-}
-
 export function initializeI18n(deviceTags: readonly string[]): typeof i18next {
   if (!i18next.isInitialized) {
     void i18next.use(initReactI18next).init({
       resources: { en: { translation: en }, zh: { translation: zh } },
-      lng: resolveLanguage(deviceTags),
+      lng: languageFor(null, deviceTags),
       fallbackLng: 'en',
       interpolation: { escapeValue: false },
     });
@@ -50,14 +42,21 @@ type LanguagePref = {
  * used to be `i18n.changeLanguage` alone, which lasted until the app was next
  * killed. A stored language this build does not ship is ignored rather than
  * applied, since i18next would silently fall back to English for it.
+ *
+ * **The rule is music_types' `preferredLanguage`; only the list is this app's.**
+ * This used to compare the stored language against `SUPPORTED_LANGUAGES` whole,
+ * which meant a stored `zh-Hans` — a perfectly ordinary BCP 47 tag, and what a
+ * device reports — matched nothing and fell through to the device's own
+ * language. A reader who had chosen Chinese on an English phone was quietly
+ * given English back, for as long as the choice stayed stored. The web app had
+ * matched by language subtag all along; two copies of one rule, and only one of
+ * them right.
  */
 export function languageFor(
   language: string | null,
   deviceTags: readonly string[],
 ): Language {
-  return SUPPORTED_LANGUAGES.includes(language as Language)
-    ? (language as Language)
-    : resolveLanguage(deviceTags);
+  return preferredLanguage(language, deviceTags, SUPPORTED_LANGUAGES);
 }
 
 /** Keeps i18next on the language the prefs store says. Returns an unsubscribe. */

@@ -16,7 +16,13 @@
  * left here is wiring: touches and scroll views. Which store action a hit means
  * is music_editing's, and the editor asks it.
  */
-import { useCallback, useLayoutEffect, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useTheme } from '@/config/ThemeContext';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type {
@@ -28,21 +34,19 @@ import {
   DARK_RENDER_THEME,
   LIGHT_RENDER_THEME,
   bindPlaybackToCanvas,
-  classifyPress,
 } from '@sudobility/music_drawing';
-import type {
-  LayoutMode,
-  RenderTheme,
-  ScoreCanvasHit,
-} from '@sudobility/music_drawing';
+import type { RenderTheme } from '@sudobility/music_drawing';
 import { getMusicPosition } from '@sudobility/music_types';
 import type { PitchDisplay, Score } from '@sudobility/music_types';
 import { getAppServices } from '@/config/initialize';
 import { ScoreView } from './ScoreView';
 import { PlaybackCursor } from './PlaybackCursor';
 import { useScoreCanvas } from './useScoreCanvas';
+import type { ScrollOffset } from './useScoreCanvas';
 import type { ScoreSelection } from './useScoreSelection';
 import { useContainerSize } from '@/features/layout/useContainerSize';
+import { classifyPress } from '@sudobility/music_editing';
+import type { LayoutMode, ScoreCanvasHit } from '@sudobility/music_types';
 
 export type ScrollingScoreProps = {
   score: Score;
@@ -93,6 +97,23 @@ export type ScrollingScoreProps = {
    * that claims the responder here would take the scroll with it.
    */
   onLongPress?: (hit: ScoreCanvasHit | null) => void;
+  /**
+   * Where to open, for a view that is one tab of several.
+   *
+   * An offset reopens where the reader left the tab; `null` — a document never
+   * scrolled — brings the caret into view with `ScoreCanvas.followTarget`, the
+   * answer following playback uses. Absent opens at the top, which is what the
+   * published view wants. Applied once per axis, when that scroll view's
+   * content is first laid out: scrolling a spacer that has no height yet
+   * clamps to the top.
+   *
+   * The editor is a fresh component per document, so without this a tab
+   * brought back to the front opened at the top, pages away from the caret the
+   * document list had just restored for it.
+   */
+  initialScroll?: ScrollOffset | null;
+  /** Where the view was scrolled when it goes away, so the tab can reopen there. */
+  onLeaveScroll?: (offset: ScrollOffset) => void;
 };
 
 /** How often a scroll reports back. 16ms is one frame; more is wasted repaint. */
@@ -111,6 +132,8 @@ export function ScrollingScore({
   pitchDisplay = 'concert',
   onPress,
   onLongPress,
+  initialScroll,
+  onLeaveScroll,
 }: ScrollingScoreProps) {
   /*
     The canvas draws in literal colours, so it has to be told the scheme.
@@ -228,6 +251,79 @@ export function ScrollingScore({
     [canvas, scroll],
   );
 
+  /*
+    Reopening: which axes still wait to be placed, and where. Read once at
+    mount — a later prop is not a request to jump. Page mode has no horizontal
+    scroller, so only the vertical axis waits there.
+  */
+  const restore = useRef<{
+    vertical: boolean;
+    horizontal: boolean;
+    target: ScrollOffset | null | undefined;
+  } | null>(
+    initialScroll === undefined
+      ? null
+      : { vertical: true, horizontal: continuous, target: undefined },
+  );
+  const initialScrollRef = useRef(initialScroll);
+
+  /** The offset to reopen at, worked out the first time an axis needs it. */
+  const restoreTarget = useCallback((): ScrollOffset | null => {
+    const pending = restore.current;
+    if (!pending) return null;
+    if (pending.target === undefined) {
+      pending.target =
+        initialScrollRef.current ??
+        canvas.followTarget(getMusicPosition().tick);
+    }
+    return pending.target;
+  }, [canvas]);
+
+  const onContentSizeChange = useCallback(
+    (_width: number, contentHeight: number) => {
+      const pending = restore.current;
+      if (!pending?.vertical || contentHeight <= 0) return;
+      pending.vertical = false;
+      const target = restoreTarget();
+      if (!target) return;
+      const top = Math.min(
+        target.top,
+        Math.max(0, contentHeight - sizeRef.current.height),
+      );
+      if (top <= 0) return;
+      verticalRef.current?.scrollTo({ y: top, animated: false });
+      updateScroll(scrollRef.current.left, top);
+    },
+    [restoreTarget, updateScroll],
+  );
+
+  const onContentSizeChangeHorizontal = useCallback(
+    (contentWidth: number) => {
+      const pending = restore.current;
+      if (!pending?.horizontal || contentWidth <= 0) return;
+      pending.horizontal = false;
+      const target = restoreTarget();
+      if (!target) return;
+      const left = Math.min(
+        target.left,
+        Math.max(0, contentWidth - sizeRef.current.width),
+      );
+      if (left <= 0) return;
+      horizontalRef.current?.scrollTo({ x: left, animated: false });
+      updateScroll(left, scrollRef.current.top);
+    },
+    [restoreTarget, updateScroll],
+  );
+
+  // Banked on the way out, from a ref so the report is where the reader left
+  // it rather than where the effect last ran.
+  const onLeaveScrollRef = useRef(onLeaveScroll);
+  onLeaveScrollRef.current = onLeaveScroll;
+  useEffect(
+    () => () => onLeaveScrollRef.current?.({ ...scrollRef.current }),
+    [],
+  );
+
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
       updateScroll(scrollRef.current.left, e.nativeEvent.contentOffset.y);
@@ -317,6 +413,7 @@ export function ScrollingScore({
         ref={verticalRef}
         style={styles.fill}
         onScroll={onScroll}
+        onContentSizeChange={onContentSizeChange}
         scrollEventThrottle={SCROLL_EVENT_THROTTLE}
       >
         {/*
@@ -333,6 +430,7 @@ export function ScrollingScore({
             ref={horizontalRef}
             horizontal
             onScroll={onScrollHorizontal}
+            onContentSizeChange={onContentSizeChangeHorizontal}
             scrollEventThrottle={SCROLL_EVENT_THROTTLE}
           >
             <View

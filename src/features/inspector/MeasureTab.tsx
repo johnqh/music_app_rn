@@ -45,6 +45,7 @@ import {
 } from '@sudobility/music_editing';
 import {
   BARLINE_OPTIONS,
+  CLEF_LABEL_KEY,
   INHERIT_CLEF,
   KEY_MODE_OPTIONS,
   MAX_TIME_SIG_NUMERATOR,
@@ -375,8 +376,8 @@ function ClefField({ document, score, measure, locked }: BarFieldProps) {
           value: option as string,
           label:
             option === INHERIT_CLEF
-              ? t('inspector.clefInherit', { clef: inForce })
-              : option,
+              ? t('inspector.clefInherit', { clef: t(CLEF_LABEL_KEY[inForce]) })
+              : t(CLEF_LABEL_KEY[option]),
         }))}
         onValueChange={(next: string) =>
           setClefAtMeasure(

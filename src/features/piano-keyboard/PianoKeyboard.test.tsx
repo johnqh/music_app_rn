@@ -58,6 +58,35 @@ describe('PianoKeyboard', () => {
     );
   });
 
+  it('reports an assistive activation, which the press pair never sees', () => {
+    // VoiceOver on macOS sends `onAccessibilityTap` and nothing else, so a key
+    // wired only to press-in/press-out can be focused and read out and will
+    // never sound or write a note.
+    const onKeyTap = jest.fn();
+    const view = render(<PianoKeyboard {...board} onKeyTap={onKeyTap} />);
+    const playableKey = view
+      .getAllByRole('button')
+      .find(k => k.props.accessibilityState?.disabled === false)!;
+
+    fireEvent(playableKey, 'accessibilityTap');
+
+    expect(onKeyTap).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers no activation at all on a key outside the range', () => {
+    // `disabled` stops the press pair but not this, so withholding the handler
+    // is what keeps it the one way past the compass.
+    const onKeyTap = jest.fn();
+    const view = render(<PianoKeyboard {...board} onKeyTap={onKeyTap} />);
+    const low = view
+      .getAllByRole('button')
+      .find(k => k.props.accessibilityState?.disabled === true)!;
+
+    expect(low.props.onAccessibilityTap).toBeUndefined();
+    fireEvent(low, 'accessibilityTap');
+    expect(onKeyTap).not.toHaveBeenCalled();
+  });
+
   it('does not report a press on a key outside the range', () => {
     const onKeyDown = jest.fn();
     const onKeyUp = jest.fn();

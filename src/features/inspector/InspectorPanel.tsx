@@ -1,7 +1,7 @@
 /**
  * The property sheet, mirroring the web app's.
  *
- * Four tabs in music_editing's `INSPECTOR_TABS` order — Score, Track, Note,
+ * Four tabs in music_types' `INSPECTOR_TABS` order — Score, Track, Note,
  * Bar — which is the web's, so a reader moving between the apps finds each
  * tab in the same place. The tab a selection opens is `defaultInspectorTab`:
  * what the selection is *of*, or Track when nothing is selected, since there
@@ -21,12 +21,7 @@ import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import {
-  INSPECTOR_TABS,
-  INSPECTOR_TAB_LABEL_KEY,
-  defaultInspectorTab,
-} from '@sudobility/music_editing';
-import type { InspectorTab } from '@sudobility/music_editing';
+import { defaultInspectorTab } from '@sudobility/music_editing';
 import { SegmentedTabs } from '@/components/controls/SegmentedTabs';
 import { TrackTab } from './TrackTab';
 import { NoteTab } from './NoteTab';
@@ -35,6 +30,11 @@ import { ScoreTab } from './ScoreTab';
 import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
 import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
+import {
+  INSPECTOR_TABS,
+  INSPECTOR_TAB_LABEL_KEY,
+} from '@sudobility/music_types';
+import type { InspectorTab } from '@sudobility/music_types';
 
 export type InspectorPanelProps = {
   document: MusicDocument;

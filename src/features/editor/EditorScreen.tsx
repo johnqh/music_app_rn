@@ -43,7 +43,6 @@ import {
   selectActiveTrackId,
   selectVisibleTrackIds,
 } from '@sudobility/music_editing';
-import type { ExportScope } from '@sudobility/music_editing';
 import { renderEvents, renderSamples } from '@sudobility/music_player';
 import {
   DOCUMENT_EXTENSION,
@@ -65,6 +64,8 @@ import {
 import { openProject } from '@/documents/document';
 import type { RootStackParamList } from '@/app/Navigation';
 import type { MusicDocument } from '@/documents/document';
+import type { ScrollOffset } from '@/features/score/useScoreCanvas';
+import type { ExportScope } from '@sudobility/music_types';
 
 const keyValue = createKeyValueStore();
 
@@ -135,6 +136,17 @@ export function EditorScreen() {
 
 function DocumentEditor({ document }: { document: MusicDocument }) {
   const { t } = useTranslation();
+  /*
+    This tab's scroll memory. The component is fresh per document, so the score
+    view would otherwise open at the top whatever caret the list restored: it
+    reopens where the tab was left, or at the caret for a tab never scrolled.
+  */
+  const list = useDocumentList();
+  const initialScroll = list.scrollOffset(document.id);
+  const onLeaveScroll = useCallback(
+    (offset: ScrollOffset) => list.bankScroll(document.id, offset),
+    [list, document],
+  );
   const { user, getToken, siteAdmin } = useAuth();
   const score = useStore(document.store, s => s.score);
   const origin = useStore(document.store, s => s.origin);
@@ -345,8 +357,20 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
   return (
     <AppLayout
       document={document}
+      initialScroll={initialScroll}
+      onLeaveScroll={onLeaveScroll}
       onSave={onSave}
       onExport={onExport}
+      /*
+        Settings is reachable from here and nowhere else. It holds the theme,
+        the language, sign-in and the way to Docs, Shortcuts, Resources, About
+        and Credits, and nothing in the app navigated to it — the screen was in
+        the stack and unreachable, so every one of those was a dead end on the
+        Mac. The AppKit "Settings…" item (⌘,) is still the generated template
+        item, which names no action and is therefore disabled; wiring it is a
+        native change.
+      */
+      onSettings={() => navigation.navigate('Settings')}
       {...(canPrint() ? { onPrint, printing } : {})}
       {...(projectId && lastGeneration
         ? {

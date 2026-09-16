@@ -8,6 +8,7 @@
  * answers null for a length no single notehead spells — which the picker shows
  * as Custom rather than relabelling as the nearest name.
  */
+import { jest } from '@jest/globals';
 import { act, fireEvent } from '@testing-library/react-native';
 import {
   changeDuration,
@@ -208,6 +209,181 @@ describe('NoteTab', () => {
     expect(selectedNote(document).velocity).toBe(100);
   });
 
+  /*
+    `setNotePitch` and `setFingering` answer whether they wrote anything, and a
+    draft that wrote nothing goes back to what the note holds: a refused octave
+    (outside a flute's compass here) must not stay on screen as though it had
+    been applied.
+  */
+  it('puts a refused octave back to the stored one', () => {
+    const document = withSelectedNote();
+    act(() => {
+      const score = document.store.getState().score!;
+      document.store.getState().setScore({
+        ...score,
+        tracks: score.tracks.map(track => ({ ...track, midiProgram: 73 })),
+      });
+    });
+    const before = selectedNote(document).pitch.octave;
+    const view = renderWithApp(<NoteTab document={document} />);
+    const field = view.getByLabelText('Octave');
+    fireEvent.changeText(field, '1');
+    act(() => {
+      fireEvent(field, 'blur');
+    });
+    expect(selectedNote(document).pitch.octave).toBe(before);
+    expect(view.getByLabelText('Octave').props.value).toBe(String(before));
+  });
+
+  it('puts a fingering that changed nothing back to the stored one', () => {
+    const document = withSelectedNote();
+    const view = renderWithApp(<NoteTab document={document} />);
+    const field = view.getByLabelText('Fingering');
+    fireEvent.changeText(field, '   ');
+    act(() => {
+      fireEvent(field, 'blur');
+    });
+    expect(selectedNote(document).fingering).toBeUndefined();
+    expect(view.getByLabelText('Fingering').props.value).toBe('');
+  });
+
+  /*
+    The position is typed, as on the web: stating where a note sits exactly is
+    the reason to have the field, and this tab could only report it. Both
+    drafts commit together on blur through `tickForBarBeat`.
+  */
+  it('moves the note to a typed beat and bar', () => {
+    const document = withSelectedNote();
+    const view = renderWithApp(<NoteTab document={document} />);
+    const ppq = document.store.getState().score!.ppq;
+
+    const beat = view.getByLabelText('Beat');
+    fireEvent.changeText(beat, '3');
+    expect(selectedNote(document)?.startTick).toBe(0);
+    act(() => {
+      fireEvent(beat, 'blur');
+    });
+    const moved = document.store
+      .getState()
+      .score!.tracks[0].measures[0].voices[0].events.find(isNoteEvent)!;
+    expect(moved.startTick).toBe(2 * ppq);
+    expect(view.getByLabelText('Beat').props.value).toBe('3');
+
+    act(() => {
+      document.store.getState().setSelection({
+        eventIds: [moved.id],
+        measureIds: [],
+        trackIds: [],
+      });
+    });
+    const bar = view.getByLabelText('Bar');
+    fireEvent.changeText(bar, '2');
+    act(() => {
+      fireEvent(bar, 'blur');
+    });
+    const second = document.store.getState().score!.tracks[0].measures[1];
+    expect(
+      second.voices[0].events.find(e => isNoteEvent(e) && e.id === moved.id)
+        ?.startTick,
+    ).toBe(second.startTick + 2 * ppq);
+  });
+
+  it('puts a position that names no bar back to the stored one', () => {
+    const document = withSelectedNote();
+    const view = renderWithApp(<NoteTab document={document} />);
+    const bar = view.getByLabelText('Bar');
+    fireEvent.changeText(bar, '999');
+    act(() => {
+      fireEvent(bar, 'blur');
+    });
+    expect(selectedNote(document).startTick).toBe(0);
+    expect(view.getByLabelText('Bar').props.value).toBe('1');
+  });
+
+  /*
+    Resetting the field is only half of it. A refused move leaves the tick
+    where it was, so the field snaps back with nothing said — which reads as
+    the panel having lost the keystroke rather than as the edit being refused.
+    `moveNoteToTick` answers whether the move landed, and a refusal is a toast,
+    the queue every other editing refusal here reaches.
+  */
+  it('says so when the move is refused, rather than snapping back silently', () => {
+    const document = withSelectedNote();
+    const view = renderWithApp(<NoteTab document={document} />);
+    const pushToast = jest.fn(() => 'toast');
+    /*
+      The refusal is stubbed rather than provoked, as in TrackTab's: the
+      reachable refusal is the playback lock, which also disables the field,
+      and what regressed is that the *result was discarded*.
+    */
+    act(() => {
+      document.store.setState({ dispatchCommand: () => {}, pushToast });
+    });
+
+    const bar = view.getByLabelText('Bar');
+    fireEvent.changeText(bar, '2');
+    act(() => {
+      fireEvent(bar, 'blur');
+    });
+
+    expect(pushToast).toHaveBeenCalledWith({
+      message: expect.stringMatching(/could not be moved/),
+      severity: 'warning',
+    });
+    expect(view.getByLabelText('Bar').props.value).toBe('1');
+  });
+
+  it('says nothing when there was nothing to commit', () => {
+    const document = withSelectedNote();
+    const view = renderWithApp(<NoteTab document={document} />);
+    const pushToast = jest.fn(() => 'toast');
+    act(() => {
+      document.store.setState({ pushToast });
+    });
+
+    const bar = view.getByLabelText('Bar');
+    fireEvent.changeText(bar, '999');
+    act(() => {
+      fireEvent(bar, 'blur');
+    });
+
+    expect(pushToast).not.toHaveBeenCalled();
+  });
+
+  /*
+    Return in a single-line field submits *and* blurs, and both land before
+    React re-renders — so the commit ran twice against one stale tick. The
+    second run recomputed the same target, `moveNoteToTick` found the note
+    already there and answered false, and the panel announced that a move which
+    had just succeeded could not be made. Both events are fired inside one
+    `act` for that reason: separating them lets the re-seed run in between and
+    hides it.
+  */
+  it('does not report a refusal when Return both submits and blurs', () => {
+    const document = withSelectedNote();
+    const view = renderWithApp(<NoteTab document={document} />);
+    const pushToast = jest.fn(() => 'toast');
+    act(() => {
+      document.store.setState({ pushToast });
+    });
+
+    const bar = view.getByLabelText('Bar');
+    fireEvent.changeText(bar, '2');
+    act(() => {
+      fireEvent(bar, 'submitEditing');
+      fireEvent(bar, 'blur');
+    });
+
+    expect(pushToast).not.toHaveBeenCalled();
+    const second = document.store.getState().score!.tracks[0].measures[1];
+    const [id] = document.store.getState().selection.eventIds;
+    expect(
+      second.voices[0].events.find(e => isNoteEvent(e) && e.id === id)
+        ?.startTick,
+    ).toBe(second.startTick);
+    expect(view.getByLabelText('Bar').props.value).toBe('2');
+  });
+
   it('offers chord symbol and fingering for exactly one note', () => {
     /*
       Both are free text belonging to one notehead: a draft seeded from the
@@ -217,6 +393,8 @@ describe('NoteTab', () => {
     const view = renderWithApp(<NoteTab document={document} />);
     expect(view.queryByLabelText('Chord symbol')).toBeNull();
     expect(view.queryByLabelText('Fingering')).toBeNull();
+    // A position typed over two notes would stack them on one tick.
+    expect(view.queryByLabelText('Bar')).toBeNull();
   });
 
   it('reads a disagreeing duration as Mixed', () => {
@@ -249,6 +427,8 @@ describe('NoteTab', () => {
     });
     const view = renderWithApp(<NoteTab document={document} />);
     expect(view.getByLabelText('Velocity').props.editable).toBe(false);
+    expect(view.getByLabelText('Bar').props.editable).toBe(false);
+    expect(view.getByLabelText('Beat').props.editable).toBe(false);
     expect(
       view.getByLabelText(/grace note/i).props.accessibilityState.disabled,
     ).toBe(true);

@@ -32,17 +32,14 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Input, Text } from '@sudobility/components-rn';
 import type { NoteEvent } from '@sudobility/music_types';
-import type {
-  EditingStoreApi,
-  LyricEntryState,
-  LyricInput,
-} from '@sudobility/music_editing';
+import type { EditingStoreApi } from '@sudobility/music_editing';
 import {
   applyLyricStep,
   lyricEntryStep,
   lyricTextAt,
   splitLyricSeparator,
 } from '@sudobility/music_editing';
+import type { LyricEntryState, LyricInput } from '@sudobility/music_types';
 
 export type LyricEntryBarProps = {
   store: EditingStoreApi;

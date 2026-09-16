@@ -101,7 +101,7 @@ describe('ImportButtons', () => {
     for (const label of [
       'Import MIDI',
       'Import MusicXML',
-      'Import module',
+      'Import Tracker Module',
       'Import Audio',
     ]) {
       expect(view.getByText(label)).toBeTruthy();
@@ -112,7 +112,7 @@ describe('ImportButtons', () => {
     // A menu, not a value. Held with no `value`, so the trigger goes on saying
     // what the control does.
     const { view } = setup();
-    choose(view, 'Import module');
+    choose(view, 'Import Tracker Module');
     expect(view.getByText('Import')).toBeTruthy();
   });
 

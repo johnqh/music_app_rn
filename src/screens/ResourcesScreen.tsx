@@ -13,7 +13,7 @@
  * repetitions of "Opens with Import → MIDI" and a section heading nobody can
  * navigate by.
  *
- * **The list itself is `@sudobility/music_editing`'s**, shared with the web
+ * **The list itself is `@sudobility/music_lib`'s**, shared with the web
  * page — forty-two entries transcribed into a second app would be forty-two
  * chances for the two to disagree about what this app can open. The host under
  * each name is derived from the URL and never typed, for the same reason: a
@@ -29,13 +29,9 @@
 import { Linking, Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
-import {
-  RESOURCE_GROUPS,
-  hostOf,
-  monogramFor,
-} from '@sudobility/music_editing';
-import type { Resource } from '@sudobility/music_editing';
 import { ScreenScaffold } from './ScreenScaffold';
+import { RESOURCE_GROUPS, hostOf, monogramFor } from '@sudobility/music_lib';
+import type { Resource } from '@sudobility/music_types';
 
 export function ResourcesScreen() {
   const { t } = useTranslation();
@@ -72,6 +68,7 @@ export function ResourcesScreen() {
 
 function ResourceRow({ link }: { link: Resource }) {
   const { t } = useTranslation();
+  const activate = () => void Linking.openURL(link.url);
   return (
     <Pressable
       accessibilityRole="link"
@@ -80,7 +77,11 @@ function ResourceRow({ link }: { link: Resource }) {
       // Every link leaves the app, which is what `openURL` says out loud: the
       // system decides where it goes, and the app is not left holding a
       // half-rendered other people's page.
-      onPress={() => void Linking.openURL(link.url)}
+      onPress={activate}
+      // macOS has no synthesized-touch fallback for an assistive press, so a
+      // VoiceOver activation reaches a Pressable only through
+      // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+      onAccessibilityTap={activate}
       className="border-border flex-row items-center gap-3 rounded border p-3"
       style={{ minHeight: MIN_TOUCH_TARGET }}
     >

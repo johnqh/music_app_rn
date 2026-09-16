@@ -26,11 +26,21 @@
  * was looking at back to bar 1. The list is what knows which document is in
  * front, so it banks the leaving document's tick and puts the arriving one's
  * back — or bar 1, for a document that has never been in front.
+ *
+ * **And its scroll offset.** A tab's editor is a fresh component per document,
+ * so its score view opened at the top whatever the restored caret said — pages
+ * away from it on a long score. The view banks its offset here when it goes
+ * away (`bankScroll`) and reads it back when it opens (`scrollOffset`); a
+ * document never scrolled answers null, which the view reads as "bring the
+ * caret into view". View state rather than document state, so it lives here
+ * beside the caret and not in the store, which would mark the document dirty.
  */
 import { getMusicPositionSource } from '@sudobility/music_types';
 import type { DocumentOrigin } from '@sudobility/music_lib';
 import { sameOrigin } from './document';
 import type { MusicDocument } from './document';
+// Type only: the score view's own shape, and nothing of Skia comes with it.
+import type { ScrollOffset } from '@/features/score/useScoreCanvas';
 
 export type DocumentListState = {
   documents: readonly MusicDocument[];
@@ -55,8 +65,12 @@ export type DocumentListOptions = {
   position?: () => CaretPosition;
   /**
    * Called when a document stops being the one in front, **before** its caret
-   * is banked — `null` when it was the one just closed. The composition root
-   * pauses the transport here, if that document is the one playing.
+   * is banked — including the one just closed, which is named and not `null`:
+   * closing the tab in front mid-playback left nothing to pause, so the music
+   * went on under the fallback tab until the closed editor's unmount paused it
+   * and reported that position over the caret restored for the fallback. The
+   * composition root pauses the transport here, if that document is the one
+   * playing.
    *
    * A tab put behind another mid-playback would otherwise go on playing under
    * a tab that does not show it — and pausing any later (when its editor
@@ -65,8 +79,39 @@ export type DocumentListOptions = {
    * stopped, and the pause is still mirrored into the leaving store, so it is
    * not left locked as "playing" for when it comes back.
    */
-  leaveFront?: (document: MusicDocument | null) => void;
+  leaveFront?: (document: MusicDocument) => void;
 };
+
+/** As much of the transport as leaving the front needs. */
+export type PausablePlayer = { pause(): void };
+
+/**
+ * What a tab going behind another does to the transport: **pause, never stop.**
+ *
+ * The two differ in exactly the thing a tab switch must not lose. `stop()`
+ * homes the playhead to bar 1 and reports it, so the tab you left came back at
+ * 1.1 / 0:00.0 with the music it had reached thrown away; `pause()` leaves the
+ * position where it is for `swapCaret` to bank a line later. That is also why
+ * this is called from `leaveFront` rather than being left to the leaving
+ * editor's player binding as it unmounts, which happens after the arriving
+ * tab's caret has been restored and would report over it.
+ *
+ * **Only when this document is the one playing.** The player is app-wide, so a
+ * tab that is not the one sounding has no music of its own to stop — and the
+ * engine's pause reports "paused" from a stopped transport too, which would
+ * leave a tab that was only ever sitting there looking paused.
+ *
+ * Here rather than in the composition root that wires it (`App.tsx`), because
+ * that is a React component and this is the part a test can hold. The player is
+ * taken structurally, so this module still depends on nothing that makes sound.
+ */
+export function pauseLeavingDocument(
+  player: PausablePlayer,
+  leaving: MusicDocument,
+): void {
+  if (leaving.store.getState().state !== 'playing') return;
+  player.pause();
+}
 
 export class DocumentList {
   private documents: MusicDocument[] = [];
@@ -75,7 +120,11 @@ export class DocumentList {
   private readonly detach = new Map<string, () => void>();
   /** Where each document's caret was when it last left the front. */
   private readonly carets = new Map<string, number>();
+  /** Where each document's score view was scrolled when it went away. */
+  private readonly scrolls = new Map<string, ScrollOffset>();
   private front: string | null = null;
+  /** The document `close` is removing, while the front swaps away from it. */
+  private closing: MusicDocument | null = null;
   private readonly options: DocumentListOptions;
 
   constructor(options: DocumentListOptions = {}) {
@@ -107,8 +156,10 @@ export class DocumentList {
     const next = this.activeId;
     if (next === this.front) return;
     if (this.front !== null) {
-      const leaving = this.documents.find(d => d.id === this.front) ?? null;
-      this.options.leaveFront?.(leaving);
+      const leaving =
+        this.documents.find(d => d.id === this.front) ??
+        (this.closing?.id === this.front ? this.closing : null);
+      if (leaving) this.options.leaveFront?.(leaving);
     }
     const position = this.position();
     if (this.front !== null && this.documents.some(d => d.id === this.front)) {
@@ -193,7 +244,7 @@ export class DocumentList {
 
   /**
    * Closes a document without asking. Callers ask first — `decideClose` from
-   * music_editing — because only they have a person to ask.
+   * music_lib — because only they have a person to ask.
    */
   close(id: string): void {
     const closing = this.documents.find(d => d.id === id);
@@ -202,8 +253,31 @@ export class DocumentList {
     this.detach.get(id)?.();
     this.detach.delete(id);
     this.carets.delete(id);
-    closing.store.getState().dispose();
-    this.changed();
+    this.scrolls.delete(id);
+    // Named to `leaveFront` while the front swaps, and disposed only after, so
+    // a transport paused there is paused on a live store.
+    this.closing = closing;
+    try {
+      this.changed();
+    } finally {
+      this.closing = null;
+      closing.store.getState().dispose();
+    }
+  }
+
+  /** Where `id`'s score was last scrolled to, or null if it never has been. */
+  scrollOffset(id: string): ScrollOffset | null {
+    return this.scrolls.get(id) ?? null;
+  }
+
+  /**
+   * Records where `id`'s score is scrolled. Ignored for a document that is not
+   * open: a tab's view unmounts after the list has closed it, and its last
+   * report would otherwise keep an entry nothing can read.
+   */
+  bankScroll(id: string, offset: ScrollOffset): void {
+    if (!this.documents.some(d => d.id === id)) return;
+    this.scrolls.set(id, { left: offset.left, top: offset.top });
   }
 
   activate(id: string): void {

@@ -1,14 +1,6 @@
 {
   "about": {
-    "title": "About",
-    "tagline": "Compose with AI, refine by hand",
-    "body": "{{appName}} pairs a full notation editor and piano roll with AI generation: describe the music you want, then edit every note.",
-    "editorTitle": "Real notation editing",
-    "editorBody": "Engraved notation and a piano roll over the same score, with full undo history.",
-    "aiTitle": "AI generation",
-    "aiBody": "Generate whole pieces or regenerate a selection with candidate previews.",
-    "formatsTitle": "MIDI & MusicXML",
-    "formatsBody": "Import and export standard formats that work with your other tools."
+    "title": "About"
   },
   "accidental": {
     "0": "Natural",
@@ -32,9 +24,8 @@
     "email": "Email",
     "haveAccount": "I already have an account",
     "needAccount": "Create an account instead",
-    "password": "Password",
-    "signOut": "Sign out",
-    "signedIn": "Signed in"
+    "signedIn": "Signed in",
+    "passwordLabel": "Password"
   },
   "command": {
     "clearBars": "Clear bars",
@@ -121,16 +112,10 @@
     "importFormat": "Import a file",
     "importMidi": "Import MIDI",
     "newProject": "New Project",
-    "syncToServer": "Save to the server"
-  },
-  "devSettings": {
-    "generationDiagnostics": "Enable generation diagnostics",
-    "showMeasureBoundaries": "Show bar boundaries",
-    "showScheduling": "Show playback scheduling data",
-    "showScoreIds": "Show score IDs",
-    "showTicks": "Show tick positions",
-    "title": "Developer settings",
-    "validationWarnings": "Enable validation warnings"
+    "syncToServer": "Save to the server",
+    "importMusicXml": "Import MusicXML",
+    "importAudio": "Import Audio",
+    "importModule": "Import Tracker Module"
   },
   "docs": {
     "editor": {
@@ -181,7 +166,7 @@
       },
       "exporting": {
         "heading": "Exporting",
-        "p1": "The Export menu writes MIDI, MusicXML, an XM tracker module, audio as WAV or MP3, and the project as JSON. Print is separate, and offers Letter or Legal in portrait or landscape.",
+        "p1": "The Export menu writes MIDI, MusicXML, an XM tracker module, audio as WAV or MP3, and the project as a project file. Print is separate, and offers Letter or Legal in portrait or landscape.",
         "p2": "Audio is rendered through the same soundfont that plays it, so the file is a recording of what you heard rather than a second interpretation.",
         "p3": "If the score has hidden tracks, exporting asks whether to include them rather than quietly deciding for you."
       },
@@ -197,7 +182,7 @@
         "musicxml": "MusicXML",
         "tracker": "Tracker module",
         "audio": "Audio",
-        "project": "Project JSON",
+        "project": "Project file",
         "xm": "XM module",
         "wav": "WAV audio",
         "mp3": "MP3 audio",
@@ -264,7 +249,7 @@
         "heading": "Making your first project",
         "p1": "Everything starts on the Projects page. There are four ways to begin: start from a template, generate a whole score with AI, import a file, or duplicate a project you already have.",
         "p2": "Templates are empty scores with the staves already set up — a lead sheet, a piano grand staff, a string quartet, a jazz combo. They are the fastest way to a blank page that is the right shape.",
-        "p3": "Importing makes a project too. A MIDI file, a MusicXML file, a tracker module, an audio recording or a project JSON all land as a new project rather than merging into an open one."
+        "p3": "Importing makes a project too. A MIDI file, a MusicXML file, a tracker module, an audio recording or a project file all land as a new project rather than merging into an open one."
       },
       "dashboard": {
         "heading": "The Projects page",
@@ -597,7 +582,6 @@
     "untitled": "Untitled",
     "new": "New Score",
     "open": "Open…",
-    "save": "Save",
     "close": "Close",
     "unsavedTitle": "Unsaved changes",
     "unsavedBody": "\"{{title}}\" has changes that have not been saved.",
@@ -790,7 +774,8 @@
     },
     "polyphonyOne": "{{instrument}} plays one note at a time, {{action}}",
     "polyphonyMany": "{{instrument}} plays at most {{limit}} notes at once, {{action}}",
-    "unknownInstrument": "This instrument"
+    "unknownInstrument": "This instrument",
+    "save": "Save"
   },
   "errors": {
     "createProject": "Failed to create project",
@@ -933,11 +918,7 @@
     "title": "Generate track"
   },
   "import": {
-    "audio": "Import Audio",
     "failedTitle": "Could not import",
-    "midi": "Import MIDI",
-    "musicXml": "Import MusicXML",
-    "tracker": "Import module",
     "unsupported": "This build cannot open files.",
     "warningsExplain": "The file held things this app does not carry. Everything else was imported.",
     "warningsTitle": "Imported, with notes"
@@ -980,7 +961,8 @@
     "sustainExtend": "Extend notes through sustain",
     "sustainIgnore": "Ignore sustain pedal",
     "trackSummary": "MIDI track summary",
-    "tripletDetection": "Triplet detection"
+    "tripletDetection": "Triplet detection",
+    "clefOfTrack": "Clef: {{name}}"
   },
   "inspector": {
     "articulation": "Articulation",
@@ -1072,7 +1054,10 @@
     "trackVolume": "Track volume",
     "velocity": "Velocity",
     "voice": "Voice",
-    "volume": "Volume"
+    "volume": "Volume",
+    "moveRefused": "The note could not be moved to that position.",
+    "outOfRange_one": "{{count}} note is outside this instrument's range of {{low}}-{{high}} and cannot be played on it.",
+    "outOfRange_other": "{{count}} notes are outside this instrument's range of {{low}}-{{high}} and cannot be played on it."
   },
   "key": {
     "major": "major",
@@ -1107,6 +1092,7 @@
     "unsupportedTime": "Unsupported time signature in bar {{measureNumber}}."
   },
   "nav": {
+    "back": "Back",
     "community": "Community",
     "credits": "Credits",
     "docs": "Documentation",
@@ -1114,7 +1100,8 @@
     "published": "Published",
     "resources": "Resources",
     "settings": "Settings",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "signOut": "Sign out"
   },
   "newProject": {
     "generateForMe": "Generate for me",
@@ -1277,9 +1264,8 @@
     "language_zh": "中文",
     "theme": "Theme",
     "themeSystem": "Follows the system",
-    "theme_dark": "Dark",
-    "theme_light": "Light",
-    "theme_system": "Follows the system"
+    "themeLight": "Light",
+    "themeDark": "Dark"
   },
   "shortcuts": {
     "playPause": "Play / pause",
@@ -1335,14 +1321,14 @@
   "trackerFit": {
     "clampedNotes_one": "{{count}} note outside {{format}}'s range was moved by whole octaves.",
     "clampedNotes_other": "{{count}} notes outside {{format}}'s range were moved by whole octaves.",
-    "confirm": "Export anyway",
     "droppedShortNotes_one": "{{count}} note shorter than one row was dropped.",
     "droppedShortNotes_other": "{{count}} notes shorter than one row were dropped.",
     "droppedVoices_one": "{{count}} voice did not fit {{format}}'s channel count and will be missing.",
     "droppedVoices_other": "{{count}} voices did not fit {{format}}'s channel count and will be missing.",
     "quantisedNotes_one": "{{count}} note moved slightly to land on the row grid.",
     "quantisedNotes_other": "{{count}} notes moved slightly to land on the row grid.",
-    "title": "Export as {{format}}"
+    "title": "Export as {{format}}",
+    "exportAnyway": "Export anyway"
   },
   "transport": {
     "editTempo": "Edit tempo",
@@ -1387,5 +1373,22 @@
     "confirmTitle": "Generate this piece again?",
     "confirmMessage": "This replaces the whole score with a new generation. Your current score is not kept unless you save a snapshot first.",
     "confirm": "Generate again"
+  },
+  "home": {
+    "heroTitle": "Compose with AI, refine by hand",
+    "heroBody": "{{appName}} pairs a full notation editor and a playable piano keyboard with AI generation: describe the music you want, then edit every note.",
+    "featureEditorTitle": "Real notation editing",
+    "featureEditorBody": "Engraved notation with a piano keyboard beneath it, over one score, with full undo history.",
+    "featureAiTitle": "AI generation",
+    "featureAiBody": "Generate whole pieces, or regenerate a selection of bars.",
+    "featureFormatsTitle": "MIDI & MusicXML",
+    "featureFormatsBody": "Import and export standard formats that work with your other tools."
+  },
+  "clef": {
+    "treble": "Treble",
+    "bass": "Bass",
+    "alto": "Alto",
+    "tenor": "Tenor",
+    "percussion": "Percussion"
   }
 }

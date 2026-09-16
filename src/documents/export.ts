@@ -1,10 +1,10 @@
 /**
  * Exporting a document.
  *
- * **What an export writes is music_editing's `planExport`.** The formats, their
+ * **What an export writes is music_lib's `planExport`.** The formats, their
  * order, their extensions, their labels and which score a scope means are facts
  * about the product, and the web app's export menu reads the same
- * `WRITABLE_EXPORT_FORMATS` — this file used to hold its own `EXPORT_FORMATS`
+ * `WRITABLE_EXPORT_FORMATS` (music_types') — this file used to hold its own `EXPORT_FORMATS`
  * and extension table beside it, which is how the native app came to offer
  * five formats where the web offered six (it had no project file). What stays
  * here is only what that package may not reach: the filename (music_codecs'
@@ -20,29 +20,28 @@
  * first (see `ExportSheet`).
  *
  * **The project file is `.moo`**, the document format this app opens and saves
- * — not the plan's `json`, which is what the shared list still says. It carries
- * the document's title, as the web's carries the project's name, so opening it
- * back names it what it was.
+ * — the shared list's own extension, read from the codec that writes it. It
+ * carries the document's title, as the web's carries the project's name, so
+ * opening it back names it what it was.
  *
  * The filename of every other format comes from the **score's** title, not the
  * document's. `metadata.title` is what the piece is called; a document's title
  * is what the row on disk is called. Renaming a file should not rename the music.
  */
 import {
-  DOCUMENT_EXTENSION,
   exportFilename,
   scoreToTracker,
   serializeProjectFile,
 } from '@sudobility/music_lib';
 import type { TrackerFitReport } from '@sudobility/music_lib';
-import { planExport } from '@sudobility/music_editing';
+import type { Score, TrackerModule } from '@sudobility/music_types';
+import type { MusicDocument } from './document';
+import { planExport } from '@sudobility/music_lib';
 import type {
   ExportFormatId,
   ExportPlan,
   ExportScope,
-} from '@sudobility/music_editing';
-import type { Score, TrackerModule } from '@sudobility/music_types';
-import type { MusicDocument } from './document';
+} from '@sudobility/music_types';
 
 export type ExportFormat = ExportFormatId;
 
@@ -69,13 +68,10 @@ export type AudioRenderer = (
 
 /**
  * The file a plan writes: the title kept as written, with only the characters
- * a filesystem reserves replaced — and `.moo` for a project.
+ * a filesystem reserves replaced.
  */
 export function planFilename(plan: ExportPlan): string {
-  return exportFilename(
-    plan.title,
-    plan.route === 'project' ? DOCUMENT_EXTENSION : plan.extension,
-  );
+  return exportFilename(plan.title, plan.extension);
 }
 
 /**

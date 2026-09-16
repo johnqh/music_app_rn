@@ -10,7 +10,7 @@
  * What a touch *means* is music_editing's (`routeScorePress`,
  * `selectForContextMenu`) and is tested there; what is pinned here is that the
  * view hands those the canvas's answer, and that it tells a tap from a long
- * press from a scroll with music_drawing's `classifyPress` — a scroll that
+ * press from a scroll with music_editing's `classifyPress` — a scroll that
  * happened to end over a note must not select it.
  *
  * And one thing about *when*: a new picture, cursor or scroll offset must not
@@ -21,7 +21,11 @@ import { jest } from '@jest/globals';
 import type { ReactNode } from 'react';
 import { act, fireEvent } from '@testing-library/react-native';
 import { DARK_RENDER_THEME } from '@sudobility/music_drawing';
-import { createEmptyScore } from '@sudobility/music_types';
+import { ScrollView } from 'react-native';
+import {
+  createEmptyScore,
+  getMusicPositionSource,
+} from '@sudobility/music_types';
 import type { Pitch, Score } from '@sudobility/music_types';
 import { twinkleScore } from '@sudobility/music_types/test';
 import { renderWithApp } from '@/test/render';
@@ -35,7 +39,9 @@ const mockCanvasAnswers: {
   hit: unknown;
   tick: number | null;
   points: unknown[];
-} = { hit: null, tick: null, points: [] };
+  follow: { left: number; top: number } | null;
+  followedTicks: number[];
+} = { hit: null, tick: null, points: [], follow: null, followedTicks: [] };
 
 jest.mock('./useScoreCanvas', () => {
   const actual = jest.requireActual(
@@ -64,6 +70,10 @@ jest.mock('./useScoreCanvas', () => {
       return mockCanvasAnswers.hit;
     },
     tickAt: () => mockCanvasAnswers.tick,
+    followTarget: (tick: number) => {
+      mockCanvasAnswers.followedTicks.push(tick);
+      return mockCanvasAnswers.follow;
+    },
   };
   const signals = {
     picture: actual.createSignal<unknown>(null),
@@ -165,6 +175,8 @@ beforeEach(() => {
   mockCanvasAnswers.hit = null;
   mockCanvasAnswers.tick = null;
   mockCanvasAnswers.points = [];
+  mockCanvasAnswers.follow = null;
+  mockCanvasAnswers.followedTicks = [];
 });
 
 /**
@@ -341,5 +353,78 @@ describe('ScrollingScore', () => {
     const score = createEmptyScore({ title: 'Test', measures: 1 });
     renderWithApp(<ScrollingScore score={score} theme={DARK_RENDER_THEME} />);
     expect(mockCursorColors.at(-1)).toBe(DARK_RENDER_THEME.caret);
+  });
+});
+
+/*
+  A tab's editor is a fresh component per document, so the score view used to
+  open at the top whatever the restored caret said. It now opens where the tab
+  was left, or — for a document never scrolled — where the caret is, and
+  reports its offset when it goes away.
+*/
+describe('reopening a tab', () => {
+  /** The outer, vertical scroll view and its mocked `scrollTo`. */
+  function verticalScroller(view: ReturnType<typeof renderWithApp>) {
+    const scroller = view.UNSAFE_getAllByType(ScrollView)[0]!;
+    const scrollTo = (scroller.instance as { scrollTo: jest.Mock }).scrollTo;
+    scrollTo.mockClear();
+    return { scroller, scrollTo };
+  }
+
+  it('opens at the offset the tab was left at, once its content is laid out', () => {
+    const score = createEmptyScore({ title: 'Test', measures: 40 });
+    const view = renderWithApp(
+      <ScrollingScore score={score} initialScroll={{ left: 0, top: 840 }} />,
+    );
+    const { scroller, scrollTo } = verticalScroller(view);
+    // Before the content has a height, a scroll would clamp to the top.
+    fireEvent(scroller, 'contentSizeChange', 800, 0);
+    expect(scrollTo).not.toHaveBeenCalled();
+
+    fireEvent(scroller, 'contentSizeChange', 800, 4000);
+    expect(scrollTo).toHaveBeenCalledWith({ y: 840, animated: false });
+    expect(lastCall('setScroll')).toEqual([0, 840]);
+
+    // Once: a later change of content (an edit, a zoom) must not jump back.
+    fireEvent(scroller, 'contentSizeChange', 800, 5000);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+  });
+
+  it('brings the caret into view for a tab never scrolled', () => {
+    act(() => getMusicPositionSource().moveTo(7680));
+    mockCanvasAnswers.follow = { left: 0, top: 1320 };
+    const score = createEmptyScore({ title: 'Test', measures: 40 });
+    const view = renderWithApp(
+      <ScrollingScore score={score} initialScroll={null} />,
+    );
+    const { scroller, scrollTo } = verticalScroller(view);
+    fireEvent(scroller, 'contentSizeChange', 800, 4000);
+    expect(mockCanvasAnswers.followedTicks).toEqual([7680]);
+    expect(scrollTo).toHaveBeenCalledWith({ y: 1320, animated: false });
+    act(() => getMusicPositionSource().moveTo(0));
+  });
+
+  it('opens at the top when told nothing, as the published view is', () => {
+    const score = createEmptyScore({ title: 'Test', measures: 40 });
+    const view = renderWithApp(<ScrollingScore score={score} />);
+    const { scroller, scrollTo } = verticalScroller(view);
+    fireEvent(scroller, 'contentSizeChange', 800, 4000);
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(mockCanvasAnswers.followedTicks).toEqual([]);
+  });
+
+  it('reports where it was scrolled when it goes away', () => {
+    const score = createEmptyScore({ title: 'Test', measures: 40 });
+    const onLeaveScroll = jest.fn();
+    const view = renderWithApp(
+      <ScrollingScore score={score} onLeaveScroll={onLeaveScroll} />,
+    );
+    const { scroller } = verticalScroller(view);
+    fireEvent.scroll(scroller, {
+      nativeEvent: { contentOffset: { x: 0, y: 610 } },
+    });
+    expect(onLeaveScroll).not.toHaveBeenCalled();
+    view.unmount();
+    expect(onLeaveScroll).toHaveBeenCalledWith({ left: 0, top: 610 });
   });
 });

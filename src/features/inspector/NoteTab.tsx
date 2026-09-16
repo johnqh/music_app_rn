@@ -29,18 +29,19 @@
  * transport plays** (`selectEditLocked`, decision 4 of the parity plan): every
  * field on it writes notes.
  */
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { OTTAVAS } from '@sudobility/music_types';
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
-import { Button, Select, Switch, Text } from '@sudobility/components-rn';
+import { Button, Input, Select, Switch, Text } from '@sudobility/components-rn';
 import {
   changeAccidental,
   changeArticulation,
   changeDuration,
   changeVelocity,
   clearGraceNotes,
+  moveNoteToTick,
   displayedPitchForNote,
   noteTextFieldsVisible,
   selectEditLocked,
@@ -64,10 +65,13 @@ import {
   MIN_OCTAVE,
   NO_MARK,
   PITCH_STEPS,
+  barBeatCommitTick,
   barBeatForTick,
   commonValue,
   durationFieldState,
+  findEvent,
   findTrack,
+  formatBeatForField,
   voiceNumberOf,
 } from '@sudobility/music_types';
 import type {
@@ -78,6 +82,7 @@ import type {
   NoteEvent,
   Pitch,
   PitchStep,
+  Score,
 } from '@sudobility/music_types';
 import { DraftInput, NumberDraftInput } from './DraftInput';
 import { EmptyTab, Field } from './Field';
@@ -107,20 +112,29 @@ export function NoteTab({
     [score, pitchDisplay],
   );
 
+  /**
+   * Answers whether any note changed, so a draft the store refused (an octave
+   * outside the compass, the playback lock) goes back to what is stored.
+   */
   const applyPitchPatch = useCallback(
-    (patch: Partial<Pitch>): void => {
-      if (!score) return;
+    (patch: Partial<Pitch>): boolean => {
+      if (!score) return false;
+      let changed = false;
       for (const note of notes) {
         // The patch is against what the reader is *seeing*, so apply it there
         // and convert once. Never a round trip: the stored pitch is replaced
         // outright rather than fed back through the lens.
-        setNotePitch(
-          store,
-          note.id,
-          { ...shown(note), ...patch },
-          pitchDisplay,
-        );
+        if (
+          setNotePitch(
+            store,
+            note.id,
+            { ...shown(note), ...patch },
+            pitchDisplay,
+          )
+        )
+          changed = true;
       }
+      return changed;
     },
     [store, score, notes, shown, pitchDisplay],
   );
@@ -153,7 +167,6 @@ export function NoteTab({
   const voice = commonValue(notes.map(n => voiceNumberOf(score, n)));
   const tieStart = commonValue(notes.map(n => n.tieStart === true));
   const tieStop = commonValue(notes.map(n => n.tieStop === true));
-  const at = barBeatForTick(score, first.startTick);
   const graceCount = first.graceNotes?.length ?? 0;
 
   return (
@@ -250,7 +263,8 @@ export function NoteTab({
         marked.
       */}
       <Field label={t('inspector.velocity')}>
-        {/* `changeVelocity` rounds and clamps to 0-127 itself. */}
+        {/* `changeVelocity` rounds and clamps to 0-127 itself, and answers
+            false for a write it refused, which resets the draft. */}
         <NumberDraftInput
           value={velocity}
           min={0}
@@ -337,31 +351,31 @@ export function NoteTab({
           <DraftInput
             value={first.fingering ?? ''}
             editable={!locked}
-            // `setFingering` trims, and clears on blank.
+            // `setFingering` trims and clears on blank; text that trims to
+            // what the note already carries writes nothing and resets.
             onCommit={text => setFingering(store, text)}
             accessibilityLabel={t('inspector.fingering')}
           />
         </Field>
       ) : null}
 
-      {/* Where this note is, in the numbers a player reads off the page —
-          `barBeatForTick` skips pickups, so this is the bar they would count. */}
-      <View className="flex-row gap-2">
-        <View className="flex-1">
-          <Field label={t('inspector.bar')}>
-            <Text className="text-foreground text-base tabular-nums">
-              {at ? at.bar : '—'}
-            </Text>
-          </Field>
-        </View>
-        <View className="flex-1">
-          <Field label={t('inspector.beat')}>
-            <Text className="text-foreground text-base tabular-nums">
-              {at ? Math.floor(at.beat) : '—'}
-            </Text>
-          </Field>
-        </View>
-      </View>
+      {/*
+        Where the note sits, counted the way a player counts — `barBeatForTick`
+        skips pickups, so this is the bar they would count. Editable, as the
+        web's is: typing a bar or a beat moves the note, because stating a
+        position exactly is the reason to have this field at all. For one note
+        only (the web rule): a position typed over several would stack them.
+      */}
+      {notes.length === 1 ? (
+        <BarBeatFields
+          store={store}
+          score={score}
+          noteId={first.id}
+          tick={first.startTick}
+          editable={!locked}
+          onCommit={tick => moveNoteToTick(store, first.id, tick)}
+        />
+      ) : null}
 
       <View className="flex-row gap-2">
         {/* Which part this note is in. Read-only: a note is moved between
@@ -508,6 +522,124 @@ export function NoteTab({
           onReplace={onReplace}
         />
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * A note's position as a bar and a beat — the web's `BarBeatField`.
+ *
+ * Two drafts, committed together when either field is left: "bar 12, beat 3"
+ * is one position said in two numbers, and committing per keystroke would move
+ * the note through every intermediate one. The beat takes a decimal so an
+ * off-beat note can be stated exactly (a swung eighth is 2.5), shown to two
+ * places by `formatBeatForField`; `barBeatCommitTick` clamps a beat past the end
+ * of its bar and answers null for a bar that does not exist. Whatever does not
+ * move the note — blank, nonsense, no such bar, the tick it already has, a
+ * move the store refused — puts both fields back to where the note is.
+ *
+ * **A refusal is also said.** Resetting alone is indistinguishable from a typo
+ * being snapped back, so a move the store declined raises a toast, which is the
+ * queue every other editing refusal on this app reaches — an out-of-range pitch
+ * from music_editing, and an instrument too narrow for a part from the Track
+ * tab.
+ *
+ * **Where the note is now is read from the store, not from the `tick` prop**,
+ * and that is what keeps the refusal honest. Pressing Return fires
+ * `onSubmitEditing` *and* — because a single-line `TextInput` blurs on submit —
+ * `onBlur`, both before React has re-rendered, so `commit` runs twice against
+ * one stale `tick`. The second run recomputed the same target, `moveNoteToTick`
+ * found the note already there and answered false, and the panel announced that
+ * a move which had just succeeded could not be made. Against the live tick the
+ * second run is `barBeatCommitTick`'s own "the tick it already has is not a
+ * move" and does nothing at all.
+ */
+function BarBeatFields({
+  store,
+  score,
+  noteId,
+  tick,
+  editable,
+  onCommit,
+}: {
+  store: MusicDocument['store'];
+  score: Score;
+  /** Whose position this is — used to re-read the live tick when committing. */
+  noteId: string;
+  tick: number;
+  editable: boolean;
+  /** Whether the move landed — see music_editing's `moveNoteToTick`. */
+  onCommit: (tick: number) => boolean;
+}) {
+  const { t } = useTranslation();
+  const position = barBeatForTick(score, tick);
+  // Primitives, so the re-seed below runs when the *values* change: `position`
+  // is a fresh object every render.
+  const bar = position ? String(position.bar) : '';
+  const beat = position ? formatBeatForField(position.beat) : '';
+  const [barDraft, setBarDraft] = useState(bar);
+  const [beatDraft, setBeatDraft] = useState(beat);
+  useEffect(() => {
+    setBarDraft(bar);
+    setBeatDraft(beat);
+  }, [bar, beat]);
+
+  if (!position) return null;
+
+  const commit = () => {
+    // Everything about turning two drafts into a tick — a cleared box is "no
+    // change" and never bar 0, a bar the score has not got is nothing to
+    // commit, the note's own tick is not a move — is music_types', and shared
+    // with the web's `BarBeatField`. Asked against the score as it is *now*,
+    // so a second call for the same keypress sees the move already made.
+    const live = store.getState().score ?? score;
+    const event = findEvent(live, noteId);
+    const next = barBeatCommitTick(
+      live,
+      barDraft,
+      beatDraft,
+      event?.startTick ?? tick,
+    );
+    if (next !== null && !onCommit(next))
+      store.getState().pushToast({
+        message: t('inspector.moveRefused'),
+        severity: 'warning',
+      });
+    // Back to where the note is, whatever happened: blank, no such bar, or a
+    // move the store refused (which leaves the tick, and so the re-seed
+    // above, untouched). A move that landed re-seeds both from the new tick.
+    setBarDraft(bar);
+    setBeatDraft(beat);
+  };
+
+  return (
+    <View className="flex-row gap-2">
+      <View className="flex-1">
+        <Field label={t('inspector.bar')}>
+          <Input
+            value={barDraft}
+            onChangeText={setBarDraft}
+            onBlur={commit}
+            onSubmitEditing={commit}
+            keyboardType="numeric"
+            editable={editable}
+            accessibilityLabel={t('inspector.bar')}
+          />
+        </Field>
+      </View>
+      <View className="flex-1">
+        <Field label={t('inspector.beat')}>
+          <Input
+            value={beatDraft}
+            onChangeText={setBeatDraft}
+            onBlur={commit}
+            onSubmitEditing={commit}
+            keyboardType="decimal-pad"
+            editable={editable}
+            accessibilityLabel={t('inspector.beat')}
+          />
+        </Field>
+      </View>
     </View>
   );
 }

@@ -45,8 +45,8 @@ import type {
   GenerateScoreComplexity,
   ReplaceDraft,
 } from '@sudobility/music_lib';
-import type { ReplaceSubmission } from '@sudobility/music_editing';
 import type { ReplaceScope } from '@sudobility/music_types';
+import type { ReplaceSubmission } from '@sudobility/music_types';
 
 export type ReplaceMusicSheetProps = {
   open: boolean;

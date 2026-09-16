@@ -10,14 +10,11 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Button, Select, Text } from '@sudobility/components-rn';
-import { useState } from 'react';
 import { useAuth } from '@/auth/AuthContext';
-import { useActiveDocument } from '@/documents/DocumentsContext';
-import { DeveloperSettingsSheet } from '@/features/editor/DeveloperSettingsSheet';
 import { useTheme } from '@/config/ThemeContext';
 import { devicePrefs } from '@/config/useDevicePrefs';
-import { THEME_MODES } from '@sudobility/music_editing';
-import type { ThemeMode } from '@sudobility/music_editing';
+import { THEME_MODE_OPTIONS } from '@sudobility/music_types';
+import type { ThemeMode } from '@sudobility/music_types';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
 import type { RootStackParamList } from '@/app/Navigation';
 import { ScreenScaffold } from './ScreenScaffold';
@@ -28,8 +25,6 @@ export function SettingsScreen() {
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user, signOut } = useAuth();
   const { mode, setMode } = useTheme();
-  const document = useActiveDocument();
-  const [devOpen, setDevOpen] = useState(false);
 
   return (
     <ScreenScaffold>
@@ -61,35 +56,24 @@ export function SettingsScreen() {
         <Select
           value={mode}
           accessibilityLabel={t('settings.theme')}
-          options={THEME_MODES.map(value => ({
-            value,
-            label: t(`settings.theme_${value}`),
+          options={THEME_MODE_OPTIONS.map(option => ({
+            value: option.value,
+            label: t(option.labelKey),
           }))}
           onValueChange={(value: string) => setMode(value as ThemeMode)}
         />
       </Row>
 
       {/*
-        The developer toggles, behind their own sheet: they change how the app
-        is *inspected* rather than what the score is, so they belong in
-        settings and not beside the editing tools.
+        There is deliberately no developer-settings row here any more. It opened
+        a sheet of six toggles — `showIds`, `showTicks`,
+        `showMeasureBoundaries`, `showPlaybackScheduling`, `enableDiagnostics`
+        and `enableValidationWarnings` — that no package in the family read, so
+        every one of them did nothing; they are gone from `DevSettings`
+        upstream. The one setting left is `generationVariant`, and this app has
+        no control for it (the web's developer dialog does), so a sheet here
+        would open on nothing at all.
       */}
-      <Row label={t('devSettings.title')}>
-        <Button
-          variant="secondary"
-          disabled={!document}
-          onPress={() => setDevOpen(true)}
-        >
-          {t('common.open')}
-        </Button>
-      </Row>
-      {document ? (
-        <DeveloperSettingsSheet
-          open={devOpen}
-          document={document}
-          onClose={() => setDevOpen(false)}
-        />
-      ) : null}
 
       <Row label={t('settings.account')}>
         {user ? (
@@ -98,7 +82,7 @@ export function SettingsScreen() {
               {user.email ?? user.uid}
             </Text>
             <Button size="sm" onPress={() => void signOut()}>
-              {t('auth.signOut')}
+              {t('nav.signOut')}
             </Button>
           </View>
         ) : (

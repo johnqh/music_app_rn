@@ -146,6 +146,12 @@ export function PanSlider({
           accessibilityState={{ disabled: !canReset }}
           disabled={!canReset}
           onPress={onReset}
+          // macOS has no synthesized-touch fallback for an assistive press, so
+          // a VoiceOver activation reaches a Pressable only through
+          // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+          // Withheld while disabled, the way `IconButton` does it: a disabled
+          // Pressable still receives an accessibility tap.
+          {...(canReset ? { onAccessibilityTap: onReset } : {})}
           style={{
             width: ROW_ACTION_WIDTH,
             height: ROW_ACTION_WIDTH,

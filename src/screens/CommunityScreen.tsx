@@ -125,32 +125,38 @@ export function CommunityScreen() {
           ) : null}
         </View>
       }
-      renderItem={({ item }: { item: CommunityItem }) => (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={communityItemTitle(item)}
-          onPress={() =>
-            navigation.navigate('Published', { publicId: item.publicId })
-          }
-          className="border-border bg-card rounded-lg border p-3"
-          style={{ minHeight: MIN_TOUCH_TARGET }}
-        >
-          {/*
+      renderItem={({ item }: { item: CommunityItem }) => {
+        const activate = () =>
+          navigation.navigate('Published', { publicId: item.publicId });
+        return (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={communityItemTitle(item)}
+            onPress={activate}
+            // macOS has no synthesized-touch fallback for an assistive press, so
+            // a VoiceOver activation reaches a Pressable only through
+            // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
+            onAccessibilityTap={activate}
+            className="border-border bg-card rounded-lg border p-3"
+            style={{ minHeight: MIN_TOUCH_TARGET }}
+          >
+            {/*
             `communityItemTitle`, not `publicName || name`: a public title of
             spaces is truthy and printed an empty row.
           */}
-          <Text className="text-foreground font-medium">
-            {communityItemTitle(item)}
-          </Text>
-          {item.publisherName ? (
-            // "Shared by X", not a bare name: on its own a name under a title
-            // reads as a composer, which is a different person.
-            <Text className="text-muted-foreground text-sm">
-              {t('community.sharedBy', { name: item.publisherName })}
+            <Text className="text-foreground font-medium">
+              {communityItemTitle(item)}
             </Text>
-          ) : null}
-        </Pressable>
-      )}
+            {item.publisherName ? (
+              // "Shared by X", not a bare name: on its own a name under a title
+              // reads as a composer, which is a different person.
+              <Text className="text-muted-foreground text-sm">
+                {t('community.sharedBy', { name: item.publisherName })}
+              </Text>
+            ) : null}
+          </Pressable>
+        );
+      }}
     />
   );
 }

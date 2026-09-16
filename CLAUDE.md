@@ -9,8 +9,11 @@ The native Moosiac app: iOS, iPad, Android phone and tablet, and macOS.
 the research, which is parked rather than deleted.
 
 Like `music_app`, this repo is **UI and arrangement only**. Every rule about
-music lives in the libraries: `music_types` (the model), `music_editing`
-(editing and its state), `music_lib` (application state, commands, adapters),
+music lives in the libraries: `music_types` (the model, every type definition
+and vocabulary, and the pure helpers both frontend and backend use),
+`music_editing` (editing and its state — nothing else), `music_lib`
+(application state, commands, adapters, the player binding, documentation
+content, device prefs),
 `music_drawing` (layout and the renderer), `music_player` (sound),
 `music_io` (files), `music_client` (network). If you are about to write score
 maths here, it belongs somewhere else.
@@ -76,6 +79,32 @@ maths here, it belongs somewhere else.
   CJK — key parity alone passes happily when English was copied across.
 
 ## Package boundaries
+
+**Each library has one responsibility, and the rules for placing code are the
+user's:**
+
+- **Type definitions and vocabulary live in `music_types`.** A type or a closed
+  list (`ThemeMode`/`THEME_MODES`, `ExportScope`, `LayoutMode`,
+  `ScoreCanvasHit`, `InspectorTab`/`INSPECTOR_TABS`, `EDIT_MODE_OPTIONS`,
+  `QUANTIZE_GRIDS`, `SHORTCUT_GROUPS`, `DOCS_GROUPS`, `COMMAND_LABEL_KEYS`,
+  `Toast`, `ClipboardData`, `DevSettings`, `PlayerFailure`, …) is imported
+  from music_types even when the package that *uses* it is another one.
+- **Pure helpers used by both frontend and backend live in `music_types`** —
+  the format tables (`IMPORT_FORMATS`/`EXPORT_FORMATS`/`WRITABLE_EXPORT_FORMATS`,
+  `AUDIO_IMPORT_EXTENSIONS`), `outOfRangeNoteIds`, the print paper and
+  orientation options (`PAPER_OPTIONS`/`ORIENTATION_OPTIONS`).
+- **`music_editing` is for editing only, and depends on neither
+  `music_codecs` nor `music_player`.** So it does not own playback
+  (`bindPlayer`/`PlayerBinding` are music_lib's), documents (`decideClose`,
+  `planExport` are music_lib's), docs content (`DOCS_TOPICS`,
+  `docsGroupLabelKey`, `RESOURCE_GROUPS`, `hostOf`, `monogramFor` are
+  music_lib's), the theme (`resolveThemeMode` is music_lib's) or keyboard
+  drawing (`litKeys`/`samePitchSet`/`playingPitchesForTrack` are
+  music_drawing's). It does own touch classification (`classifyPress`), since
+  deciding what a press *means* is editing.
+- **No re-exports from old homes.** When something moves, every import here
+  moves with it; an import from the old package is a compile error, not a
+  deprecation.
 
 **Canvas geometry belongs to `music_drawing`; app layout geometry stays here.**
 The line is the canvas edge. Anything that reasons about the *drawn score* —
@@ -163,7 +192,8 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   Which score goes on paper (a part via `extractPart`, or the marked full
   score), which tracks, which systems per page and whose page turns is
   music_drawing's `printPlan`, the web print view's own call; `PrintSheet` asks
-  scope, paper and orientation from `PAPER_OPTIONS`/`ORIENTATION_OPTIONS`. This
+  scope, paper and orientation from music_types' `PAPER_OPTIONS`/
+  `ORIENTATION_OPTIONS`. This
   app's own `print-plan.ts` is deleted.
 
 - **A file picker is three controls.** iOS and iPadOS raise a
@@ -259,12 +289,15 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   control that invites a tap and gives no feedback, which is worse than one
   plainly unavailable. The rules are music_editing's `selectToolbarAvailability`, which the web
   bar reads too, and the multi-call controls are the library's as well:
-  `insertDefaultNoteAtCaret`, `quantizeSelectionToGrid`,
-  `EDITOR_MORE_ACTIONS`/`runMoreAction`, `addTrackChoices`/`runAddTrackChoice`,
-  `EDIT_MODE_OPTIONS` with `selectEffectiveEditMode`/`editModeHintKey`. The
-  stored edit mode is still corrected from an effect, because the library's
-  write paths (`insertNoteAtCaret`, `paste`) read the *stored* mode — the web
-  toolbar keeps the same effect. Go to bar passes the typed text to
+  `insertDefaultNoteAtCaret`, `quantizeSelectionToGrid`, `runMoreAction`,
+  `addTrackChoices`/`runAddTrackChoice`, `selectEffectiveEditMode`/
+  `editModeHintKey` — over music_types' vocabulary (`EDITOR_MORE_ACTIONS`,
+  `EDIT_MODE_OPTIONS`, `QUANTIZE_GRIDS`, `EDITOR_VOICE_COUNT`). The bar
+  **shows** the effective mode and never writes it back: the library's write
+  paths (`insertNoteAtCaret`, `paste`) read `selectEffectiveEditMode`
+  themselves, so Stack chosen on a piano is still Stack after a visit to a
+  flute. The write-back effect this bar used to run is what lost that choice.
+  Go to bar passes the typed text to
   `goToBarFromInput`, which counts bars as drawn (a pickup has no number). Fix
   all's toast and whether the issues list closes are `repairIssuesOutcome`'s.
 - **Volume and pan are painted here, not taken from the library.**
@@ -293,7 +326,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   refused rather than committed — a score with a `NaN` tempo has no tempo at
   all.
 - **Every other transport control goes through `usePlayerBinding`**
-  (music_editing's `bindPlayer`), which writes loop, metronome, speed, volume
+  (music_lib's `bindPlayer`), which writes loop, metronome, speed, volume
   and `synthLoad` into the document store and mirrors the transport state there
   — which is what makes the edit lock during playback real on this app. The bar
   reads those values back from the store. A `PlayerFailure` becomes a toast
@@ -311,7 +344,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   `1` for every note's voice**, which is right by coincidence on the default
   track and wrong the moment anybody uses the second; it reads `voiceNumberOf`
   now. Fields that were simply absent — octave, velocity, the tie toggles, the
-  slide span, the grace-note conversion, the bar/beat readout, the track
+  slide span, the grace-note conversion, the bar/beat position, the track
   readout, the clef, the key and time signatures, Delete Track — are there too.
 - **Every inspector field answers for the whole selection, via `commonValue`.**
   Where the selected notes agree it shows the value; where they do not it reads
@@ -344,7 +377,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
 - **A touch is classified, then routed by music_editing.** `ScrollingScore`
   hands the canvas's hit to `onPress(hit, pointTick)` or `onLongPress(hit)`
   and decides nothing else. It tells a tap from a long press from a drag with
-  music_drawing's `classifyPress` (`pointer: 'touch'`), measuring movement in
+  music_editing's `classifyPress` (`pointer: 'touch'`), measuring movement in
   **page** coordinates, because the surface moves with the finger during a
   scroll — measured on the surface, a flick that came to rest over a note
   selected it. `AppLayout` passes a tap to `routeScorePress` (the web's click
@@ -362,18 +395,32 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   music_editing's `inspector.ts` (`commitBarTempo`,
   `setClefAtMeasure`/`measureClefOptions`, `canReplace`,
   `selectEditLocked`/`controlLocked`, `noteTextFieldsVisible`,
-  `INSPECTOR_TABS`/`defaultInspectorTab`) and music_types' field values
-  (`pickupBeatOptions`, `parse/formatEndingNumbers`, `durationFieldState`,
+  `defaultInspectorTab`) and music_types' tab order and field values
+  (`INSPECTOR_TABS`, `pickupBeatOptions`, `parse/formatEndingNumbers`, `durationFieldState`,
   `parseNumericDraft`, `clampVolume`/`clampPan`/`volumeReadout`). Number fields
   are `NumberDraftInput` drafts committed on blur — blank is no change, never 0
   — not `NumberInput`, which committed per keystroke and could not show Mixed.
   The Note, Bar and Score tabs lock while playing; only volume, pan, mute and
-  solo stay live. A bar's clef, barline and navigation are resolved on the
+  solo stay live. **A draft whose commit wrote nothing goes back to the stored
+  value**: `changeVelocity`, `setFingering` and `setNotePitch` answer a boolean,
+  and `DraftInput`/`NumberDraftInput` reset when `onCommit` returns `false` —
+  an octave outside the compass stayed on screen as though applied. The Note
+  tab's **bar and beat are typed**, as on the web (`BarBeatFields`: two drafts
+  committed together on blur through music_types' `barBeatCommitTick` — the
+  whole parse-and-is-this-a-move rule, shared with the web's `BarBeatField` —
+  and `moveNoteToTick`, which answers a boolean like the three above; a move it
+  refused re-seeds both fields **and raises a toast**, since resetting alone is
+  indistinguishable from a typo being snapped back. The beat is shown by
+  `formatBeatForField`, and the fields appear for one note only), and the Track tab
+  says how many notes the instrument cannot play (`inspector.outOfRange`, from
+  music_types' `outOfRangeNoteIds` — the scan the notation colours them by). A bar's clef, barline and navigation are resolved on the
   bar's **own** track: they used to be read from the active track and from
   track 1, so a bar selected on another part edited the wrong one.
-- **Export is `planExport` over `WRITABLE_EXPORT_FORMATS`.** A project writes
-  `<title>.moo` through `serializeProjectFile`, overriding the shared list's
-  `json` extension by hand until the library says `moo`.
+- **Export is music_lib's `planExport` over music_types'
+  `WRITABLE_EXPORT_FORMATS`.** A project writes
+  `<title>.moo` through `serializeProjectFile`; the extension is the shared
+  list's own (`DOCUMENT_EXTENSION`), and the copy calls it a "project file"
+  (项目文件), never "project JSON".
 - **The status strip says what is selected — it is not a second place to read
   the track name.** It used to print the active track's name and a bar/track
   count, neither of which the web app shows and both of which the reader already
@@ -535,19 +582,36 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   stores are built with `resetPosition` false so opening one does not send the
   front tab's caret to bar 1 — the list banks the leaving tab's tick and
   restores the arriving one's (0 for a tab never in front), including when the
-  front tab closes and the fallback takes its place. Closing asks first through
-  music_editing's `decideClose` over the store's `dirty`; leaving the foreground
+  front tab closes and the fallback takes its place. **It keeps each tab's
+  scroll offset too**: the editor is a fresh component per document, so a tab
+  brought back opened at the top, pages away from its restored caret.
+  `ScrollingScore` banks its offset on unmount (`bankScroll`, ignored for a
+  closed tab) and reopens at `scrollOffset` — or, for a tab never scrolled, at
+  `ScoreCanvas.followTarget` for the caret — once per axis, when that scroll
+  view's content is first laid out (earlier clamps to the top). Closing asks first through
+  music_lib's `decideClose` over the store's `dirty`; leaving the foreground
   flushes every open document (`flushAll`), because a phone may kill a
   backgrounded app inside the debounce window.
 - **An import becomes a server project when somebody is signed in** (decision 2
   of the parity plan), built from the create response rather than re-read. Signed
   out, or when the server cannot be reached, it is a local unsaved document; a
   server that answers and refuses (`ApiError`) is reported, not hidden.
-- **Device prefs are one store, mirrored one way into every document.** Theme,
-  language, pitch display, developer mode and keyboard-collapsed are music_lib's
+- **Device prefs are one store; only pitch display is mirrored into documents.**
+  Theme, language, pitch display, developer mode, the developer settings
+  (`devSettings`) and keyboard-collapsed are music_lib's
   `createDevicePrefsStore` (`config/useDevicePrefs.ts`), loaded and saved by
-  `bindDevicePrefs` at the composition root. Editing reads three of them off the
-  document store, so `mirrorDevicePrefs` copies them in. **A control writes the
+  `bindDevicePrefs` at the composition root. Editing reads only pitch display
+  off the document store (note entry inverts the written-pitch lens), so
+  `mirrorDevicePrefs` copies that one in. **Document stores no longer hold the
+  theme, developer mode or `devSettings` at all**: `ThemeContext` reads
+  `themeMode` straight off `devicePrefs`. **There is no developer settings
+  sheet here any more.** It drew six toggles — `showIds`, `showTicks`,
+  `showMeasureBoundaries`, `showPlaybackScheduling`, `enableDiagnostics`,
+  `enableValidationWarnings` — that no package in the family read, so every one
+  of them did nothing; they are gone from `DevSettings` in music_types, and the
+  one setting left (`generationVariant`) has no control in this app, so a sheet
+  would open on nothing. Settings has no Developer row, and a test pins that.
+  **A control writes the
   prefs store, never a document store** — the pitch-display chip writing the
   document store would change one tab, persist nothing and be overwritten by the
   next change. The keyboard starts **expanded** and remembers collapsing, as on
@@ -588,9 +652,12 @@ renderer per view, and `hit-test` in the library, is what fixed it.
 - **The lyric's subject sits under the Write-lyrics switch**, shown only while words are being written and blank-means-follow-the-prompt, exactly as the web dialog has it. `music_lib` drops it from the request unless the lyrics it describes were asked for, so neither app has to police it.
 
 - **A playback frame re-renders nothing but what changed.** `useScoreCanvas` hands out the picture, the cursor description and the scroll offset as *signals* (`createSignal`/`useSignal`), read by `ScoreView` and `PlaybackCursor` alone. They were state in `ScrollingScore`, so every change of lit notes re-rendered the whole score view — including `displayScore`'s scan of every note — measured at 7% of the JavaScript thread on a dense import, as much as half the painting it was only there to show. `ScrollingScore.test.tsx` pins that a new picture, cursor or scroll offset renders it zero times. The score reaches the canvas through `setStoredScore(score, pitchDisplay)`, which applies the lenses and the out-of-range scan once per score.
-- **The notation paints in layers, and prepares the next window ahead.** The surface is `createSkiaLayeredPaint` from `music_drawing/skia`: a base `SkPicture` kept until anything but the lit notes changes, and a frame that replays it under the active track's notes, so a change of lit notes records one track rather than the window. Painting fell from 17% of the JavaScript thread to under 5% on the dense import. `prepare` builds the window following playback is about to scroll to, a column per task, so the system break does not also format it. See `music_drawing/docs/score-canvas.md`.
+- **The notation paints in layers, and prepares the next window ahead.** The surface is `createSkiaLayeredPaint` from `music_drawing/skia`: a base `SkPicture` kept until anything but the lit notes changes, and a frame that replays it under the active track's notes, so a change of lit notes records one track rather than the window. Painting fell from 17% of the JavaScript thread to under 5% on the dense import. `prepare` builds the window following playback is about to scroll to, a column per task, so the system break does not also format it. See `music_drawing/docs/score-canvas.md`. **The page turn rides the cursor's own clock**: `ScoreCanvas.subscribeCursorSystem` announces a system crossing when the path swaps, and `bindPlaybackToCanvas` follows on that rather than waiting for the next 30Hz position report — the caret is placed in content coordinates, so a follow scroll that arrives late leaves it clipped outside the viewport, measured here at a median 66ms of invisibility per page turn (2.5% of playback) against 34ms after. `followTo`'s once-per-bar `followedMeasure` guard is what stops the report that arrives afterwards following the same bar twice. One artifact is left: the first path for a new system is interpolated across whole bars until that window's own paint records its note positions, so the caret hops 16–22px forward one frame after the turn.
+- **The first Skia picture can be dropped, so it is sent again.** `Canvas` ships a picture from a layout effect through reanimated's UI runtime (`runOnUI` → `SkiaViewApi.setJsiProperty`), which lands on the main thread some time after the commit that created the view — and one that arrives before that view's drawing surface is ready is discarded with no error and nothing to re-send it. That only shows on a canvas painted **once**, which is every score that fits the viewport: measured on this react-native-macos build, the eight-bar starting score came back blank on about one tab activation in two, a long score never (it repaints while scrolling and recovers), and any second picture — a zoom, a resize — drew it correctly. `ScoreView.tsx` re-renders for `RESEND_FRAMES` frames after the first picture exists, because a new `Canvas` render is what re-sends it; two spare sends at mount and nothing after, so playback pays nothing. **`SkiaViewApi.requestRedraw` (`ref.current.redraw()`) cannot work here** and was the first attempt: it asks the view to present the picture it *holds*, and the whole problem is that it never received one.
+- **The macOS navigator draws no stack header, so the body has to offer the way back.** Every screen but the editor is pushed with `headerShown: true`, and on this react-native-macos / react-native-screens build that header is not drawn at all — measured on the accessibility tree: Settings and Docs expose their content and no back control of any kind, to the pointer or to VoiceOver. A Mac has no swipe-back either, so a pushed screen was a one-way trip out of which the app had to be relaunched. `ScreenBackBar.macos.tsx` draws the control the header would have (guarded on `canGoBack`, since the editor is the stack's first route); `ScreenBackBar.tsx` renders `null` on iOS and Android, whose navigator has a real header and a gesture, and a second one in the body would duplicate it. Two neighbouring facts about this build. **`accessibilityRole="tab"`/`"tablist"` map to nothing in AppKit** and arrive as `AXUnknown`, an element VoiceOver cannot press — measured on the tree, with `tab` the inspector's four segments were unpressable — so `SegmentedTabs.macos.tsx` uses `button` plus `accessibilityState.selected` and gives the group no role at all. And that control is drawn **in-app** rather than by `@react-native-segmented-control`, whose JS drawing moves its selected pill with `Animated.timing({useNativeDriver: true})`: a native-driven animation never reaches a view on this build (the same thing that makes the playhead an `NSView` of its own), so the pill sat on whichever tab was selected at mount while the label styling followed the real one — the strip said Track over the Note panel, with an invisible label where Note should have been.
 - **A legacy native view's colour prop must be processed by hand when it is declared `NSColor`.** React Native runs `processColor` only for props a view manager declares `UIColor`; `@moosiac/playhead` declares `lineColor` as `NSColor`, so the theme's CSS string reached AppKit as a string, converted to nil, and the caret drew transparent — invisible on the Mac from the day it began taking the theme's colour, with no error anywhere. The package's `index.js` now wraps the native component and processes the colour. Found by drawing a plain `View` at the cursor's props (visible) beside the native view (not).
-- **The keyboard ignores notes it does not show.** The player reports every track's sounding notes; `KeyboardPanel` compares the active track's lit keys with `samePitchSet` (music_editing, shared with the web keyboard) against a ref *before* `setSounding` — an updater that returns the previous set still renders to find that out. Keys come from music_drawing's `keyboardKeys` (`fit: 'width'`) and fills from `keyboardKeyFill`; what is lit is music_editing's `litKeys` (sounding only while playing, plus held keys).
+- **The keyboard ignores notes it does not show.** The player reports every track's sounding notes; `KeyboardPanel` compares the active track's lit keys with `samePitchSet` (music_drawing, shared with the web keyboard) against a ref *before* `setSounding` — an updater that returns the previous set still renders to find that out. Keys come from music_drawing's `keyboardKeys` (`fit: 'width'`) and fills from `keyboardKeyFill`; what is lit is music_drawing's `litKeys` (from `playingPitchesForTrack`; sounding only while playing, plus held keys). A pressed key auditions through music_types' `auditionVoiceFor(track)` — program and percussion flag together, a stray kit address resolved as playback resolves it.
+- **Every pressable control needs `onAccessibilityTap`, and on a Mac that is the *only* way in.** There is no synthesized-touch fallback on this build: an assistive activation arrives as `onAccessibilityTap` and never as `onPress`, so a control wired to the press handlers alone can be focused, read out, and never fire. Withheld while the control is disabled (`{...(disabled ? {} : { onAccessibilityTap: handler })}`), because `disabled` stops the press pair and would leave this the one way past the refusal. The piano keys were the sharp case and the one a press pair cannot express: they are press-and-hold, and the note's length comes from the held time — an activation has none, so it hands `playKeyGroup` a `heldMs` of **null** and the note is written at the toolbar's own note value. Everything else about it is the ordinary gesture's code — the same compass refusal, the same audition, the same `playKeyGroup` — because a second write path would be a second copy of the caret advance, the chord toggle and the edit lock. The audition alone needs a timer (`TAP_AUDITION_MS`): there is no moment the finger lifts, and switching the note off in the instant it started is a key that says its name and makes no sound.
 
 ## Patches
 
@@ -626,7 +693,7 @@ compiler was told. Pod sources land read-only, so it `chmod`s first.
 - `src/features/toasts/` — the toast queue every store's sink points at.
 - `src/i18n/` — bundled locales and which language is in force.
 - `src/features/score/` — the Skia score view.
-- `src/features/transport/` — `usePlayerBinding` (music_editing's `bindPlayer`
+- `src/features/transport/` — `usePlayerBinding` (music_lib's `bindPlayer`
   over a document store) and `usePositionReadout`.
 - `src/features/documents/`, `src/features/editor/` — UI.
 - `src/features/print/` — `PrintSheet` (scope, paper, orientation) and the
@@ -635,15 +702,15 @@ compiler was told. Pod sources land read-only, so it `chmod`s first.
   built from, drawn the way the web draws them.
 - `src/features/credits/` — the balance, and what happens when it runs out.
 - `src/screens/ResourcesScreen.tsx` / `AboutScreen.tsx` — the web's Resources
-  and Home pages, in the form a native app can use: the link list is shared from
-  music_editing, and the home page's *content* is reachable from Settings
+  and Home pages, in the form a native app can use: the link list
+  (`RESOURCE_GROUPS`) is shared from music_lib, and the home page's *content* is reachable from Settings
   without the landing-page shape an installed app has already answered.
 - `src/components/controls/` — the controls the shared libraries cannot
   supply: `LevelSlider` (a slider painted like the web's, level and pan),
   `ToolbarSelect` (a picker whose trigger is a toolbar button rather than a
   bordered text field) and `ConfirmSheet` (a yes/no whose confirm can be
   destructive, which `FormModal`'s `onSave` shorthand cannot express).
-- `src/features/inspector/` — the property sheet: four tabs in music_editing's
+- `src/features/inspector/` — the property sheet: four tabs in music_types'
   `INSPECTOR_TABS` order (Score, Track, Note, Bar), opening on
   `defaultInspectorTab`; `Field`/`DraftInput`/`NumberDraftInput`/`ReplaceButton`
   shared between them.

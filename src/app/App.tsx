@@ -26,7 +26,7 @@ import { initializeApp, getAppServices } from '@/config/initialize';
 import { getMusicClient } from '@/config/server';
 import { devicePrefs } from '@/config/useDevicePrefs';
 import { followLanguagePref, initializeI18n } from '@/i18n';
-import { DocumentList } from '@/documents/document-list';
+import { DocumentList, pauseLeavingDocument } from '@/documents/document-list';
 import { newDocument } from '@/documents/document';
 import type { DocumentServices } from '@/documents/document';
 import { createFileStorage } from '@/documents/rn-storage';
@@ -107,23 +107,24 @@ export default function App() {
     };
 
     /*
-      The list owns each document's lifetime: the prefs editing reads (theme,
-      developer mode, pitch display) are mirrored into its store while it is
-      open and detached when it closes.
+      The list owns each document's lifetime: the one pref editing reads
+      (pitch display — note entry inverts the written-pitch lens) is mirrored
+      into its store while it is open and detached when it closes. Theme,
+      developer mode and the developer settings are not document state at all
+      and are read straight off `devicePrefs`.
     */
     const documents = new DocumentList({
       attach: document => mirrorDevicePrefs(devicePrefs, document.store),
       /*
-        A tab going behind another stops playing, before its caret is banked —
-        but only if it is playing: the engine's pause reports "paused" even
-        from a stopped transport. A tab that just closed has already been
-        paused by its editor's player binding as it unmounted.
+        A tab going behind another is **paused** — never stopped, which would
+        home the playhead to bar 1 — before its caret is banked; the rule and
+        its reasons are `pauseLeavingDocument`'s. A tab being closed is named
+        to it too: its editor unmounts only after the fallback tab's caret is
+        restored, so a pause left to its player binding would report over that
+        caret.
       */
-      leaveFront: leaving => {
-        if (leaving?.store.getState().state === 'playing') {
-          getAppServices().player.pause();
-        }
-      },
+      leaveFront: leaving =>
+        pauseLeavingDocument(getAppServices().player, leaving),
     });
     // Something to look at on first launch. A real "new score" goes through the
     // same call, which is the point: an unsaved document is an ordinary one.

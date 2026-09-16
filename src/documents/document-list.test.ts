@@ -7,7 +7,7 @@ import {
   MusicPosition,
 } from '@sudobility/music_types';
 import { asDocument } from './document.js';
-import { DocumentList } from './document-list.js';
+import { DocumentList, pauseLeavingDocument } from './document-list.js';
 
 let n = 0;
 function doc(title: string, origin?: DocumentOrigin) {
@@ -209,18 +209,46 @@ describe('the caret, per tab', () => {
     expect(position.tick).toBe(1000);
   });
 
-  it('names the tab leaving the front, or null for one that closed', () => {
+  it('names the tab leaving the front, including one that closed', () => {
     const position = new MusicPosition();
     const leaveFront = vi.fn();
     const list = new DocumentList({ position: () => position, leaveFront });
     const a = list.open(doc('A'));
     expect(leaveFront).not.toHaveBeenCalled();
-    list.open(doc('B'));
-    list.close(list.activeId!);
+    const b = list.open(doc('B'));
+    list.close(b.id);
     expect(leaveFront).toHaveBeenCalledTimes(2);
     expect(leaveFront.mock.calls[0]![0]).toBe(a);
-    expect(leaveFront.mock.calls[1]![0]).toBeNull();
+    expect(leaveFront.mock.calls[1]![0]).toBe(b);
     expect(list.activeId).toBe(a.id);
+  });
+
+  it('pauses a playing tab that is closed before restoring the next one', () => {
+    /*
+      Closing the tab in front mid-playback is a front change too. Named as
+      null, the composition root had nothing to pause, so the music went on
+      under the fallback tab and the pause its editor's unmount made later
+      reported the closed tab's position over the caret just restored.
+    */
+    const position = new MusicPosition();
+    const paused: string[] = [];
+    const list = new DocumentList({
+      position: () => position,
+      leaveFront: leaving => {
+        if (leaving?.store.getState().title !== 'B') return;
+        paused.push('B');
+        position.moveTo(5000); // the transport reports where it paused
+      },
+    });
+    const a = list.open(doc('A'));
+    position.moveTo(240);
+    const b = list.open(doc('B'));
+    position.moveTo(4800);
+    list.close(b.id);
+    expect(paused).toEqual(['B']);
+    expect(list.activeId).toBe(a.id);
+    // The pause landed before A's caret came back, not over it.
+    expect(position.tick).toBe(240);
   });
 
   it('does not move the caret for a document opened behind the front', () => {
@@ -270,5 +298,112 @@ describe('snapshot stability', () => {
     expect(list.openDocuments).toBe(first);
     list.open(doc('B'));
     expect(list.openDocuments).not.toBe(first);
+  });
+});
+
+/*
+  A tab brought back to the front opened scrolled to the top, even when its
+  restored caret was pages further down. The list keeps each document's scroll
+  offset beside its caret — view state, banked when the score view goes away.
+*/
+describe('scroll offsets', () => {
+  it('has none for a document never scrolled', () => {
+    const { list } = listWithCaret();
+    const a = list.open(doc('A'));
+    expect(list.scrollOffset(a.id)).toBeNull();
+  });
+
+  it('keeps the offset a document left at', () => {
+    const { list } = listWithCaret();
+    const a = list.open(doc('A'));
+    const b = list.open(doc('B'));
+    list.bankScroll(a.id, { left: 0, top: 840 });
+    list.bankScroll(b.id, { left: 120, top: 0 });
+    expect(list.scrollOffset(a.id)).toEqual({ left: 0, top: 840 });
+    expect(list.scrollOffset(b.id)).toEqual({ left: 120, top: 0 });
+  });
+
+  it('forgets a closed document, and ignores a view banking one', () => {
+    /*
+      A tab's view unmounts *after* the list has closed it, so its last bank
+      arrives for a document that is gone; keeping it would hold an entry
+      nothing can ever read.
+    */
+    const { list } = listWithCaret();
+    const a = list.open(doc('A'));
+    list.open(doc('B'));
+    list.bankScroll(a.id, { left: 0, top: 840 });
+    list.close(a.id);
+    expect(list.scrollOffset(a.id)).toBeNull();
+    list.bankScroll(a.id, { left: 0, top: 900 });
+    expect(list.scrollOffset(a.id)).toBeNull();
+  });
+});
+
+describe('leaving a playing tab', () => {
+  /** The transport, as much of it as leaving the front touches. */
+  function player() {
+    return { pause: vi.fn(), stop: vi.fn() };
+  }
+
+  it('pauses the music — it never stops it, which would home the caret', () => {
+    /*
+      `stop()` sends the playhead to bar 1 and reports it, so the tab left
+      behind came back at 1.1 / 0:00.0 with the music it was playing thrown
+      away. Pausing leaves the position alone for the list to bank.
+    */
+    const transport = player();
+    const position = new MusicPosition();
+    const list = new DocumentList({
+      position: () => position,
+      leaveFront: leaving => pauseLeavingDocument(transport, leaving),
+    });
+    const playing = list.open(doc('Playing'));
+    playing.store.setState(state => {
+      state.state = 'playing';
+    });
+    position.moveTo(12703);
+
+    list.open(doc('Other'));
+    expect(transport.pause).toHaveBeenCalledTimes(1);
+    expect(transport.stop).not.toHaveBeenCalled();
+    // The arriving tab has its own caret, and the leaving one's is banked.
+    expect(position.tick).toBe(0);
+    list.activate(playing.id);
+    expect(position.tick).toBe(12703);
+  });
+
+  it('leaves a tab that is not the one sounding alone', () => {
+    /*
+      The player is app-wide and the engine's pause reports "paused" from a
+      stopped transport too, so pausing unconditionally would mark a tab that
+      was only ever sitting there as paused.
+    */
+    const transport = player();
+    const position = new MusicPosition();
+    const list = new DocumentList({
+      position: () => position,
+      leaveFront: leaving => pauseLeavingDocument(transport, leaving),
+    });
+    list.open(doc('Idle'));
+    list.open(doc('Other'));
+    expect(transport.pause).not.toHaveBeenCalled();
+  });
+
+  it('pauses a playing tab that is closed, not only one put behind', () => {
+    const transport = player();
+    const position = new MusicPosition();
+    const list = new DocumentList({
+      position: () => position,
+      leaveFront: leaving => pauseLeavingDocument(transport, leaving),
+    });
+    list.open(doc('Kept'));
+    const closing = list.open(doc('Closing'));
+    closing.store.setState(state => {
+      state.state = 'playing';
+    });
+    list.close(closing.id);
+    expect(transport.pause).toHaveBeenCalledTimes(1);
+    expect(transport.stop).not.toHaveBeenCalled();
   });
 });

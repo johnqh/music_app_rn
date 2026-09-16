@@ -118,7 +118,7 @@ describe('the formats beyond notation', () => {
 describe('the project file', () => {
   /*
     The web's export menu offers it and this app's did not: the formats are
-    music_editing's list now. It is the `.moo` document this app opens, not the
+    music_types' list now. It is the `.moo` document this app opens, not the
     `json` the shared list still names, and it carries the document's title.
   */
   it('writes a .moo that opens back as the same document', async () => {

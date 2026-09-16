@@ -19,6 +19,7 @@ import {
   ArrowDownTrayIcon,
   ArrowUturnLeftIcon,
   ArrowUturnRightIcon,
+  Cog6ToothIcon,
   DocumentArrowDownIcon,
   ClockIcon,
   MusicalNoteIcon,
@@ -35,6 +36,17 @@ export type TitleBarProps = {
   document: MusicDocument;
   onSave: () => void;
   onExport: () => void;
+  /**
+   * Opens Settings — required, not optional, because it is the only way there.
+   *
+   * Theme, language, sign-in and the links to Docs, Shortcuts, Resources,
+   * About and Credits all live on that screen, and nothing in the app
+   * navigated to it: it was in the stack and unreachable. On the Mac the
+   * AppKit "Settings…" item (⌘,) is the template item the project was
+   * generated with, whose menu entry names no action at all, so it is disabled
+   * and cannot carry this without a native change.
+   */
+  onSettings: () => void;
   /** Absent for a document with no project: a file has no versions on a server. */
   onSnapshots?: () => void;
   /** Prints. Absent on a build with no print service to talk to. */
@@ -46,6 +58,7 @@ export function TitleBar({
   document,
   onSave,
   onExport,
+  onSettings,
   onSnapshots,
   onPrint,
   printing = false,
@@ -123,6 +136,15 @@ export function TitleBar({
 
       {/* Pushes what follows to the right, exactly as the web's `flex-1` div does. */}
       <View className="flex-1" />
+
+      {/*
+        The app's own actions, on the right, where the web header puts them.
+        Settings is the only one so far, and it is what makes that screen
+        reachable at all.
+      */}
+      <IconButton label={t('nav.settings')} onPress={onSettings}>
+        <Cog6ToothIcon size={ICON_SIZE} color="white" />
+      </IconButton>
     </View>
   );
 }

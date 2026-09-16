@@ -17,7 +17,7 @@
  * `renameTrack` declines (blank, or unchanged) the field goes back to the name
  * the track has, as the web's does.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
@@ -35,13 +35,14 @@ import {
   selectEditLocked,
   selectSelectedTrack,
 } from '@sudobility/music_editing';
-import type { TrackMixPatch } from '@sudobility/music_editing';
 import {
-  CLEFS,
+  CLEF_OPTIONS,
   clampPan,
   clampVolume,
   instrumentPickerFor,
   isPercussionTrack,
+  midiToPitch,
+  pitchToString,
 } from '@sudobility/music_types';
 import type { Clef } from '@sudobility/music_types';
 import { ConfirmSheet } from '@/components/controls/ConfirmSheet';
@@ -51,6 +52,8 @@ import { Field, EmptyTab } from './Field';
 import { ReplaceButton } from './ReplaceButton';
 import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
+import type { TrackMixPatch } from '@sudobility/music_types';
+import { outOfRangeNoteIds } from '@sudobility/music_types';
 
 export function TrackTab({
   document,
@@ -63,6 +66,7 @@ export function TrackTab({
   const ink = useNotationInk();
   const store = document.store;
   const track = useStore(store, selectSelectedTrack);
+  const score = useStore(store, s => s.score);
   /*
     Content controls lock while the transport plays; mixing does not. The
     exemption is music_editing's `MIX_ONLY_CONTROLS`, asked through
@@ -142,6 +146,21 @@ export function TrackTab({
     [store, track, t],
   );
 
+  /**
+   * What this track holds that its instrument cannot play — music_types'
+   * `outOfRangeNoteIds`, the scan the notation colours those notes from and
+   * the web Track tab's own call, so the panel and the page agree by
+   * construction. Rescanned on the score's identity.
+   */
+  const trackId = track?.id;
+  const outOfRange = useMemo(
+    () =>
+      outOfRangeNoteIds(score).byTrack.find(
+        entry => entry.trackId === trackId,
+      ) ?? null,
+    [score, trackId],
+  );
+
   const commitName = useCallback(() => {
     if (!track) return;
     if (!store.getState().renameTrack(track.id, draftName))
@@ -199,6 +218,23 @@ export function TrackTab({
       </Field>
 
       {/*
+        Notes this instrument cannot play, said in words. The notation marks
+        them in its own colour, which says *that* something is wrong; this says
+        what, beside the instrument picker — the other half of the fix, since
+        choosing an instrument that can play the part is as good an answer as
+        moving the notes.
+      */}
+      {outOfRange ? (
+        <Text className="text-muted-foreground text-sm">
+          {t('inspector.outOfRange', {
+            count: outOfRange.count,
+            low: pitchToString(midiToPitch(outOfRange.compass.min)),
+            high: pitchToString(midiToPitch(outOfRange.compass.max)),
+          })}
+        </Text>
+      ) : null}
+
+      {/*
         The clef the part *opens* in. Mid-score changes live on the bar, in the
         Bar tab — this is `Track.clef`, and crossing into or out of percussion
         re-resolves the program, since a kit and an instrument are different
@@ -209,7 +245,10 @@ export function TrackTab({
           value={track.clef}
           accessibilityLabel={t('inspector.clef')}
           disabled={locked}
-          options={CLEFS.map((c: Clef) => ({ value: c, label: c }))}
+          options={CLEF_OPTIONS.map(option => ({
+            value: option.value,
+            label: t(option.labelKey),
+          }))}
           onValueChange={(value: string) =>
             store.getState().setTrackClef(track.id, value as Clef)
           }
