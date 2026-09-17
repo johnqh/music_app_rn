@@ -34,6 +34,7 @@ import {
   hasServer,
   importedTitle,
   parseProjectFile,
+  projectScoreForServer,
 } from '@sudobility/music_lib';
 import type { MidiImportOptions, MidiSummary } from '@sudobility/music_lib';
 import type { Score } from '@sudobility/music_types';
@@ -135,7 +136,10 @@ async function place(
   if (hasServer(context) && (await context.getToken()) !== null) {
     try {
       const { client, token } = await authorizedServer(context);
-      const saved = await client.createProject({ name: title, score }, token);
+      const saved = await client.createProject(
+        { name: title, score: projectScoreForServer(score) },
+        token,
+      );
       return newDocument(services, {
         score,
         title,

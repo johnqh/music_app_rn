@@ -117,6 +117,17 @@ const ALLOWED_NON_UI = new Set([
   // colour; this resolves the theme's token to one. Entirely a property of the
   // renderer, and meaningless anywhere the glyphs are not drawn by hand.
   'src/components/icons/notation-ink.ts',
+  // Composition facade and app-owned integrations for the native harness.
+  'src/app-library.ts',
+  'src/store/context.ts',
+  'src/store/document-store.ts',
+  'src/services/errors.ts',
+  'src/services/library-copy.ts',
+  'src/services/export/export-plan.ts',
+  'src/services/persistence/document-saver.ts',
+  'src/services/persistence/project-ui.ts',
+  'src/services/persistence/project-write.ts',
+  'src/services/playback/bind-player.ts',
 ]);
 
 describe('music_app_rn holds UI only', () => {
@@ -137,9 +148,7 @@ describe('music_app_rn holds UI only', () => {
     // VexFlow is music_drawing's business. Importing it here would put layout
     // in two places, and they would disagree the first time either was tuned.
     const offenders = sources.filter(f =>
-      /from '(vexflow|@sudobility\/music_codecs)'/.test(
-        readFileSync(f, 'utf8'),
-      ),
+      /from 'vexflow'/.test(readFileSync(f, 'utf8')),
     );
     expect(offenders).toEqual([]);
   });

@@ -29,7 +29,11 @@ module.exports = function (api) {
         'module-resolver',
         {
           root: ['./src'],
-          alias: { '@': './src' },
+          alias: {
+            '@': './src',
+            '@sudobility/music_lib': './src/app-library',
+            '@sudobility/music_lib-core': './node_modules/@sudobility/music_lib/dist/index',
+          },
           extensions: ['.ts', '.tsx', '.js', '.json'],
         },
       ],

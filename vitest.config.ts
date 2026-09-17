@@ -8,11 +8,25 @@ import { resolve } from 'node:path';
  * components stay thin enough to be checked by types and by the app itself.
  */
 export default defineConfig({
-  resolve: { alias: { '@': resolve(__dirname, 'src') } },
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+      '@sudobility/music_lib': resolve(__dirname, 'src/app-library.ts'),
+      '@sudobility/music_lib-core': resolve(
+        __dirname,
+        'node_modules/@sudobility/music_lib/dist/index.js',
+      ),
+    },
+  },
   test: {
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
-    server: { deps: { inline: [/@sudobility\//] } },
+    server: {
+      deps: {
+        inline: [/@sudobility\/(music_editing|music_player)/],
+        external: ['@sudobility/music_types', 'zod'],
+      },
+    },
   },
 });

@@ -75,7 +75,7 @@ RCT_EXPORT_MODULE()
 - (instancetype)init
 {
   if (self = [super init]) {
-    _initialGain = 0.2;
+    _initialGain = 0.35;
     _masterVolume = 1;
     _interpolation = -1;
   }
