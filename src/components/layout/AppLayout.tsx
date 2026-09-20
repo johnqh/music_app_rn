@@ -20,15 +20,29 @@
  * could not spare.
  */
 import { Platform, View } from 'react-native';
+import {
+  findEvent,
+  findTrack,
+  isNoteEvent,
+  isVocalInstrumentValue,
+} from '@sudobility/music_types';
 import type { NoteEvent } from '@sudobility/music_types';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import { useCallback, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { useStore } from 'zustand';
 import {
   beginLyricEntry as beginLyricEntryAt,
+  getMusicSelection,
   routeScorePress,
   runScoreContextAction,
   scoreContextMenuModel,
@@ -128,6 +142,8 @@ export type AppLayoutProps = {
   onReplace?: (scope: ReplaceScope) => void;
   /** Asks the server for one more track, matched to this score. */
   onGenerateTrack?: () => void;
+  /** Generates the bars just inserted by the editor toolbar. */
+  onGenerateInsertedBars?: () => void;
   /** Prints. Absent on a build with no print service to talk to. */
   onPrint?: () => void;
   /** True while the pages are being rendered, which is not instant. */
@@ -152,6 +168,7 @@ export function AppLayout({
   onSnapshots,
   onReplace,
   onGenerateTrack,
+  onGenerateInsertedBars,
   onPrint,
   printing,
   initialScroll,
@@ -199,6 +216,11 @@ export function AppLayout({
   */
   const showTrackInfo = !(TRADES_GUTTER_FOR_INSPECTOR && inspectorVisible);
   const score = useStore(document.store, s => s.score);
+  const sharedSelection = useSyncExternalStore(
+    onChange => getMusicSelection().subscribe(onChange),
+    () => getMusicSelection().selection,
+    () => getMusicSelection().selection,
+  );
   /*
     Through `selectActiveTrackId`, never the raw field: the field is empty until
     somebody picks a track, and the selector's rule — the first visible track
@@ -233,11 +255,49 @@ export function AppLayout({
     notes: NoteEvent[];
     startIndex: number;
   } | null>(null);
+  const expectedLyricSelectionRef = useRef<readonly string[] | null>(null);
+
+  const selectedLyricNotes = useMemo(() => {
+    if (!score || sharedSelection.eventIds.length === 0) return [];
+    const selected = sharedSelection.eventIds
+      .map(id => findEvent(score, id))
+      .filter(
+        (event): event is NoteEvent => event !== null && isNoteEvent(event),
+      );
+    if (selected.length === 0) return [];
+    const tracks = selected.map(note => findTrack(score, note.trackId));
+    return tracks.every(
+      track =>
+        track !== null && isVocalInstrumentValue(String(track.midiProgram)),
+    )
+      ? selected
+      : [];
+  }, [score, sharedSelection.eventIds]);
+
+  useEffect(() => {
+    if (lyricEntry === null) return;
+    const selectedIds = sharedSelection.eventIds;
+    const expectedIds = expectedLyricSelectionRef.current;
+    const selectionIsExpected =
+      expectedIds !== null &&
+      expectedIds.length === selectedIds.length &&
+      expectedIds.every((id, index) => id === selectedIds[index]);
+    if (selectionIsExpected) return;
+    if (selectedLyricNotes.length === 0) {
+      expectedLyricSelectionRef.current = null;
+      setLyricEntry(null);
+      return;
+    }
+    expectedLyricSelectionRef.current = [...selectedIds];
+    setLyricEntry({ notes: selectedLyricNotes, startIndex: 0 });
+  }, [lyricEntry, selectedLyricNotes, sharedSelection.eventIds]);
   const beginLyricEntry = useCallback(() => {
     const entry = beginLyricEntryAt(document.store);
     if (entry)
+      expectedLyricSelectionRef.current = [...sharedSelection.eventIds];
+    if (entry)
       setLyricEntry({ notes: entry.notes, startIndex: entry.startIndex });
-  }, [document]);
+  }, [document, sharedSelection.eventIds]);
 
   /*
     The long-press menu. Held here rather than in `ScrollingScore` because the
@@ -343,6 +403,7 @@ export function AppLayout({
         onEnterLyrics={beginLyricEntry}
         inspectorVisible={inspectorVisible}
         {...(onGenerateTrack ? { onGenerateTrack } : {})}
+        {...(onGenerateInsertedBars ? { onGenerateInsertedBars } : {})}
         onToggleInspector={() => setInspectorOpen(!inspectorVisible)}
       />
 
@@ -407,11 +468,19 @@ export function AppLayout({
         Above both bars: while writing words, the field is what the software
         keyboard must not cover.
       */}
-      {lyricEntry !== null ? (
+      {lyricEntry !== null && selectedLyricNotes.length > 0 ? (
         <LyricEntryBar
           store={document.store}
           notes={lyricEntry.notes}
           startIndex={lyricEntry.startIndex}
+          onSelectNote={noteId => {
+            expectedLyricSelectionRef.current = [noteId];
+            document.store.getState().setSelection({
+              eventIds: [noteId],
+              measureIds: [],
+              trackIds: [],
+            });
+          }}
           onClose={() => setLyricEntry(null)}
         />
       ) : null}

@@ -29,6 +29,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
+import type { TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Input, Text } from '@sudobility/components-rn';
 import type { NoteEvent } from '@sudobility/music_types';
@@ -47,6 +48,8 @@ export type LyricEntryBarProps = {
   notes: NoteEvent[];
   /** Where to start — the note the caret was on when entry began. */
   startIndex: number;
+  /** Keeps the canvas selection on the note currently being edited. */
+  onSelectNote?: (noteId: string) => void;
   onClose: () => void;
 };
 
@@ -54,6 +57,7 @@ export function LyricEntryBar({
   store,
   notes,
   startIndex,
+  onSelectNote = () => {},
   onClose,
 }: LyricEntryBarProps) {
   const { t } = useTranslation();
@@ -64,6 +68,14 @@ export function LyricEntryBar({
    * inside the handlers and changing it must not re-render.
    */
   const continuing = useRef(false);
+  const inputRef = useRef<TextInput>(null);
+  const initializedIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    setIndex(startIndex);
+    continuing.current = false;
+    initializedIndex.current = null;
+  }, [notes, startIndex]);
 
   const note = notes[index];
 
@@ -79,8 +91,19 @@ export function LyricEntryBar({
   useEffect(() => {
     const id = notes[index]?.id;
     if (!id) return;
-    setDraft(lyricTextAt(store, id));
-  }, [index, notes, store]);
+    const existing = lyricTextAt(store, id);
+    if (initializedIndex.current !== index) {
+      initializedIndex.current = index;
+      if (draft !== existing) {
+        setDraft(existing);
+        return;
+      }
+    }
+    // Do not steal the caret while the user is typing a new or edited lyric.
+    if (draft !== existing) return;
+    inputRef.current?.focus();
+    inputRef.current?.setSelection(0, existing.length);
+  }, [draft, index]);
 
   if (!note) return null;
 
@@ -98,6 +121,7 @@ export function LyricEntryBar({
       onClose();
       return;
     }
+    onSelectNote(notes[step.state.index].id);
     if (step.state.index === index) setDraft(text.trim());
     else setIndex(step.state.index);
   };
@@ -124,6 +148,7 @@ export function LyricEntryBar({
         })}
       </Text>
       <Input
+        ref={inputRef}
         value={draft}
         autoFocus
         // A lyric is prose, so the keyboard should behave like prose — except

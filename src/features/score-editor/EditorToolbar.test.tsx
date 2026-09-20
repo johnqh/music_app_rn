@@ -156,13 +156,13 @@ describe('EditorToolbar', () => {
     joined them, and keeps the guard that Copy must not write into the score.
   */
 
-  it('starts lyric entry through its caller, which owns the note list', () => {
+  it('keeps lyric entry disabled until notes are selected on a voice track', () => {
     // Behind More actions, where the web bar keeps it: a real action, but not
     // one reached often enough to be worth permanent width on the bar.
     const { view, onEnterLyrics } = setup();
     fireEvent.press(view.getByLabelText(/more actions/i));
     fireEvent.press(view.getByLabelText(/enter lyrics/i));
-    expect(onEnterLyrics).toHaveBeenCalled();
+    expect(onEnterLyrics).not.toHaveBeenCalled();
   });
 
   /*
@@ -308,7 +308,7 @@ describe('EditorToolbar', () => {
     const { view, document } = setup();
     act(() => document.store.setState({ state: 'playing' }));
     fireEvent.press(view.getByLabelText(/more actions/i));
-    for (const name of [/^add bar$/i, /^delete bar$/i, /enter lyrics/i]) {
+    for (const name of [/insert bars/i, /^delete bar$/i, /enter lyrics/i]) {
       expect(view.getByLabelText(name).props.accessibilityState.disabled).toBe(
         true,
       );

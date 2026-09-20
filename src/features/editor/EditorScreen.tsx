@@ -48,6 +48,7 @@ import { renderEvents, renderSamples } from '@sudobility/music_player';
 import {
   DOCUMENT_EXTENSION,
   estimateReplacementCredits,
+  defaultReplaceSubmission,
   exportFilename as documentFilename,
   isOutOfCredits,
   regenerateWithLocks,
@@ -241,6 +242,15 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     },
   });
 
+  const generateInsertedBars = useCallback(() => {
+    if (!projectId) return;
+    const prepared = prepareReplacement(document.store, 'measures', {
+      ...defaultReplaceSubmission(),
+      instruction: t('editor.generateInsertedBarsInstruction'),
+    });
+    if (prepared) void generation.start(prepared.kind, prepared.request);
+  }, [document, generation, projectId, t]);
+
   /**
    * Writes the chosen format.
    *
@@ -401,6 +411,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       onSnapshots={projectId ? () => setSnapshotsOpen(true) : undefined}
       onReplace={projectId ? setReplaceScope : undefined}
       onGenerateTrack={projectId ? () => setGenerateTrackOpen(true) : undefined}
+      onGenerateInsertedBars={projectId ? generateInsertedBars : undefined}
       overlay={
         <GenerationOverlay
           visible={generation.generating}

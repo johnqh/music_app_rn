@@ -114,6 +114,9 @@ export function TrackTab({
   const mix = useCallback(
     (patch: TrackMixPatch) => {
       if (!track) return;
+      // Mute/solo exclusivity is normalized by the shared score command. Keep
+      // this host as a reflector: both native and web must go through the same
+      // business rule rather than reimplementing it in their controls.
       store.getState().setTrackMix(track.id, patch);
     },
     [store, track],

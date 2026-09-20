@@ -52,6 +52,7 @@ import {
   chooseEditMode,
   editModeHintKey,
   goToBarFromInput,
+  insertBlankMeasuresAtCaret,
   insertDefaultNoteAtCaret,
   insertRestAtSelection,
   quantizeSelectionToGrid,
@@ -81,6 +82,7 @@ import {
   barCount as scoreBarCount,
   durationDisplay,
   durationParts,
+  isVocalInstrumentValue,
   withBase,
   withModifier,
 } from '@sudobility/music_types';
@@ -108,6 +110,8 @@ import type { ToolbarOption } from '@/components/controls/ToolbarSelect';
 import { TrackVisibilitySelect } from './TrackVisibilitySelect';
 import { ChoiceSheet } from './ChoiceSheet';
 import { GoToBarSheet } from './GoToBarSheet';
+import { InsertBarsSheet } from './InsertBarsSheet';
+import type { InsertBarsSheetResult } from './InsertBarsSheet';
 import type { ReactNode } from 'react';
 import type { MusicDocument } from '@/documents/document';
 import { devicePrefs } from '@/config/useDevicePrefs';
@@ -156,6 +160,8 @@ export type EditorToolbarProps = {
    * only difference is who writes the notes.
    */
   onGenerateTrack?: () => void;
+  /** Starts AI generation for the newly inserted bars. */
+  onGenerateInsertedBars?: () => void;
 };
 
 export function EditorToolbar({
@@ -166,6 +172,7 @@ export function EditorToolbar({
   onToggleInspector,
   inspectorVisible,
   onGenerateTrack,
+  onGenerateInsertedBars,
 }: EditorToolbarProps) {
   const { t } = useTranslation();
   const ink = useNotationInk();
@@ -185,10 +192,15 @@ export function EditorToolbar({
     high-frequency reads that must stay out of a component's top level.
   */
   const available = useStore(store, selectToolbarAvailability);
+  const lyricsDisabled =
+    !available.enterLyrics ||
+    activeTrack === null ||
+    !isVocalInstrumentValue(String(activeTrack.midiProgram));
 
   const [quantizeGrid, setQuantizeGrid] = useState<QuantizeGrid>('sixteenth');
   const [goToBarOpen, setGoToBarOpen] = useState(false);
   const [addTrackOpen, setAddTrackOpen] = useState(false);
+  const [insertBarsOpen, setInsertBarsOpen] = useState(false);
 
   /*
     The mode a write will actually use: stack on a part that cannot play a
@@ -267,14 +279,38 @@ export function EditorToolbar({
   const moreOptions: ToolbarOption[] = EDITOR_MORE_ACTIONS.map(action => ({
     value: action.value,
     label: t(action.labelKey),
-    ...(available[action.control] ? {} : { disabled: true }),
+    ...(action.value === 'enter-lyrics'
+      ? { disabled: lyricsDisabled }
+      : available[action.control]
+      ? {}
+      : { disabled: true }),
   }));
 
   const handleMoreAction = (value: string): void => {
     runMoreAction(store, value as EditorMoreAction, {
       goToBar: () => setGoToBarOpen(true),
       enterLyrics: onEnterLyrics,
+      addMeasure: () => setInsertBarsOpen(true),
     });
+  };
+
+  const insertBars = (result: InsertBarsSheetResult): void => {
+    const inserted = insertBlankMeasuresAtCaret(
+      store,
+      result.count,
+      result.position,
+    );
+    setInsertBarsOpen(false);
+    if (!inserted || !result.generate || !onGenerateInsertedBars) return;
+    const nextScore = store.getState().score;
+    const measureIds =
+      nextScore?.tracks.flatMap(track =>
+        track.measures
+          .slice(inserted.startIndex, inserted.startIndex + inserted.count)
+          .map(measure => measure.id),
+      ) ?? [];
+    store.getState().selectMeasures(measureIds);
+    onGenerateInsertedBars();
   };
 
   return (
@@ -803,6 +839,11 @@ export function EditorToolbar({
         barCount={barCount}
         onClose={() => setGoToBarOpen(false)}
         onGo={text => goToBarFromInput(store, text)}
+      />
+      <InsertBarsSheet
+        open={insertBarsOpen}
+        onClose={() => setInsertBarsOpen(false)}
+        onSubmit={insertBars}
       />
     </View>
   );
