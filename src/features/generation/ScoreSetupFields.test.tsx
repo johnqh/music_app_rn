@@ -116,9 +116,6 @@ describe('ScoreSetupFields', () => {
       style: 'ambient',
     });
     const view = setup(draft);
-    expect(
-      view.getByText('For this style, tempo must be between 68 and 72 BPM.'),
-    ).toBeTruthy();
     const tempo = view.getByLabelText('Tempo');
     fireEvent.changeText(tempo, '65');
     fireEvent(tempo, 'blur');

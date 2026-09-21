@@ -74,6 +74,15 @@ const ALLOWED_NON_UI = new Set([
   // it is why it cannot be one function.
   'src/documents/file-picker.ts',
   'src/documents/file-picker.macos.ts',
+  // The Windows picker boundary. Windows has no picker bridge in this app yet,
+  // so this variant reports unsupported without importing mobile native code.
+  'src/documents/file-picker.windows.ts',
+  // The Windows print boundary. Rendering and the native print bridge are
+  // separate platform capabilities, so this variant fails explicitly.
+  'src/features/print/print-service.windows.ts',
+  // Device locale and native shell wrappers are platform glue, not UI rules.
+  'src/platform/device-language.ts',
+  'src/platform/device-language.windows.ts',
   // Build-time configuration and the server gateway: what this build points
   // at, constructed rather than implemented.
   'src/config/constants.ts',

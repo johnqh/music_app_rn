@@ -4,9 +4,12 @@
 > working tree. Run `git commit`, `git push` or `gh pr create` **only when the
 > user explicitly asks in that turn.**
 
-The native Moosiac app: iOS, iPad, Android phone and tablet, and macOS.
-**Windows is out of scope** — see `music_app/docs/rn-windows-findings.md` for
-the research, which is parked rather than deleted.
+The native Moosiac app: iOS, iPad, Android phone and tablet, macOS, and the
+initial React Native Windows target. Windows currently has explicit fallbacks
+for score rendering, file dialogs, and printing; those capabilities are not
+silently routed through Apple/mobile native modules. See
+`music_app/docs/rn-windows-findings.md` for the remaining Windows research and
+native implementation work.
 
 Like `music_app`, this repo is **UI and arrangement only**. Every rule about
 music lives in the libraries: `music_types` (the model, every type definition

@@ -419,13 +419,6 @@ export function ScoreSetupFields({
           grow
           {...(newProjectTempoRefused(draft)
             ? { hint: t('generateScore.tempoInvalid') }
-            : draft.style
-            ? {
-                hint: t('generateScore.tempoRange', {
-                  min: tempoMin,
-                  max: tempoMax,
-                }),
-              }
             : {})}
         >
           <Input

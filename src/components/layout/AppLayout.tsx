@@ -27,10 +27,7 @@ import {
   isVocalInstrumentValue,
 } from '@sudobility/music_types';
 import type { NoteEvent } from '@sudobility/music_types';
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from '@/platform/SafeArea';
 import {
   useCallback,
   useEffect,

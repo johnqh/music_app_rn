@@ -16,10 +16,10 @@ import { newProjectScore } from '@sudobility/music_lib';
 import '@/config/designTheme';
 
 import { useEffect, useMemo } from 'react';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { AppState, StyleSheet } from 'react-native';
-import * as RNLocalize from 'react-native-localize';
+import { GestureRoot } from '@/platform/GestureRoot';
+import { SafeAreaProvider } from '@/platform/SafeArea';
+import { AppState } from 'react-native';
+import { getDeviceLanguageTags } from '@/platform/device-language';
 import { bindDevicePrefs, mirrorDevicePrefs } from '@sudobility/music_lib';
 import type { StoreContext } from '@sudobility/music_lib';
 import { initializeApp, getAppServices } from '@/config/initialize';
@@ -72,7 +72,7 @@ export default function App() {
   */
   const { list, services } = useMemo(() => {
     initializeApp({ dev: __DEV__ });
-    const deviceTags = RNLocalize.getLocales().map(l => l.languageTag);
+    const deviceTags = getDeviceLanguageTags();
     initializeI18n(deviceTags);
 
     const keyValue = createKeyValueStore();
@@ -159,7 +159,7 @@ export default function App() {
   }, [list]);
 
   return (
-    <GestureHandlerRootView style={styles.fill}>
+    <GestureRoot>
       <SafeAreaProvider>
         {/*
           Outside the vars provider, because it decides what those vars are.
@@ -199,8 +199,6 @@ export default function App() {
           </ThemeVarsProvider>
         </ThemeProvider>
       </SafeAreaProvider>
-    </GestureHandlerRootView>
+    </GestureRoot>
   );
 }
-
-const styles = StyleSheet.create({ fill: { flex: 1 } });

@@ -7,7 +7,7 @@
  */
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from '@/platform/SafeArea';
 import { useTranslation } from 'react-i18next';
 import { Heading, Text, touchSlop } from '@sudobility/components-rn';
 import { ScreenBackBar } from '@/components/layout/ScreenBackBar';

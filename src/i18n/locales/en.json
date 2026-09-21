@@ -928,8 +928,7 @@
       "moderate": "Moderate",
       "complex": "Complex"
     },
-    "tempoInvalid": "Tempo must be a number above zero, or left blank.",
-    "tempoRange": "For this style, tempo must be between {{min}} and {{max}} BPM."
+    "tempoInvalid": "Tempo must be a number above zero, or left blank."
   },
   "generateTrack": {
     "intro": "Adds one new track to this score, matching its key, tempo and length.",
