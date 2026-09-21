@@ -39,7 +39,7 @@ import type {
   EditingStoreApi,
   SetScoreOptions,
 } from '@sudobility/music_editing';
-import { TRANSPORT_SETTINGS_DEFAULTS } from '../services/playback/bind-player.js';
+import { TRANSPORT_SETTINGS_DEFAULTS } from '../services/playback/bind-player';
 import {
   parseProjectFile,
   serializeProjectFile,
@@ -57,17 +57,17 @@ import {
   hasServer,
   toastSinkActions,
   type StoreContext,
-} from './context.js';
-import { createDocumentSaver } from '../services/persistence/document-saver.js';
-import type { SaveWrite } from '../services/persistence/document-saver.js';
-import { projectWrite } from '../services/persistence/project-write.js';
+} from './context';
+import { createDocumentSaver } from '../services/persistence/document-saver';
+import type { SaveWrite } from '../services/persistence/document-saver';
+import { projectWrite } from '../services/persistence/project-write';
 import {
   applyProjectLocalMix,
   loadProjectLocalUi,
   projectScoreForServer,
   saveProjectLocalUi,
   type ProjectLocalUiState,
-} from '../services/persistence/project-ui.js';
+} from '../services/persistence/project-ui';
 
 /** Anything that can stop the transport: a player, a binding, the adapter. */
 export type TransportStopper = { stop(): void };

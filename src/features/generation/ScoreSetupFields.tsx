@@ -24,7 +24,10 @@ import type { ReactNode } from 'react';
 import { Animated, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Input, Select, Switch, Text } from '@sudobility/components-rn';
-import { useScorePresets } from '@sudobility/music_client';
+import {
+  useScorePresets,
+  useScoreStyleSettings,
+} from '@sudobility/music_client';
 import { publicServerContext } from '@/config/server';
 import {
   DEFAULT_INSTRUMENT_VALUE,
@@ -42,12 +45,14 @@ import {
   newProjectDefaultTitleKey,
   newProjectDurationRefused,
   newProjectTempoRefused,
+  newProjectTempoRange,
   optionalFromPicker,
   optionalToPicker,
   showNewProjectDuration,
   showNewProjectLyrics,
   showNewProjectLyricsTheme,
   styleLabelKey,
+  styleGenerationSettings,
 } from '@sudobility/music_lib';
 import type {
   GenerateScoreComplexity,
@@ -132,6 +137,7 @@ export function ScoreSetupFields({
   generateToggle,
 }: ScoreSetupFieldsProps) {
   const { t, i18n } = useTranslation();
+  const serverContext = publicServerContext();
   /*
     The briefs the server offers for this style.
 
@@ -140,9 +146,25 @@ export function ScoreSetupFields({
     the *text*, because that text is the prompt.
   */
   const { data: presetKeys } = useScorePresets(
-    publicServerContext(),
+    serverContext,
     draft.style || undefined,
   );
+  const { data: styleSettings } = useScoreStyleSettings(serverContext);
+  const localTempoRange = newProjectTempoRange(draft);
+  const styleSetting = draft.style
+    ? styleSettings?.[draft.style] ?? styleGenerationSettings(draft.style)
+    : null;
+  const tempoMin = styleSetting?.minBpm ?? localTempoRange?.[0] ?? 40;
+  const tempoMax = styleSetting?.maxBpm ?? localTempoRange?.[1] ?? 240;
+  const keyOptions = GENERATE_SCORE_KEY_FIFTHS_OPTIONS.filter(
+    option => !styleSetting || styleSetting.keys.includes(option.fifths),
+  );
+  const modeOptions = (['major', 'minor'] as const).filter(
+    mode => !styleSetting?.mode || styleSetting.mode === mode,
+  );
+  const meterOptions = Object.keys(
+    GENERATE_SCORE_TIME_SIGNATURE_OPTIONS,
+  ).filter(meter => !styleSetting || styleSetting.timeSignature === meter);
   const presets = (presetKeys ?? [])
     .filter(key => i18n.exists(`generateScore.preset.${key}`))
     .map(key => ({
@@ -397,11 +419,27 @@ export function ScoreSetupFields({
           grow
           {...(newProjectTempoRefused(draft)
             ? { hint: t('generateScore.tempoInvalid') }
+            : draft.style
+            ? {
+                hint: t('generateScore.tempoRange', {
+                  min: tempoMin,
+                  max: tempoMax,
+                }),
+              }
             : {})}
         >
           <Input
             value={draft.tempoText}
             onChangeText={text => dispatch({ type: 'setTempo', text })}
+            onBlur={() => {
+              if (!styleSetting) return;
+              const tempo = Number(draft.tempoText);
+              if (!Number.isInteger(tempo) || tempo <= 0) return;
+              dispatch({
+                type: 'setTempo',
+                text: String(Math.min(tempoMax, Math.max(tempoMin, tempo))),
+              });
+            }}
             keyboardType="number-pad"
             accessibilityLabel={t('generateScore.tempo')}
           />
@@ -413,7 +451,7 @@ export function ScoreSetupFields({
           <Select
             value={String(draft.keySignature.fifths)}
             accessibilityLabel={t('generateScore.key')}
-            options={GENERATE_SCORE_KEY_FIFTHS_OPTIONS.map(option => ({
+            options={keyOptions.map(option => ({
               value: String(option.fifths),
               label: option.label,
             }))}
@@ -426,10 +464,10 @@ export function ScoreSetupFields({
           <Select
             value={draft.keySignature.mode}
             accessibilityLabel={t('generateScore.mode')}
-            options={[
-              { value: 'major', label: t('key.major') },
-              { value: 'minor', label: t('key.minor') },
-            ]}
+            options={modeOptions.map(mode => ({
+              value: mode,
+              label: t(`key.${mode}`),
+            }))}
             onValueChange={value =>
               dispatch({ type: 'setMode', mode: value as 'major' | 'minor' })
             }
@@ -439,9 +477,7 @@ export function ScoreSetupFields({
           <Select
             value={draft.meter}
             accessibilityLabel={t('generateScore.timeSignature')}
-            options={Object.keys(GENERATE_SCORE_TIME_SIGNATURE_OPTIONS).map(
-              value => ({ value, label: value }),
-            )}
+            options={meterOptions.map(value => ({ value, label: value }))}
             onValueChange={meter => dispatch({ type: 'setMeter', meter })}
           />
         </Field>

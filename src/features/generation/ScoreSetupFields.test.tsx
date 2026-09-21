@@ -13,6 +13,7 @@
  * label: a native `Select` opens a modal a test environment does not mount, so
  * the trigger is the one honest place to read a picker's value.
  */
+import { jest } from '@jest/globals';
 import { useReducer } from 'react';
 import { fireEvent } from '@testing-library/react-native';
 import {
@@ -27,6 +28,21 @@ import type {
 } from '@sudobility/music_lib';
 import { renderWithApp } from '@/test/render';
 import { ScoreSetupFields } from './ScoreSetupFields';
+
+const mockUseScoreStyleSettings = jest.fn<() => { data: unknown }>(() => ({
+  data: undefined,
+}));
+jest.mock('@sudobility/music_client', () => {
+  const actual = jest.requireActual('@sudobility/music_client') as Record<
+    string,
+    unknown
+  >;
+  return {
+    ...actual,
+    useScorePresets: () => ({ data: undefined }),
+    useScoreStyleSettings: () => mockUseScoreStyleSettings(),
+  };
+});
 
 /** A fixed draw, so a style's tempo, key and roster are the same every run. */
 const rng = () => 0.5;
@@ -80,6 +96,33 @@ describe('ScoreSetupFields', () => {
       option => option.fifths === draft.keySignature.fifths,
     );
     expect(view.getAllByText(key!.label).length).toBeGreaterThan(0);
+  });
+
+  it('shows backend style bounds and clamps an out-of-range native tempo', () => {
+    mockUseScoreStyleSettings.mockReturnValue({
+      data: {
+        ambient: {
+          tempo: 70,
+          minBpm: 68,
+          maxBpm: 72,
+          timeSignature: '4/4',
+          keys: [0],
+          mode: 'major',
+        },
+      },
+    });
+    const draft = reduce(initialNewProjectDraft(), {
+      type: 'applyStyle',
+      style: 'ambient',
+    });
+    const view = setup(draft);
+    expect(
+      view.getByText('For this style, tempo must be between 68 and 72 BPM.'),
+    ).toBeTruthy();
+    const tempo = view.getByLabelText('Tempo');
+    fireEvent.changeText(tempo, '65');
+    fireEvent(tempo, 'blur');
+    expect(latest.tempoText).toBe('68');
   });
 
   it('labels the style and the complexity rather than printing their values', () => {

@@ -928,7 +928,8 @@
       "moderate": "中等",
       "complex": "复杂"
     },
-    "tempoInvalid": "速度必须是大于零的数字，或留空。"
+    "tempoInvalid": "速度必须是大于零的数字，或留空。",
+    "tempoRange": "此风格的速度必须在 {{min}} 到 {{max}} BPM 之间。"
   },
   "generateTrack": {
     "intro": "为当前乐谱添加一条新音轨，并与其调号、速度和长度保持一致。",

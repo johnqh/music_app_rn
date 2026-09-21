@@ -10,9 +10,9 @@ import type {
   ProjectSaveResult,
   ProjectUpdateRequest,
 } from '@sudobility/music_types';
-import { authorizedServer, type StoreContext } from '../../store/context.js';
-import type { SaveWrite } from './document-saver.js';
-import { projectScoreForServer } from './project-ui.js';
+import { authorizedServer, type StoreContext } from '../../store/context';
+import type { SaveWrite } from './document-saver';
+import { projectScoreForServer } from './project-ui';
 
 /** What a project save reads off the store at the moment it runs. */
 export type ProjectWriteFields = {
