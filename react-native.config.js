@@ -37,11 +37,22 @@
 module.exports = {
   dependencies: {
     '@react-native-documents/picker': {
-      platforms: { macos: null },
+      platforms: { macos: null, windows: null },
     },
+    '@shopify/react-native-skia': { platforms: { windows: null } },
+    'react-native-audio-api': { platforms: { windows: null } },
+    'react-native-share': { platforms: { macos: null, windows: null } },
+    '@react-native-community/slider': { platforms: { macos: null, windows: null } },
+    // Windows resolves device-language.windows.ts and uses Intl directly.
+    'react-native-localize': { platforms: { windows: null } },
   },
   project: {
     macos: { sourceDir: 'macos' },
+    windows: {
+      sourceDir: 'windows',
+      solutionFile: 'MoosiacRN.sln',
+      project: { projectFile: 'MoosiacRN\\MoosiacRN.vcxproj' },
+    },
     /*
       `automaticPodsInstallation: false`, and it is the *declaration* of this
       key that makes it necessary.

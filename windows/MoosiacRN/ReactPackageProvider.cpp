@@ -1,6 +1,10 @@
 #include "pch.h"
 #include "ReactPackageProvider.h"
 #include "NativeModules.h"
+#include "FilePickerModule.h"
+#include "PrintModule.h"
+#include "FileSystemModule.h"
+#include "SynthModule.h"
 
 using namespace winrt::Microsoft::ReactNative;
 

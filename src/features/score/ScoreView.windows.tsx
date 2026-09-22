@@ -1,23 +1,19 @@
-/**
- * Windows score surface placeholder.
- *
- * The shared native score surface currently depends on Skia, which does not
- * ship a Windows implementation. Keeping this fallback visible is safer than
- * importing Skia and failing during application startup.
- */
-import { StyleSheet, Text, View } from 'react-native';
+/** Windows score surface backed by the shared renderer's SVG adapter. */
+import { StyleSheet, View } from 'react-native';
+import { SvgXml } from 'react-native-svg';
+import { useSignal } from './useScoreCanvas';
+import type { Signal } from './useScoreCanvas';
 
 export type ScoreViewProps = {
-  picture: unknown;
+  picture: Signal<string | null>;
   height: number;
 };
 
-export function ScoreView({ height }: ScoreViewProps) {
+export function ScoreView({ picture: pictureSignal, height }: ScoreViewProps) {
+  const picture = useSignal(pictureSignal);
   return (
-    <View style={[styles.fill, { height }]} accessible accessibilityRole="text">
-      <Text style={styles.message}>
-        Score rendering is not available on Windows yet.
-      </Text>
+    <View style={[styles.fill, { height }]}>
+      {picture ? <SvgXml xml={picture} width="100%" height={height} /> : null}
     </View>
   );
 }
@@ -29,11 +25,5 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     width: '100%',
-  },
-  message: {
-    color: '#666666',
-    maxWidth: 360,
-    padding: 24,
-    textAlign: 'center',
   },
 });

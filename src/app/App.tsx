@@ -19,7 +19,7 @@ import { useEffect, useMemo } from 'react';
 import { GestureRoot } from '@/platform/GestureRoot';
 import { SafeAreaProvider } from '@/platform/SafeArea';
 import { AppState } from 'react-native';
-import { getDeviceLanguageTags } from '@/platform/device-language';
+import { getDeviceLocaleTags as getDeviceLanguageTags } from '@sudobility/building_blocks_rn';
 import { bindDevicePrefs, mirrorDevicePrefs } from '@sudobility/music_lib';
 import type { StoreContext } from '@sudobility/music_lib';
 import { initializeApp, getAppServices } from '@/config/initialize';

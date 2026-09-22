@@ -1,8 +1,9 @@
 /**
  * Declares this package as a native dependency to autolink.
  *
- * All three platforms, unlike `@moosiac/file-picker`: every one of them has a
- * print service, they just want to be handed the pages differently.
+ * Apple platforms use this package's native sources. Windows is implemented
+ * in the app's RNW project because the bridge needs the app's WebView2 and
+ * package identity; the JS package remains shared across platforms.
  *
  * Without this file the CLI treats a package with a podspec as a plain JS
  * dependency — it looks here to learn there is anything native to link at all.
@@ -27,6 +28,7 @@ module.exports = {
       // resolver joins it onto the root itself, so an absolute path here
       // resolves to nothing and the module is silently not linked.
       android: { sourceDir: 'android' },
+      windows: null,
     },
   },
 };

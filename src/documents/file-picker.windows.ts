@@ -1,16 +1,19 @@
-/**
- * Windows file picking is not wired yet.
- *
- * Keep the platform boundary explicit instead of importing the iOS/Android
- * document picker, whose native module is not available on Windows. The
- * document storage itself remains usable for files created inside the app.
- */
+/** Windows uses the native Win32 open/save dialogs. */
+import { NativeModules } from 'react-native';
 import type { FilePicker } from './file-picker';
+
+const { MoosiacFilePicker } = NativeModules;
 
 export function createFilePicker(): FilePicker {
   return {
-    isSupported: () => false,
-    pickFile: async () => null,
-    pickSaveLocation: async () => null,
+    isSupported: () => MoosiacFilePicker != null,
+    pickFile: extensions => {
+      if (!MoosiacFilePicker) return Promise.resolve(null);
+      return MoosiacFilePicker.pickFile([...extensions]);
+    },
+    pickSaveLocation: suggestedName => {
+      if (!MoosiacFilePicker) return Promise.resolve(null);
+      return MoosiacFilePicker.pickSaveLocation(suggestedName);
+    },
   };
 }

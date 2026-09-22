@@ -18,6 +18,10 @@
   <PropertyGroup Label="ReactNativeWindowsProps">
     <ReactNativeWindowsDir Condition="'$(ReactNativeWindowsDir)' == ''">$([MSBuild]::GetDirectoryNameOfFileAbove($(SolutionDir), 'node_modules\react-native-windows\package.json'))\node_modules\react-native-windows\</ReactNativeWindowsDir>
   </PropertyGroup>
+  <PropertyGroup>
+    <BuildingBlocksRNWindowsDir Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\building_blocks_rn\windows\FileSystemUtils.h')">$(MSBuildThisFileDirectory)..\..\..\building_blocks_rn\windows\</BuildingBlocksRNWindowsDir>
+    <BuildingBlocksRNWindowsDir Condition="'$(BuildingBlocksRNWindowsDir)' == ''">$(MSBuildThisFileDirectory)..\..\node_modules\@sudobility\building_blocks_rn\windows\</BuildingBlocksRNWindowsDir>
+  </PropertyGroup>
   <Import Project="$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.WindowsSdk.Default.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <ItemGroup Label="ProjectConfigurations">
@@ -79,7 +83,11 @@
       <WarningLevel>Level4</WarningLevel>
       <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
       <DisableSpecificWarnings>4453;28204</DisableSpecificWarnings>
+      <AdditionalIncludeDirectories>$(BuildingBlocksRNWindowsDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>shell32.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
     <ClCompile>
@@ -97,6 +105,11 @@
       <SubType>Code</SubType>
     </ClInclude>
     <ClInclude Include="ReactPackageProvider.h" />
+    <ClInclude Include="FilePickerModule.h" />
+    <ClInclude Include="PrintModule.h" />
+    <ClInclude Include="FileSystemModule.h" />
+    <ClInclude Include="$(BuildingBlocksRNWindowsDir)FileSystemUtils.h" />
+    <ClInclude Include="SynthModule.h" />
     <ClInclude Include="AutolinkedNativeModules.g.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.h">
@@ -128,6 +141,10 @@
       <SubType>Code</SubType>
     </ClCompile>
     <ClCompile Include="ReactPackageProvider.cpp" />
+    <ClCompile Include="FilePickerModule.cpp" />
+    <ClCompile Include="PrintModule.cpp" />
+    <ClCompile Include="FileSystemModule.cpp" />
+    <ClCompile Include="SynthModule.cpp" />
     <ClCompile Include="AutolinkedNativeModules.g.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -151,6 +168,29 @@
     <Text Include="readme.txt">
       <DeploymentContent>false</DeploymentContent>
     </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\assets\soundfont\**\*.*">
+      <Link>soundfont\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <DeploymentContent>true</DeploymentContent>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="third_party\tsf.h" />
+    <None Include="third_party\stb_vorbis.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\..\native\synth\resources\FluidR3Mono_GM.sf3">
+      <Link>soundfont\FluidR3Mono_GM.sf3</Link>
+      <DeploymentContent>true</DeploymentContent>
+    </Content>
+    <Content Include="..\..\native\synth\resources\FluidR3Mono_License.md">
+      <Link>soundfont\FluidR3Mono_License.md</Link>
+      <DeploymentContent>true</DeploymentContent>
+    </Content>
   </ItemGroup>
   <ItemGroup>
     <Page Include="MainPage.xaml">

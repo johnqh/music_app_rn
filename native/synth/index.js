@@ -1,5 +1,6 @@
 /**
- * libfluidsynth on macOS, as `@sudobility/music_player`'s `NativeSynthApi`.
+ * Native SoundFont synthesis on desktop, as
+ * `@sudobility/music_player`'s `NativeSynthApi`.
  *
  * The Mac used to play per-note MP3 renderings of FluidR3: every instrument in
  * a score decoded before the first note, and a clock taken from JavaScript
@@ -7,7 +8,7 @@
  * jumped. This is the synthesizer the web runs, driven by the same scheduler
  * through `NativeSynthBackend`.
  *
- * A local package so autolinking installs it, like `@moosiac/file-picker`.
+ * A local package so the platform projects can register their native module.
  */
 import { NativeModules } from 'react-native';
 

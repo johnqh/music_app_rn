@@ -11,12 +11,23 @@
     <ClCompile Include="App.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
     <ClCompile Include="ReactPackageProvider.cpp" />
+    <ClCompile Include="FilePickerModule.cpp" />
+    <ClCompile Include="PrintModule.cpp" />
+    <ClCompile Include="FileSystemModule.cpp" />
+    <ClCompile Include="SynthModule.cpp" />
     <ClCompile Include="AutolinkedNativeModules.g.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.h" />
     <ClInclude Include="ReactPackageProvider.h" />
+    <ClInclude Include="FilePickerModule.h" />
+    <ClInclude Include="PrintModule.h" />
+    <ClInclude Include="FileSystemModule.h" />
+    <ClInclude Include="$(BuildingBlocksRNWindowsDir)FileSystemUtils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SynthModule.h" />
     <ClInclude Include="AutolinkedNativeModules.g.h" />
   </ItemGroup>
   <ItemGroup>

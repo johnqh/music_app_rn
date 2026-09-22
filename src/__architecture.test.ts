@@ -42,6 +42,7 @@ const ALLOWED_NON_UI = new Set([
   // directory on iOS and macOS) and per app. It holds no rule about music —
   // only a file name and two ways to read it.
   'src/config/soundfont-packs.ts',
+  'src/config/soundfont-packs.windows.ts',
   // The macOS menu bar, as events. Platform glue in the same sense as the
   // line above: it holds no rule about music, only a subscription to a
   // native module. It cannot move to a library either — the module it
@@ -74,15 +75,17 @@ const ALLOWED_NON_UI = new Set([
   // it is why it cannot be one function.
   'src/documents/file-picker.ts',
   'src/documents/file-picker.macos.ts',
-  // The Windows picker boundary. Windows has no picker bridge in this app yet,
-  // so this variant reports unsupported without importing mobile native code.
+  // The Windows picker boundary. It is an app-owned Win32 bridge rather than
+  // an import of a mobile-only picker package.
   'src/documents/file-picker.windows.ts',
-  // The Windows print boundary. Rendering and the native print bridge are
-  // separate platform capabilities, so this variant fails explicitly.
+  // The Windows print boundary. Rendering and the WebView2 PDF bridge are
+  // separate platform capabilities, so this stays platform-specific.
   'src/features/print/print-service.windows.ts',
-  // Device locale and native shell wrappers are platform glue, not UI rules.
-  'src/platform/device-language.ts',
-  'src/platform/device-language.windows.ts',
+  'src/features/print/print-pages.windows.ts',
+  // The Windows score adapter records the shared renderer into SVG and keeps
+  // its signal/scheduling glue outside the UI component.
+  'src/features/score/svg-context.ts',
+  'src/features/score/useScoreCanvas.windows.ts',
   // Build-time configuration and the server gateway: what this build points
   // at, constructed rather than implemented.
   'src/config/constants.ts',
@@ -104,6 +107,7 @@ const ALLOWED_NON_UI = new Set([
   'src/documents/document-list.ts',
   // The one platform-bound file in the document layer.
   'src/documents/rn-storage.ts',
+  'src/documents/rn-storage.windows.ts',
   'src/documents/rn-key-value.ts',
   // Which format a document goes out as, and what the file is called. Every
   // export is one call on music_io; none of the encoding is here.

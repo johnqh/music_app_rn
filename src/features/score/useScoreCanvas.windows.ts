@@ -1,24 +1,21 @@
 /**
- * Windows score-canvas fallback.
+ * Windows score surface.
  *
- * The real adapter records music_drawing into Skia pictures. Skia has no
- * Windows target, so this keeps the editor shell and document state usable
- * without loading the unsupported native module. It deliberately reports no
- * score geometry until a Windows drawing surface is implemented.
+ * Skia has no Windows target in this app, so the shared renderer records into
+ * a small SVG drawing context and the native SVG view displays that result.
+ * Geometry, cursor motion, scrolling, and invalidation still use the same
+ * CanvasScoreRenderer/ScoreCanvas path as the other platforms.
  */
+import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { RefObject } from 'react';
 import type { ScrollView } from 'react-native';
-import type {
-  LayoutMode,
-  PitchDisplay,
-  Score,
-  ScoreCanvasHit,
-} from '@sudobility/music_types';
-import type { RenderTheme } from '@sudobility/music_drawing';
+import { CanvasScoreRenderer, ScoreCanvas } from '@sudobility/music_drawing';
+import type { CursorMotion, CursorPath } from '@sudobility/music_drawing';
+import { SvgDrawingContext } from './svg-context';
 
 export type CursorState = {
-  path: null;
-  motion: { tick: number; atMs: number; ticksPerSecond: number };
+  path: CursorPath | null;
+  motion: CursorMotion;
   id: number;
 };
 
@@ -48,7 +45,7 @@ export function createSignal<T>(initial: T): Signal<T> {
 }
 
 export function useSignal<T>(signal: Signal<T>): T {
-  return signal.get();
+  return useSyncExternalStore(signal.subscribe, signal.get, signal.get);
 }
 
 export type ScoreCanvasHandles = {
@@ -63,37 +60,55 @@ const EMPTY_CURSOR: CursorState = {
   id: 0,
 };
 
-export function useScoreCanvas({ size }: ScoreCanvasHandles) {
-  const picture = createSignal<null>(null);
-  const cursor = createSignal<CursorState>(EMPTY_CURSOR);
-  const scroll = createSignal<ScrollOffset>({ left: 0, top: 0 });
-  const canvas = {
-    setStoredScore: (_score: Score, _pitchDisplay: PitchDisplay) => {},
-    setView: (_options: {
-      width: number;
-      height: number;
-      zoom: number;
-      layoutMode: LayoutMode;
-      theme: RenderTheme;
-      showTrackInfo: boolean;
-      trackIds?: string[];
-    }) => {},
-    contentSize: () => ({
-      width: size.current.width,
-      height: size.current.height,
+export function useScoreCanvas({
+  vertical,
+  horizontal,
+  size,
+}: ScoreCanvasHandles) {
+  const signals = useMemo(
+    () => ({
+      picture: createSignal<string | null>(null),
+      cursor: createSignal<CursorState>(EMPTY_CURSOR),
+      scroll: createSignal<ScrollOffset>({ left: 0, top: 0 }),
     }),
-    setActiveTrack: (_trackId: string | null) => {},
-    setSelectedNotes: (
-      _ids: readonly string[],
-      _options: { regenerated: boolean },
-    ) => {},
-    setSelectedMeasures: (_ids: readonly string[]) => {},
-    setScroll: (_left: number, _top: number) => {},
-    followTarget: (_tick: number): ScrollOffset => ({ left: 0, top: 0 }),
-    hitTest: (_point: { x: number; y: number }): ScoreCanvasHit | null => null,
-    tickAt: (_point: { x: number; y: number }): number | null => null,
-    dispose: () => {},
-  };
+    [],
+  );
 
-  return { canvas, picture, cursor, scroll };
+  const canvas = useMemo(() => {
+    const renderer = new CanvasScoreRenderer();
+    return new ScoreCanvas({
+      scheduler: {
+        frame: callback => {
+          const id = requestAnimationFrame(callback);
+          return () => cancelAnimationFrame(id);
+        },
+        timeout: (callback, ms) => {
+          const id = setTimeout(callback, ms);
+          return () => clearTimeout(id);
+        },
+        now: () => performance.now(),
+      },
+      surface: {
+        paint: (score, options) => {
+          const context = new SvgDrawingContext(
+            size.current.width,
+            size.current.height,
+          );
+          const result = renderer.render(score, context, options);
+          signals.picture.set(context.toSvg());
+          return result;
+        },
+        prepare: (score, options) => renderer.prepare(score, options),
+        showCursor: (path, motion) =>
+          signals.cursor.set({ path, motion, id: signals.cursor.get().id + 1 }),
+        scrollTo: target => {
+          vertical.current?.scrollTo({ y: target.top, animated: false });
+          horizontal.current?.scrollTo({ x: target.left, animated: false });
+        },
+      },
+    });
+  }, [horizontal, vertical, size, signals]);
+
+  useEffect(() => () => canvas.dispose(), [canvas]);
+  return { canvas, ...signals };
 }

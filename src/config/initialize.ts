@@ -38,12 +38,13 @@ import { bundledSoundfontPath, nativeSynthApi } from '@moosiac/synth';
 /**
  * The player for this platform.
  *
- * On macOS, libfluidsynth — the synthesizer the web plays through — driven by
- * the same shared scheduler (`SoundfontPlaybackEngine` over
+ * On macOS, libfluidsynth, and on Windows TinySoundFont — the synthesizers the
+ * web plays through — driven by the same shared scheduler
+ * (`SoundfontPlaybackEngine` over
  * `NativeSynthBackend`). The per-note MP3 engine decoded every instrument
  * before the first note and timed itself from JavaScript timers: a long
- * "Preparing instruments" and a playhead that jumped. Everywhere else, and on a
- * Mac build without the module or its font, the MP3 engine as before.
+ * "Preparing instruments" and a playhead that jumped. Platforms without a
+ * native module or bundled font retain the sample engine as a fallback.
  */
 /*
   Dialogs as real macOS sheets. This app patches a modal host into React Native
@@ -54,7 +55,10 @@ import { bundledSoundfontPath, nativeSynthApi } from '@moosiac/synth';
 if (Platform.OS === 'macos') setNativeDialogsSupported(true);
 
 function createPlayer(soundfont: SoundfontOptions): IMusicPlayer {
-  const soundfontUri = Platform.OS === 'macos' ? bundledSoundfontPath() : null;
+  const soundfontUri =
+    Platform.OS === 'macos' || Platform.OS === 'windows'
+      ? bundledSoundfontPath()
+      : null;
   if (soundfontUri && nativeSynthApi.isSupported()) {
     return new MusicPlayer(
       new SoundfontPlaybackEngine({
@@ -178,7 +182,9 @@ export function initializeApp(options: InitializeOptions = {}): AppServices {
     what a desktop app should do anyway.
   */
   services = {
-    io: createMusicIo({ shareSheet: Platform.OS !== 'macos' }),
+    io: createMusicIo({
+      shareSheet: Platform.OS !== 'macos' && Platform.OS !== 'windows',
+    }),
     player,
     soundfont,
   };

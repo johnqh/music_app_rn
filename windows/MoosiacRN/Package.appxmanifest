@@ -9,18 +9,19 @@
   <Identity
     Name="bf643b29-b8f6-42a2-8797-8c822d9c7283"
     Publisher="CN=qianghuang"
-    Version="0.0.37.0" />
+    Version="0.0.38.0" />
 
   <mp:PhoneIdentity PhoneProductId="bf643b29-b8f6-42a2-8797-8c822d9c7283" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
   <Properties>
-    <DisplayName>MoosiacRN</DisplayName>
+    <DisplayName>Moosiac</DisplayName>
     <PublisherDisplayName>qianghuang</PublisherDisplayName>
     <Logo>Assets\StoreLogo.png</Logo>
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal" MinVersion="0.0.37.0" MaxVersionTested="10.0.0.0" />
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="0.0.38.0" MaxVersionTested="10.0.26100.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="0.0.38.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
 
   <Resources>
@@ -33,10 +34,10 @@
       Executable="$targetnametoken$.exe"
       EntryPoint="MoosiacRN.App">
       <uap:VisualElements
-        DisplayName="MoosiacRN"
+        DisplayName="Moosiac"
         Square150x150Logo="Assets\Square150x150Logo.png"
         Square44x44Logo="Assets\Square44x44Logo.png"
-        Description="MoosiacRN"
+        Description="Moosiac"
         BackgroundColor="transparent">
         <uap:DefaultTile Wide310x150Logo="Assets\Wide310x150Logo.png"/>
         <uap:SplashScreen Image="Assets\SplashScreen.png" />

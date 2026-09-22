@@ -1,15 +1,22 @@
-/** Windows has no native print bridge in this app yet. */
+import { isSupported, printPages } from '@moosiac/print';
+import { printPlan } from '@sudobility/music_drawing';
 import type { PrintPlanOptions } from '@sudobility/music_drawing';
 import type { Score } from '@sudobility/music_types';
 import type { PrintResult } from './print-service';
+import { renderPrintPages } from './print-pages.windows';
 
 export function canPrint(): boolean {
-  return false;
+  return isSupported();
 }
 
 export async function printScore(
-  _score: Score,
-  _options: PrintPlanOptions = {},
+  score: Score,
+  options: PrintPlanOptions = {},
 ): Promise<PrintResult> {
-  throw new Error('Printing is not supported on Windows yet.');
+  const plan = printPlan(score, options);
+  const pages = plan ? renderPrintPages(plan) : [];
+  if (pages.length === 0) throw new Error('There was nothing to print.');
+  const jobName = score.metadata.title?.trim() || 'Score';
+  const printed = await printPages(jobName, pages);
+  return printed ? 'printed' : 'cancelled';
 }

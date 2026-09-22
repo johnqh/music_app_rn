@@ -176,7 +176,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       const chosen = picker.isSupported()
         ? await picker.pickSaveLocation(suggested)
         : null;
-      await state.saveAs(chosen ?? defaultDocumentUri(state.title));
+      await state.saveAs(chosen ?? (await defaultDocumentUri(state.title)));
     })().catch(error => reportError(error, { context: 'save' }));
   }, [document]);
 
