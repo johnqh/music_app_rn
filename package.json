@@ -1,6 +1,6 @@
 {
   "name": "music_app_rn",
-  "version": "0.0.39",
+  "version": "0.0.40",
   "private": true,
   "engines": {
     "node": ">=20"
@@ -46,7 +46,7 @@
     "@sudobility/di_rn": "^0.1.141",
     "@sudobility/music_client": "^0.4.70",
     "@sudobility/music_codecs": "^0.2.35",
-    "@sudobility/music_drawing": "^0.0.44",
+    "@sudobility/music_drawing": "^0.0.45",
     "@sudobility/music_editing": "^0.0.29",
     "@sudobility/music_io": "^0.9.52",
     "@sudobility/music_lib": "^1.9.61",
