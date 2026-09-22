@@ -4,6 +4,8 @@
 #include <ReactCoreInjection.h>
 #include <shobjidl_core.h>
 
+#include <string>
+
 namespace winrt::MoosiacRN::implementation {
 
 void FilePickerModule::Initialize(
@@ -19,10 +21,11 @@ static HWND TopLevelWindow(
 }
 
 void FilePickerModule::pickFile(
-    React::JSValueArray /*extensions*/,
+    React::JSValueArray extensions,
     React::ReactPromise<React::JSValue> result) noexcept {
   m_context.UIDispatcher().Post(
-      [context = m_context, result = std::move(result)]() mutable {
+      [context = m_context, extensions = std::move(extensions),
+       result = std::move(result)]() mutable {
         IFileOpenDialog *dialog = nullptr;
         if (FAILED(CoCreateInstance(CLSID_FileOpenDialog, nullptr,
                                     CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&dialog)))) {
@@ -34,6 +37,48 @@ void FilePickerModule::pickFile(
         dialog->GetOptions(&options);
         dialog->SetOptions(options | FOS_FORCEFILESYSTEM);
         dialog->SetTitle(L"Open Music File");
+
+        // IFileOpenDialog expects semicolon-separated wildcard patterns in a
+        // single filter entry. Unlike mobile pickers, Windows can filter on
+        // arbitrary extensions directly, including the app's custom formats.
+        std::wstring patterns;
+        for (const auto &extensionValue : extensions) {
+          if (!extensionValue.IsString()) continue;
+          std::string extension = extensionValue.AsString();
+          while (!extension.empty() && extension.front() == '.') {
+            extension.erase(extension.begin());
+          }
+          if (extension.empty()) continue;
+
+          bool valid = true;
+          for (const unsigned char character : extension) {
+            if (!((character >= 'a' && character <= 'z') ||
+                  (character >= 'A' && character <= 'Z') ||
+                  (character >= '0' && character <= '9') || character == '-' ||
+                  character == '_')) {
+              valid = false;
+              break;
+            }
+          }
+          if (!valid) continue;
+
+          if (!patterns.empty()) patterns += L';';
+          patterns += L"*.";
+          patterns += winrt::to_hstring(extension).c_str();
+        }
+        if (!patterns.empty()) {
+          const std::wstring description = L"Supported music and document files";
+          const COMDLG_FILTERSPEC filters[] = {
+              {description.c_str(), patterns.c_str()},
+          };
+          if (FAILED(dialog->SetFileTypes(ARRAYSIZE(filters), filters))) {
+            dialog->Release();
+            result.Reject(React::ReactError{
+                "FILE_PICKER_ERROR", "Could not configure the file type filter."});
+            return;
+          }
+          dialog->SetFileTypeIndex(1);
+        }
 
         HRESULT hr = dialog->Show(TopLevelWindow(context));
         if (FAILED(hr)) {
