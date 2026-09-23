@@ -9,22 +9,37 @@ Pod::Spec.new do |s|
   s.license      = 'MIT'
   s.authors      = 'Moosiac'
   s.homepage     = 'https://moosiac.app'
-  s.platforms    = { :osx => '14.0' }
+  # `apple/` is shared by both: the Objective-C++ wrapper calls nothing but
+  # the FluidSynth C API and Foundation, neither of which differs between the
+  # two, so the same source compiles unchanged for both — only how libfluidsynth
+  # itself is linked differs below.
+  s.platforms    = { :osx => '14.0', :ios => '15.0' }
   s.source       = { :path => '.' }
-  s.source_files = 'macos/**/*.{h,m,mm}'
+  s.source_files = 'apple/**/*.{h,m,mm}'
   # The font the web plays, bundled: pressing Play needs no network.
   s.resources    = ['resources/FluidR3Mono_GM.sf3', 'resources/FluidR3Mono_License.md']
 
-  # libfluidsynth from Homebrew (`brew install fluid-synth`). A development
-  # link: a distributable build has to bundle the dylib and its dependencies
-  # (glib, libsndfile) into the app instead.
+  # macOS: libfluidsynth from Homebrew (`brew install fluid-synth`). A
+  # development link: a distributable build has to bundle the dylib and its
+  # dependencies (glib, libsndfile) into the app instead.
   fluidsynth_prefix = ENV['FLUIDSYNTH_PREFIX'] || '/opt/homebrew'
-  s.pod_target_xcconfig = {
+  s.osx.pod_target_xcconfig = {
     'HEADER_SEARCH_PATHS' => "\"#{fluidsynth_prefix}/include\"",
   }
-  s.user_target_xcconfig = {
+  s.osx.user_target_xcconfig = {
     'OTHER_LDFLAGS' => "-L\"#{fluidsynth_prefix}/lib\" -lfluidsynth",
   }
+
+  # iOS: the official prebuilt XCFramework FluidSynth publishes with every
+  # release (github.com/FluidSynth/fluidsynth/releases,
+  # fluidsynth-v2.6.1-iOS.zip) — device + simulator slices, vendored rather
+  # than built from source, the same way a distributable macOS build would
+  # have to. `fluid_coreaudio.c`'s non-HAL path (compiled into this binary)
+  # calls `setupAVAudioSession` itself on iOS, so nothing here configures a
+  # session by hand — `AVFoundation` is linked because that call lives there,
+  # `AudioToolbox` because the driver is an `AudioUnit`.
+  s.ios.vendored_frameworks = 'apple/Frameworks/FluidSynth.xcframework'
+  s.ios.frameworks = ['AudioToolbox', 'AVFoundation', 'CoreAudio']
 
   s.dependency 'React-Core'
 end

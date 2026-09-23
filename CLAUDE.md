@@ -27,7 +27,7 @@ maths here, it belongs somewhere else.
 - `bun run verify` — format, typecheck, lint, both test suites. Before any push.
 - `bun run test` / `bun run test:watch` — vitest, the plain-TypeScript half
 - `bun run test:components` — jest, the half that renders
-- `bun run start` — Metro on port 8083
+- `bun run start` — Metro on port 8091
 - `bun run ios` / `bun run android` / `bun run macos`
 
 ## What is different from the web app

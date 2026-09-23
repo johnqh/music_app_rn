@@ -38,13 +38,15 @@ import { bundledSoundfontPath, nativeSynthApi } from '@moosiac/synth';
 /**
  * The player for this platform.
  *
- * On macOS, libfluidsynth, and on Windows TinySoundFont — the synthesizers the
- * web plays through — driven by the same shared scheduler
- * (`SoundfontPlaybackEngine` over
+ * On iOS and macOS, libfluidsynth (`@moosiac/synth`'s shared `apple/`
+ * wrapper — a vendored XCFramework on iOS, Homebrew's dylib on macOS), and on
+ * Windows TinySoundFont — the synthesizers the web plays through, driven by
+ * the same shared scheduler (`SoundfontPlaybackEngine` over
  * `NativeSynthBackend`). The per-note MP3 engine decoded every instrument
  * before the first note and timed itself from JavaScript timers: a long
  * "Preparing instruments" and a playhead that jumped. Platforms without a
- * native module or bundled font retain the sample engine as a fallback.
+ * native module or bundled font retain the sample engine as a fallback —
+ * Android, until it gets its own native synth module.
  */
 /*
   Dialogs as real macOS sheets. This app patches a modal host into React Native
@@ -56,7 +58,9 @@ if (Platform.OS === 'macos') setNativeDialogsSupported(true);
 
 function createPlayer(soundfont: SoundfontOptions): IMusicPlayer {
   const soundfontUri =
-    Platform.OS === 'macos' || Platform.OS === 'windows'
+    Platform.OS === 'ios' ||
+    Platform.OS === 'macos' ||
+    Platform.OS === 'windows'
       ? bundledSoundfontPath()
       : null;
   if (soundfontUri && nativeSynthApi.isSupported()) {
