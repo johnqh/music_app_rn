@@ -37,6 +37,34 @@ import type {
 import type { IMusicPlayer } from '@sudobility/music_player/core';
 import { selectVisibleTrackIds } from '@sudobility/music_editing';
 import type { EditingState, EditingStoreApi } from '@sudobility/music_editing';
+import { unpluggedMixes } from '@sudobility/music_lib';
+
+/**
+ * What the player actually loads: the score unchanged, or — while Unplugged
+ * is the active tab — a shadow copy whose tracks carry the arrangement's
+ * computed volume/pan instead of their own.
+ *
+ * A shadow copy rather than a second load path: `player.load` already
+ * derives its mix from `track.volume`/`track.pan`, and while playing it
+ * never rebuilds the note schedule on a reload — it reads the score's
+ * current mix and pushes it live (see the file comment on `load` below).
+ * Feeding it a score with different `volume`/`pan` values is therefore all
+ * that's needed to make Unplugged's mix reach the engine; nothing here
+ * knows or needs to know how the player tells a mix change from a content
+ * one. The real score, with the real `track.volume`/`pan`, is never
+ * mutated — Unplugged's positions live entirely on `score.unplugged`.
+ */
+function scoreForPlayback(score: Score, unpluggedActive: boolean): Score {
+  if (!unpluggedActive) return score;
+  const mixes = unpluggedMixes(score);
+  return {
+    ...score,
+    tracks: score.tracks.map(track => {
+      const mix = mixes[track.id];
+      return mix ? { ...track, volume: mix.volume, pan: mix.pan } : track;
+    }),
+  };
+}
 
 /**
  * What a store that has never been bound shows for the transport settings
@@ -124,12 +152,17 @@ export function bindPlayer<T extends EditingState & Partial<TransportSettings>>(
 
   const load = async (score: Score): Promise<void> => {
     // Recorded before the await: from this moment the player is this score's,
-    // and a binding asking during the load must not start another.
+    // and a binding asking during the load must not start another. Keyed on
+    // the real score — `ownsPlayer`/ownership tracking must not know or care
+    // that Unplugged sends a shadow copy to the player itself.
     loadedScores.set(player, score);
     try {
-      await player.load(score, {
-        visibleTrackIds: selectVisibleTrackIds(store.getState()),
-      });
+      await player.load(
+        scoreForPlayback(score, store.getState().unpluggedActive),
+        {
+          visibleTrackIds: selectVisibleTrackIds(store.getState()),
+        },
+      );
     } catch (error) {
       report('scoreLoadFailed', error);
     }
@@ -154,13 +187,17 @@ export function bindPlayer<T extends EditingState & Partial<TransportSettings>>(
 
   let lastScore: Score | null = store.getState().score;
   let lastVisible = store.getState().visibleTrackIds;
+  let lastUnpluggedActive = store.getState().unpluggedActive;
   if (lastScore) void load(lastScore);
 
   const offStore = store.subscribe(state => {
     if (state.score !== lastScore) {
       lastScore = state.score;
       // A new score is loaded with the visible tracks as they are now, so the
-      // visible-track check below has nothing to add.
+      // visible-track check below has nothing to add. This also covers every
+      // drag on the Unplugged stage: moving an instrument or the listener is
+      // a `score.unplugged` edit, so it is a new score reference too, and
+      // `load` recomputes the arrangement's mix from it.
       lastVisible = state.visibleTrackIds;
       if (lastScore) void load(lastScore);
       return;
@@ -173,6 +210,14 @@ export function bindPlayer<T extends EditingState & Partial<TransportSettings>>(
       // The player is playing another binding's score: its channels are not
       // this score's tracks. The next load carries the visible tracks anyway.
       if (ownsPlayer()) player.setVisibleTracks(selectVisibleTrackIds(state));
+    }
+    // Opening or leaving the Unplugged tab changes nothing about the score
+    // itself, so it does not fall through the branch above — reload
+    // explicitly to switch the player between the real mix and the
+    // arrangement's computed one.
+    if (state.unpluggedActive !== lastUnpluggedActive) {
+      lastUnpluggedActive = state.unpluggedActive;
+      if (ownsPlayer() && state.score) void load(state.score);
     }
   });
 

@@ -27,6 +27,7 @@ import { TrackTab } from './TrackTab';
 import { NoteTab } from './NoteTab';
 import { MeasureTab } from './MeasureTab';
 import { ScoreTab } from './ScoreTab';
+import { UnpluggedTab } from './UnpluggedTab';
 import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
 import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
@@ -86,26 +87,40 @@ export function InspectorPanel({
         onChange={value => setTab(value as InspectorTab)}
         testID="inspector-tabs"
       />
-      <ScrollView className="flex-1" contentContainerClassName="p-3 gap-3">
-        {tab === 'score' ? (
-          <ScoreTab
-            document={document}
-            {...(generation ? { generation } : {})}
-          />
-        ) : null}
-        {tab === 'track' ? (
-          <TrackTab document={document} {...(onReplace ? { onReplace } : {})} />
-        ) : null}
-        {tab === 'note' ? (
-          <NoteTab document={document} {...(onReplace ? { onReplace } : {})} />
-        ) : null}
-        {tab === 'measure' ? (
-          <MeasureTab
-            document={document}
-            {...(onReplace ? { onReplace } : {})}
-          />
-        ) : null}
-      </ScrollView>
+      {tab === 'unplugged' ? (
+        // Its own free-drag 2D surface, not the shared `ScrollView` below —
+        // a vertical scroll gesture and a drag in any direction on the same
+        // surface would fight over the touch. See `UnpluggedTab`'s own
+        // comment.
+        <UnpluggedTab document={document} />
+      ) : (
+        <ScrollView className="flex-1" contentContainerClassName="p-3 gap-3">
+          {tab === 'score' ? (
+            <ScoreTab
+              document={document}
+              {...(generation ? { generation } : {})}
+            />
+          ) : null}
+          {tab === 'track' ? (
+            <TrackTab
+              document={document}
+              {...(onReplace ? { onReplace } : {})}
+            />
+          ) : null}
+          {tab === 'note' ? (
+            <NoteTab
+              document={document}
+              {...(onReplace ? { onReplace } : {})}
+            />
+          ) : null}
+          {tab === 'measure' ? (
+            <MeasureTab
+              document={document}
+              {...(onReplace ? { onReplace } : {})}
+            />
+          ) : null}
+        </ScrollView>
+      )}
     </View>
   );
 }
