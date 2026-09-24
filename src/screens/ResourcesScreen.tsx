@@ -42,7 +42,7 @@ export function ResourcesScreen() {
           ScrollView inside a ScrollView is a scroll that stops halfway. */}
       <View className="gap-6 pb-8">
         <Text className="text-muted-foreground text-base">
-          {t('resources.intro', { appName: t('app.name') })}
+          {t('resources.intro')}
         </Text>
 
         {RESOURCE_GROUPS.map(group => (

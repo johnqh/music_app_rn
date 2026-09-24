@@ -10,6 +10,17 @@
  * yet when the sheet closes: the project is created immediately in a
  * `transcribing` state and fills itself in when the job lands.
  *
+ * **Opens the OS picker itself, the moment this is asked to open** — matching
+ * every other import on this menu (`useImport`'s `run`), which never made the
+ * reader hit a "Choose file" button before the picker they came here for. The
+ * sheet stays off screen until a file exists to show it for (or the server
+ * cannot transcribe at all, which is the one thing worth explaining before a
+ * pick). Cancelling that first pick closes the whole flow — there is nothing
+ * on screen yet to leave open. `available` is checked first, before ever
+ * touching the picker: uploading a recording only to be told afterwards that
+ * the server never could is the worst order to learn that in, and here the
+ * capability is already known.
+ *
  * **The recording is uploaded by path, not by bytes.** React Native's `Blob`
  * cannot be constructed from an `ArrayBuffer`, so reading a recording in order
  * to send it is not possible — and would mean holding a whole audio file in
@@ -17,7 +28,7 @@
  * for exactly this: the browser passes its `File`, native passes
  * `{ uri, name, type }` and RN's networking layer streams it.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
@@ -67,11 +78,26 @@ export function AudioImportSheet({
 
   const choose = async (): Promise<void> => {
     const picker = createFilePicker();
-    if (!picker.isSupported()) return;
+    if (!picker.isSupported()) {
+      onClose();
+      return;
+    }
     const uri = await picker.pickFile(AUDIO_IMPORT_EXTENSIONS);
-    // Cancelling is an ordinary outcome, not something to report.
+    // Cancelling before anything was chosen closes the whole flow — there is
+    // nothing on screen yet to leave open instead.
     if (uri) setPicked(nativeUploadFor(uri));
+    else onClose();
   };
+
+  useEffect(() => {
+    // Not when unavailable: picking a file the server could never take is
+    // work with no purpose, and `available` is already known without one.
+    // Deliberately keyed on `open`/`available` alone: `choose` closes over
+    // `onClose`/`onUpload`, which change identity every render on the
+    // callers below, and listing them would fire the picker again on every
+    // render rather than once per open.
+    if (open && available) void choose();
+  }, [open, available]);
 
   const close = (): void => {
     setPicked(null);
@@ -80,19 +106,18 @@ export function AudioImportSheet({
 
   return (
     <FormModal
-      visible={open}
+      visible={open && (Boolean(picked) || !available)}
       title={t('importAudio.title')}
       onClose={close}
       actions={[
         { label: t('common.cancel'), onPress: close, variant: 'ghost' },
         {
-          label: picked ? t('importAudio.upload') : t('importAudio.choose'),
+          label: t('importAudio.upload'),
           onPress: () => {
             if (picked) onUpload(picked);
-            else void choose();
           },
           variant: 'primary',
-          ...(available ? {} : { disabled: true }),
+          ...(available && picked ? {} : { disabled: true }),
           ...(busy ? { loading: true } : {}),
         },
       ]}

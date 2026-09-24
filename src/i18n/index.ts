@@ -9,6 +9,7 @@
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { preferredLanguage } from '@sudobility/music_types';
+import { CONSTANTS } from '@/config/constants';
 import en from './locales/en.json';
 import zh from './locales/zh.json';
 
@@ -21,7 +22,14 @@ export function initializeI18n(deviceTags: readonly string[]): typeof i18next {
       resources: { en: { translation: en }, zh: { translation: zh } },
       lng: languageFor(null, deviceTags),
       fallbackLng: 'en',
-      interpolation: { escapeValue: false },
+      interpolation: {
+        escapeValue: false,
+        // The web app's pattern: any string using `{{appName}}` is filled
+        // from here rather than each call site passing it, and rather than
+        // the name being a translation itself — a build's own configured
+        // name is not a fact about the reader's language.
+        defaultVariables: { appName: CONSTANTS.APP_NAME },
+      },
     });
   }
   return i18next;

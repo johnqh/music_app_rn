@@ -1,6 +1,6 @@
 {
   "name": "music_app_rn",
-  "version": "0.0.43",
+  "version": "0.0.44",
   "private": true,
   "engines": {
     "node": ">=20"
@@ -35,8 +35,9 @@
     "@react-native-community/slider": "^5.2.1",
     "@react-native-documents/picker": "^12.0.2",
     "@react-native-segmented-control/segmented-control": "^2.5.7",
-    "@react-navigation/native": "^7.1.28",
+    "@react-navigation/native": "^7.4.1",
     "@react-navigation/native-stack": "^7.10.1",
+    "@react-navigation/stack": "^7.7.1",
     "@shopify/react-native-skia": "2.2.12",
     "@sudobility/building_blocks_rn": "^0.0.74",
     "@sudobility/components-rn": "^1.0.109",
@@ -44,7 +45,7 @@
     "@sudobility/design": "^1.1.55",
     "@sudobility/di": "^1.5.65",
     "@sudobility/di_rn": "^0.1.141",
-    "@sudobility/music_client": "^0.4.71",
+    "@sudobility/music_client": "^0.4.72",
     "@sudobility/music_codecs": "^0.2.36",
     "@sudobility/music_drawing": "^0.0.46",
     "@sudobility/music_editing": "^0.0.30",

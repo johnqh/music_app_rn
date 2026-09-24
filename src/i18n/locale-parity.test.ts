@@ -30,7 +30,6 @@ function flatten(o: unknown, prefix = ''): Record<string, string> {
  * anywhere and is filtered below rather than listed here.
  */
 const SHARED_BY_DESIGN = new Set([
-  'app.name',
   'docs.formats.name.midi',
   'docs.formats.name.musicxml',
   'editor.midi',

@@ -18,12 +18,18 @@
  * with music_codecs' `parseProjectFile`, which validates on the way in — a file
  * on disk is exactly as untrusted as a network response — and `saveNow` /
  * `saveAs` write it with the same saver the autosave uses.
+ *
+ * **`nav.projects` and `nav.settings` live here too**, for the same "works from
+ * wherever you are" reason: they are the title bar's Projects and Settings
+ * buttons, which a desktop build no longer has (`AppLayout`'s `hasMenuBar()`
+ * gate) — the menu is now the only route to either on macOS and Windows.
  */
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
-import { useMenuCommand } from '@/app/menu-commands';
+import { hasMenuBar, useMenuCommand } from '@/app/menu-commands';
 import type { MenuCommand } from '@/app/menu-commands';
+import { showProjectsWindow } from '@/platform/projectsWindow';
 import {
   DOCUMENT_EXTENSION,
   DOCUMENT_EXTENSIONS,
@@ -93,7 +99,19 @@ export function MenuFileCommands() {
     (command: MenuCommand): void => {
       void (async () => {
         try {
-          if (command === 'file.new') {
+          if (command === 'nav.projects') {
+            // A separate native window on desktop (`ProjectsWindow.tsx`),
+            // not a screen pushed onto this one — see `projectsWindow.ts`.
+            // Falls back to in-place navigation only where there is no menu
+            // bar to have asked from in the first place, which is dead code
+            // today (this listener only runs where `hasMenuBar()` is true)
+            // and kept only so a future caller cannot silently do nothing.
+            if (hasMenuBar()) showProjectsWindow();
+            else if (navigationRef.isReady())
+              navigationRef.navigate('Dashboard');
+          } else if (command === 'nav.settings') {
+            if (navigationRef.isReady()) navigationRef.navigate('Settings');
+          } else if (command === 'file.new') {
             setNewOpen(true);
           } else if (command === 'file.open') {
             const picker = createFilePicker();

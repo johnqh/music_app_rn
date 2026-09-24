@@ -141,6 +141,31 @@ const ALLOWED_NON_UI = new Set([
   'src/services/persistence/project-ui.ts',
   'src/services/persistence/project-write.ts',
   'src/services/playback/bind-player.ts',
+  // Cross-window state sharing. The desktop Projects window is a second,
+  // fully separate `RCTRootView` — a different React tree from the main
+  // window's — so the two can only agree on the same open documents and the
+  // same cached project list through a module-level singleton, not through
+  // context. Wiring, not a rule about music.
+  'src/app/appState.ts',
+  // Which navigator implementation a stack uses: `@react-navigation/stack`
+  // on desktop (native-stack has no macOS platform), native-stack on mobile.
+  // A platform choice about navigation, not about music.
+  'src/app/createAppStackNavigator.ts',
+  // The closed vocabulary of the desktop Projects window's sidebar panes,
+  // shared between the sidebar and the split view so the two cannot
+  // disagree about the set. A type declaration, nothing to test.
+  'src/app/projects-window/paneKey.ts',
+  // The desktop Projects window boundary: opening it, focusing the main
+  // window, and closing it, all native module calls (`MoosiacProjectsWindow`
+  // — `AppDelegate.mm` on macOS, `WindowManagerModule.cpp` on Windows).
+  // Platform glue in the same sense as `menu-commands.ts`, and for the same
+  // reason: the native module is declared in this app, so no library could
+  // own it either.
+  'src/platform/projectsWindow.ts',
+  // The window title bar and the app's own menu-bar name, both native module
+  // calls (`MoosiacWindowTitle`). Same shape as `projectsWindow.ts` above —
+  // `menu-commands.ts`'s own comment explains why this cannot be a library.
+  'src/platform/windowTitle.ts',
 ]);
 
 describe('music_app_rn holds UI only', () => {

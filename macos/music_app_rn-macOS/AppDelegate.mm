@@ -19,6 +19,18 @@
  */
 static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
 
+/*
+  Forward-declared so `applicationDidFinishLaunching` can call it directly —
+  the full class (`MoosiacProjectsWindow`, below `AppDelegate`'s own
+  `@implementation`) needs `AppDelegate`'s `window`/`rootViewFactory`
+  properties (inherited from `RCTAppDelegate`), which is the reverse
+  dependency of the menu bridge and window-title classes below, which
+  `AppDelegate` never calls into directly.
+*/
+@interface MoosiacProjectsWindow : NSObject <RCTBridgeModule>
++ (void)showProjectsWindow;
+@end
+
 @implementation AppDelegate
 
 /*
@@ -72,7 +84,20 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
   self.dependencyProvider = [RCTAppDependencyProvider new];
 
   [self giveFileMenuItemsImages];
-  return [super applicationDidFinishLaunching:notification];
+  [super applicationDidFinishLaunching:notification];
+
+  /*
+    Projects, not a blank Untitled document, is the first thing a reader
+    sees. `super`'s call above already created and showed `self.window` (the
+    editor) — it still exists, because "New" needs a window to open into and
+    a document to open one from Projects needs the shared list this same
+    process already built — it is just not the one in front. `showProjects
+    Window` runs the identical creation `MoosiacProjectsWindow.show()` (the
+    JS-reachable version, for File ▸ Projects) does, so launch and the menu
+    command can never drift into two ways of making this window.
+  */
+  [self.window orderOut:nil];
+  [MoosiacProjectsWindow showProjectsWindow];
 }
 
 /*
@@ -136,6 +161,23 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
 - (void)moosiacExportWav:(id)sender { [self postMenuCommand:@"export.wav"]; }
 - (void)moosiacExportMp3:(id)sender { [self postMenuCommand:@"export.mp3"]; }
 
+/*
+  The title bar's own buttons, now that the title bar itself is gone on
+  desktop (`AppLayout`'s `hasMenuBar()` gate — see `menu-commands.ts`). Undo
+  and Redo repoint the storyboard's stock Edit-menu items, which targeted
+  `undo:`/`redo:` on the first responder and did nothing here for the same
+  reason New/Open/Save did nothing: nothing in the chain implements them.
+  Print repoints the File menu's own stock item the same way. Projects and
+  Settings are new items — the title bar's rightmost two buttons, which
+  nothing else in the app reaches on macOS.
+*/
+- (void)moosiacEditUndo:(id)sender { [self postMenuCommand:@"edit.undo"]; }
+- (void)moosiacEditRedo:(id)sender { [self postMenuCommand:@"edit.redo"]; }
+- (void)moosiacFilePrint:(id)sender { [self postMenuCommand:@"file.print"]; }
+- (void)moosiacFileSnapshots:(id)sender { [self postMenuCommand:@"file.snapshots"]; }
+- (void)moosiacNavProjects:(id)sender { [self postMenuCommand:@"nav.projects"]; }
+- (void)moosiacNavSettings:(id)sender { [self postMenuCommand:@"nav.settings"]; }
+
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
 {
   return [self bundleURL];
@@ -144,7 +186,17 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
 - (NSURL *)bundleURL
 {
 #if DEBUG
-  return [[RCTBundleURLProvider sharedSettings] jsBundleURLForBundleRoot:@"index"];
+  /*
+    `RCTBundleURLProvider` has no packager to auto-detect on macOS the way it
+    does on a paired iOS simulator/device, so with nothing set it resolves to
+    nil rather than a guess — "No script URL provided" in the RedBox, with
+    every other symptom (no network request, no logs, nothing our own code
+    ever runs) following from that. Set explicitly, matching the same fix on
+    the iOS side (`AppDelegate.swift`) and this project's Metro port.
+  */
+  RCTBundleURLProvider *provider = [RCTBundleURLProvider sharedSettings];
+  provider.jsLocation = @"localhost:8091";
+  return [provider jsBundleURLForBundleRoot:@"index"];
 #else
   return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];
 #endif
@@ -206,6 +258,187 @@ RCT_EXPORT_MODULE(MoosiacMenuBridge);
 - (void)handleMenuCommand:(NSNotification *)note
 {
   [self sendEventWithName:@"menuCommand" body:note.userInfo];
+}
+
+@end
+
+/**
+ * Sets the window's title bar text from JavaScript, and the app's own name
+ * everywhere AppKit's template baked in the Xcode project's name instead.
+ *
+ * `CFBundleName` (Info.plist's `$(PRODUCT_NAME)`) is what an unset window
+ * title falls back to, and it is the Xcode target's own name, baked in at
+ * build time — not `CONSTANTS.APP_NAME`, which reads `VITE_APP_NAME` from
+ * `.env` at Metro-bundle time. Keeping one name in one place (the JS
+ * constant, same as every other branding string) means setting it here
+ * rather than duplicating the env-var read into an Xcode build setting,
+ * which would be the exact "one fact restated twice" this family's other
+ * packages warn about.
+ *
+ * `setAppName:` is the same fix applied to the menu bar. Five places in
+ * `Main.storyboard` spell the Xcode project's name literally — the App
+ * menu's own title, "About/Hide/Quit music_app_rn" inside it, and
+ * "music_app_rn Help" — because that generated template has no way to know
+ * the product's name is "Moosiac" and not its codebase's. Rather than
+ * hardcoding "Moosiac" into the storyboard, a second place for the two to
+ * drift, every menu item is walked recursively and `PLACEHOLDER_APP_NAME`
+ * replaced wherever it appears in a title — which reaches all five without
+ * this file needing to know their ids, and touches nothing else, since
+ * "File", "Edit", "Undo" and the rest never contain it.
+ */
+@interface MoosiacWindowTitle : NSObject <RCTBridgeModule>
+@end
+
+/**
+ * The literal string every renamed menu item starts with — the Xcode
+ * project's own name (`music_app_rn`), not `CONSTANTS.APP_NAME`. Xcode
+ * generated the project under this name before the product was ever called
+ * Moosiac, and every "About X"/"Hide X"/"Quit X"/"X Help" item's title is
+ * this string, verbatim, from that template.
+ */
+static NSString *const kPlaceholderAppName = @"music_app_rn";
+
+@implementation MoosiacWindowTitle
+
+RCT_EXPORT_MODULE(MoosiacWindowTitle);
+
++ (BOOL)requiresMainQueueSetup
+{
+  return YES;
+}
+
+RCT_EXPORT_METHOD(setTitle:(NSString *)title)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    // Every window *except* Projects: that one names itself once, natively,
+    // when `MoosiacProjectsWindow` creates it, and is never the active
+    // document's title — see that class for why `identifier` is the marker.
+    for (NSWindow *window in [NSApplication sharedApplication].windows) {
+      if ([window.identifier isEqualToString:@"MoosiacProjectsWindow"]) continue;
+      window.title = title;
+    }
+  });
+}
+
+- (void)renameMenu:(NSMenu *)menu from:(NSString *)placeholder to:(NSString *)name
+{
+  for (NSMenuItem *item in menu.itemArray) {
+    if ([item.title rangeOfString:placeholder].location != NSNotFound) {
+      item.title = [item.title stringByReplacingOccurrencesOfString:placeholder withString:name];
+    }
+    if (item.submenu) [self renameMenu:item.submenu from:placeholder to:name];
+  }
+}
+
+RCT_EXPORT_METHOD(setAppName:(NSString *)name)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    NSMenu *mainMenu = [NSApplication sharedApplication].mainMenu;
+    if (mainMenu) [self renameMenu:mainMenu from:kPlaceholderAppName to:name];
+  });
+}
+
+@end
+
+/**
+ * A *separate* native window for the desktop Projects screen — not a screen
+ * pushed onto the editor window's own stack, and not application-modal: the
+ * editor stays interactive while this is open, ordinary-window behaviour.
+ * `show`/`focusMain` are what `platform/projectsWindow.ts` calls; `File ▸
+ * Projects…` (`AppDelegate`'s `moosiacNavProjects:`) reaches `show` the same
+ * way every other menu command reaches JavaScript, through the notification
+ * `MoosiacMenuBridge` turns into `nav.projects`, which
+ * `MenuFileCommands.tsx` turns into this call — and launch reaches it
+ * directly, native to native, since there is no JavaScript running yet the
+ * first time it is needed.
+ *
+ * **One `RCTBridge`, two `RCTRootView`s.** `AppDelegate.rootViewFactory` is
+ * what `RCTAppDelegate` itself uses to build the editor window's root view;
+ * calling it again with a different module name (`MoosiacProjects`,
+ * registered in `index.js`) returns a second root view sharing the same
+ * bridge and JS runtime — which is what lets both windows read the same
+ * document list (`appState.ts`'s module-level singleton) rather than each
+ * holding an independent copy that could disagree about what is open.
+ *
+ * **Created once, then reused.** `setReleasedWhenClosed:NO` keeps the
+ * `NSWindow` (and the React tree inside it — its scroll position, a
+ * half-typed sign-in field) alive after the reader closes it, so a second
+ * `show` brings back exactly what was there rather than a fresh mount.
+ * `identifier` marks it so `MoosiacWindowTitle.setTitle:` can leave its
+ * title alone — that method retitles the *document* window as the active
+ * document changes, and this window is never that.
+ */
+@implementation MoosiacProjectsWindow
+
+RCT_EXPORT_MODULE(MoosiacProjectsWindow);
+
++ (BOOL)requiresMainQueueSetup
+{
+  return YES;
+}
+
+static NSWindow *sProjectsWindow = nil;
+
++ (void)showProjectsWindow
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    if (!sProjectsWindow) {
+      RCTAppDelegate *appDelegate = (RCTAppDelegate *)[NSApplication sharedApplication].delegate;
+      NSRect frame = NSMakeRect(0, 0, 900, 600);
+      RCTPlatformView *rootView = [appDelegate.rootViewFactory viewWithModuleName:@"MoosiacProjects"
+                                                                initialProperties:nil];
+      rootView.frame = frame;
+
+      sProjectsWindow = [[NSWindow alloc] initWithContentRect:frame
+                                                      styleMask:NSWindowStyleMaskTitled | NSWindowStyleMaskResizable |
+                                                                NSWindowStyleMaskClosable | NSWindowStyleMaskMiniaturizable
+                                                        backing:NSBackingStoreBuffered
+                                                          defer:NO];
+      // Not localized: native code has no reach into i18n at the moment this
+      // is first needed, which can be before any JS has run at all (launch).
+      // A window chrome label this rarely seen is not worth a bridge call for.
+      sProjectsWindow.title = @"Projects";
+      sProjectsWindow.identifier = @"MoosiacProjectsWindow";
+      sProjectsWindow.releasedWhenClosed = NO;
+      NSViewController *rootViewController = [NSViewController new];
+      rootViewController.view = rootView;
+      sProjectsWindow.contentViewController = rootViewController;
+      [sProjectsWindow center];
+    }
+    [sProjectsWindow makeKeyAndOrderFront:nil];
+    [NSApp activateIgnoringOtherApps:YES];
+  });
+}
+
+RCT_EXPORT_METHOD(show)
+{
+  [MoosiacProjectsWindow showProjectsWindow];
+}
+
+RCT_EXPORT_METHOD(focusMain)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    RCTAppDelegate *appDelegate = (RCTAppDelegate *)[NSApplication sharedApplication].delegate;
+    [appDelegate.window makeKeyAndOrderFront:nil];
+    [NSApp activateIgnoringOtherApps:YES];
+  });
+}
+
+/*
+  Dismissed by New/Template/Import landing a project, or by the reader's own
+  click on the native close button — never by anything else this window
+  draws, since it draws no close control of its own. `orderOut:`, not
+  `close:` or `performClose:`: both of those still end up here anyway
+  (AppKit's default close action), and ordering out directly is what
+  `releasedWhenClosed = NO` already promised — hidden, not destroyed, so
+  `show` next time brings back exactly what was on screen rather than a
+  fresh mount that lost a half-typed sign-in field.
+*/
+RCT_EXPORT_METHOD(close)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [sProjectsWindow orderOut:nil];
+  });
 }
 
 @end

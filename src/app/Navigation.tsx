@@ -1,10 +1,18 @@
 /**
  * The app's screens, mirroring the web app's routes.
  *
- * The web is a router over `/:lang/...`; this is a native stack over the same
+ * The web is a router over `/:lang/...`; this is a stack over the same
  * destinations — dashboard, editor, community, published, docs, settings,
  * credits and sign-in. Matching the set is what makes the two the same product;
  * matching the *mechanism* would not, since a URL is not a thing a phone has.
+ * Native on iOS and Android, plain JS on macOS and Windows — see
+ * `createAppStackNavigator` for why the split exists.
+ *
+ * **Dashboard is still a screen here for iOS and Android**, which navigate to
+ * it in place (`EditorScreen`'s title bar). Desktop's File ▸ Projects opens a
+ * *separate* native window instead (`ProjectsWindow.tsx`) — see
+ * `MenuFileCommands.tsx`'s `nav.projects` handling — so this screen is simply
+ * unreached there, not removed.
  *
  * **There is no auth gate.** The web app puts one above everything except
  * community and published pages; here the editor works on a local document with
@@ -15,7 +23,7 @@ import {
   NavigationContainer,
   createNavigationContainerRef,
 } from '@react-navigation/native';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { createAppStackNavigator } from './createAppStackNavigator';
 import { useTranslation } from 'react-i18next';
 import { EditorScreen } from '@/features/editor/EditorScreen';
 import { DashboardScreen } from '@/screens/DashboardScreen';
@@ -43,7 +51,7 @@ export type RootStackParamList = {
   About: undefined;
 };
 
-const Stack = createNativeStackNavigator<RootStackParamList>();
+const Stack = createAppStackNavigator<RootStackParamList>();
 
 /**
  * For what sits above the navigator and still has to open a screen: the macOS

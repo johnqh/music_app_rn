@@ -5,6 +5,9 @@
 #include "PrintModule.h"
 #include "FileSystemModule.h"
 #include "SynthModule.h"
+#include "MenuBridgeModule.h"
+#include "WindowManagerModule.h"
+#include "WindowTitleModule.h"
 
 using namespace winrt::Microsoft::ReactNative;
 

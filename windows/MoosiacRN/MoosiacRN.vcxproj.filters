@@ -5,21 +5,27 @@
   </ItemGroup>
   <ItemGroup>
     <Midl Include="App.idl" />
+    <Midl Include="ProjectsPage.idl" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="App.cpp" />
+    <ClCompile Include="ProjectsPage.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
     <ClCompile Include="ReactPackageProvider.cpp" />
     <ClCompile Include="FilePickerModule.cpp" />
     <ClCompile Include="PrintModule.cpp" />
     <ClCompile Include="FileSystemModule.cpp" />
     <ClCompile Include="SynthModule.cpp" />
+    <ClCompile Include="MenuBridgeModule.cpp" />
+    <ClCompile Include="WindowManagerModule.cpp" />
+    <ClCompile Include="WindowTitleModule.cpp" />
     <ClCompile Include="AutolinkedNativeModules.g.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.h" />
+    <ClInclude Include="ProjectsPage.h" />
     <ClInclude Include="ReactPackageProvider.h" />
     <ClInclude Include="FilePickerModule.h" />
     <ClInclude Include="PrintModule.h" />
@@ -28,6 +34,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SynthModule.h" />
+    <ClInclude Include="MenuBridgeModule.h" />
+    <ClInclude Include="WindowManagerModule.h" />
+    <ClInclude Include="WindowTitleModule.h" />
     <ClInclude Include="AutolinkedNativeModules.g.h" />
   </ItemGroup>
   <ItemGroup>
@@ -69,5 +78,6 @@
   </ItemGroup>
   <ItemGroup>
     <Page Include="MainPage.xaml" />
+    <Page Include="ProjectsPage.xaml" />
   </ItemGroup>
 </Project>

@@ -311,6 +311,33 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
 
   const onExport = useCallback(() => setExportOpen(true), []);
 
+  /**
+   * Prints, if this build has a print service.
+   *
+   * Rendering the pages is synchronous and takes a moment on a long score, so
+   * the flag goes up first — otherwise the app looks frozen between the tap
+   * and the print dialog appearing. Declared ahead of the menu-command
+   * listener below, which calls it for `file.print`.
+   */
+  const [printing, setPrinting] = useState(false);
+  /*
+    The title bar opens the print sheet — what to print, the paper, the
+    orientation, as the web print view asks — and the sheet's answer prints.
+  */
+  const [printOpen, setPrintOpen] = useState(false);
+  const visibleTrackIds = useStore(document.store, selectVisibleTrackIds);
+  const onPrint = useCallback(() => setPrintOpen(true), []);
+  const runPrint = useCallback(
+    (options: PrintPlanOptions) => {
+      setPrintOpen(false);
+      setPrinting(true);
+      void printScore(score!, options)
+        .catch(error => reportError(error, { context: 'print' }))
+        .finally(() => setPrinting(false));
+    },
+    [score],
+  );
+
   /*
     The File menu's Export items run the export directly rather than opening
     the sheet: the menu item already names the format, and making the reader
@@ -332,36 +359,30 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     useCallback(
       (command: MenuCommand) => {
         const format = MENU_EXPORT[command];
-        if (format) runExport(format);
+        if (format) {
+          runExport(format);
+          return;
+        }
+        // Undo/Redo, Print and Snapshots: the title bar's own buttons, and
+        // this is where they land now that a desktop build has no title bar
+        // to press (`AppLayout`'s `hasMenuBar()` gate). Guarded exactly as
+        // the buttons were — `canUndo`/`canRedo`/`playing` off the store,
+        // `canPrint()` for a build with no print service, `projectId` for a
+        // local file with no snapshot history — so a command that arrives for
+        // an unavailable action does nothing rather than something wrong.
+        const state = document.store.getState();
+        if (command === 'edit.undo') {
+          if (state.canUndo && state.state !== 'playing') state.undo();
+        } else if (command === 'edit.redo') {
+          if (state.canRedo && state.state !== 'playing') state.redo();
+        } else if (command === 'file.print') {
+          if (canPrint()) onPrint();
+        } else if (command === 'file.snapshots') {
+          if (projectId) setSnapshotsOpen(true);
+        }
       },
-      [MENU_EXPORT, runExport],
+      [MENU_EXPORT, runExport, document, onPrint, projectId],
     ),
-  );
-
-  /**
-   * Prints, if this build has a print service.
-   *
-   * Rendering the pages is synchronous and takes a moment on a long score, so
-   * the flag goes up first — otherwise the app looks frozen between the tap
-   * and the print dialog appearing.
-   */
-  const [printing, setPrinting] = useState(false);
-  /*
-    The title bar opens the print sheet — what to print, the paper, the
-    orientation, as the web print view asks — and the sheet's answer prints.
-  */
-  const [printOpen, setPrintOpen] = useState(false);
-  const visibleTrackIds = useStore(document.store, selectVisibleTrackIds);
-  const onPrint = useCallback(() => setPrintOpen(true), []);
-  const runPrint = useCallback(
-    (options: PrintPlanOptions) => {
-      setPrintOpen(false);
-      setPrinting(true);
-      void printScore(score!, options)
-        .catch(error => reportError(error, { context: 'print' }))
-        .finally(() => setPrinting(false));
-    },
-    [score],
   );
 
   if (!score) return <EmptyState message={t('editor.noScore')} />;
@@ -373,21 +394,19 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       onSave={onSave}
       onExport={onExport}
       /*
-        Settings is reachable from here and nowhere else. It holds the theme,
-        the language, sign-in and the way to Docs, Shortcuts, Resources, About
-        and Credits, and nothing in the app navigated to it — the screen was in
-        the stack and unreachable, so every one of those was a dead end on the
-        Mac. The AppKit "Settings…" item (⌘,) is still the generated template
-        item, which names no action and is therefore disabled; wiring it is a
-        native change.
+        Settings holds the theme, the language, sign-in and the way to Docs,
+        Shortcuts, Resources, About and Credits. On iOS and Android this is
+        the only route there; on a desktop build the title bar is gone
+        (`hasMenuBar()`) and `nav.settings` — the App menu's Preferences… on
+        macOS, wired in `AppDelegate.mm` — is.
       */
       onSettings={() => navigation.navigate('Settings')}
       /*
-        And the projects list, which nothing navigated to at all. That screen
-        carries New Project, every import and the server project list, and on
-        iOS and Android it was unreachable — the Mac reaches the same things
-        from the File menu, which a phone does not have, so this platform had
-        no way to open any document but the scratch one made at launch.
+        And the projects list: New Project, every import and the server
+        project list. Same split — this prop is iOS/Android's route, and a
+        desktop build reaches it through `nav.projects` in the File menu
+        instead, handled in `MenuFileCommands` rather than here because it
+        must work with no document open at all.
       */
       onDocuments={() => navigation.navigate('Dashboard')}
       {...(canPrint() ? { onPrint, printing } : {})}

@@ -41,12 +41,44 @@ import { AudioImportSheet } from './AudioImportSheet';
  * this control stays useful signed out — which is why it sits above the
  * sign-in gate.
  */
-const OFFERED = [
-  { value: 'midi', labelKey: 'dashboard.importMidi' },
-  { value: 'musicxml', labelKey: 'dashboard.importMusicXml' },
-  { value: 'tracker', labelKey: 'dashboard.importModule' },
-  { value: 'audio', labelKey: 'dashboard.importAudio' },
-  { value: 'project', labelKey: 'dashboard.importProject' },
+/**
+ * Exported for `ImportPane.tsx` (the desktop Projects window's Import
+ * sidebar item) — the same five formats in the same order, so the dropdown
+ * here and the list there cannot silently drift into offering different
+ * things.
+ *
+ * `descriptionKey` reuses the in-app documentation's own `docs.formats.in.*`
+ * table (`docs/formats/README` doc screen, "Formats it reads") rather than a
+ * second set of strings — the same sentence explaining what a MIDI or
+ * MusicXML import keeps is one fact, not two that agree until an edit misses
+ * one of them.
+ */
+export const OFFERED = [
+  {
+    value: 'midi',
+    labelKey: 'dashboard.importMidi',
+    descriptionKey: 'docs.formats.in.midi',
+  },
+  {
+    value: 'musicxml',
+    labelKey: 'dashboard.importMusicXml',
+    descriptionKey: 'docs.formats.in.musicxml',
+  },
+  {
+    value: 'tracker',
+    labelKey: 'dashboard.importModule',
+    descriptionKey: 'docs.formats.in.tracker',
+  },
+  {
+    value: 'audio',
+    labelKey: 'dashboard.importAudio',
+    descriptionKey: 'docs.formats.in.audio',
+  },
+  {
+    value: 'project',
+    labelKey: 'dashboard.importProject',
+    descriptionKey: 'docs.formats.in.project',
+  },
 ] as const;
 
 export type ImportButtonsProps = {

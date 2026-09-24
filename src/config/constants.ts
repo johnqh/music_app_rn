@@ -20,4 +20,15 @@ export const CONSTANTS = {
   FIREBASE_API_KEY: process.env.FIREBASE_API_KEY ?? '',
   FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN ?? '',
   FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ?? '',
+  /**
+   * Branding. Named `VITE_*`, same as music_app's and svgr_app_rn's — a
+   * bundler prefix that means nothing to Metro, kept anyway so one `.env`
+   * value name works across the whole family regardless of which app reads
+   * it. Never hardcode the product name / company / domain in a component;
+   * read it from here.
+   */
+  APP_NAME: process.env.VITE_APP_NAME ?? 'Moosiac',
+  APP_DOMAIN: process.env.VITE_APP_DOMAIN ?? 'moosiac.com',
+  COMPANY_NAME: process.env.VITE_COMPANY_NAME ?? 'Sudobility',
+  SUPPORT_EMAIL: process.env.VITE_SUPPORT_EMAIL ?? 'support@sudobility.com',
 } as const;

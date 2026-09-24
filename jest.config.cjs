@@ -23,7 +23,11 @@ module.exports = {
   transformIgnorePatterns: [
     // Bun stores deps in node_modules/.bun/<pkg>@<ver>/node_modules/<pkg>/,
     // so the usual pattern misses every one of them.
-    'node_modules/(?!(\\.bun/[^/]+/node_modules/)?(react-native|react-native-macos|@react-native|@react-native-community|@react-native-segmented-control|@react-navigation|nativewind|react-native-css-interop|react-native-reanimated|react-native-svg|react-native-heroicons|react-native-gesture-handler|react-native-safe-area-context|clsx|class-variance-authority|tailwind-merge|@testing-library|@sudobility|immer|zustand|nanoid|uuid|i18next|react-i18next|@moosiac)/)',
+    // `@react-native-documents/picker` ships ESM (`export { … } from`), like
+    // every other package in this list — added when `MenuFileCommands.tsx`
+    // got its first test and pulled it in through `file-picker.ts`, the first
+    // time anything under jest reached that import.
+    'node_modules/(?!(\\.bun/[^/]+/node_modules/)?(react-native|react-native-macos|@react-native|@react-native-community|@react-native-segmented-control|@react-native-documents|@react-navigation|nativewind|react-native-css-interop|react-native-reanimated|react-native-svg|react-native-heroicons|react-native-gesture-handler|react-native-safe-area-context|clsx|class-variance-authority|tailwind-merge|@testing-library|@sudobility|immer|zustand|nanoid|uuid|i18next|react-i18next|@moosiac)/)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',

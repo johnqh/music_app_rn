@@ -10,6 +10,7 @@ import { jest } from '@jest/globals';
 import { act, fireEvent } from '@testing-library/react-native';
 import { devicePrefs } from '@/config/useDevicePrefs';
 import { renderWithApp, testDocument } from '@/test/render';
+import * as menuCommands from '@/app/menu-commands';
 
 /*
   The tab strip reads the open-document list from a provider this test has no
@@ -42,6 +43,51 @@ jest.mock('@/features/score/ScrollingScore', () => ({
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { AppLayout } = require('./AppLayout') as typeof import('./AppLayout');
+
+describe('AppLayout desktop menu', () => {
+  /*
+    `hasMenuBar()` is the one test — see `menu-commands.ts`'s own reasoning —
+    so this is exercised by spying on its answer rather than standing up a
+    real native menu module. `AppLayout` reads the export off the shared
+    module object on every call, so a spy is visible with no re-require:
+    `jest.resetModules()` + a fresh `require` was tried first and corrupted
+    every test after it, because it also evicts `react` from the cache and a
+    component required afterwards holds a second, disconnected copy of it —
+    `Cannot read properties of null (reading 'useRef')` on the very next
+    render, this file's or another's.
+  */
+  afterEach(() => jest.restoreAllMocks());
+
+  it('hides the title bar where a menu bar carries its buttons instead', () => {
+    jest.spyOn(menuCommands, 'hasMenuBar').mockReturnValue(true);
+    const view = renderWithApp(
+      <AppLayout
+        document={testDocument()}
+        onSave={jest.fn()}
+        onExport={jest.fn()}
+        onSettings={jest.fn()}
+        onDocuments={jest.fn()}
+      />,
+    );
+    expect(view.queryByLabelText('Save now')).toBeNull();
+    expect(view.queryByLabelText('Projects')).toBeNull();
+  });
+
+  it('shows the title bar on a platform with no menu bar', () => {
+    jest.spyOn(menuCommands, 'hasMenuBar').mockReturnValue(false);
+    const view = renderWithApp(
+      <AppLayout
+        document={testDocument()}
+        onSave={jest.fn()}
+        onExport={jest.fn()}
+        onSettings={jest.fn()}
+        onDocuments={jest.fn()}
+      />,
+    );
+    expect(view.queryByLabelText('Save now')).not.toBeNull();
+    expect(view.queryByLabelText('Projects')).not.toBeNull();
+  });
+});
 
 describe('AppLayout', () => {
   it('puts the transport above the keyboard', () => {

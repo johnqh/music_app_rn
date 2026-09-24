@@ -51,7 +51,22 @@ import {
   SignInRequired,
 } from './ScreenScaffold';
 
-export function DashboardScreen() {
+export type DashboardScreenProps = {
+  /**
+   * Overrides how opening a project is handled. Defaults to navigating this
+   * screen's own stack to `Editor` — the phone/tablet route, where Dashboard
+   * is a screen in the same navigator as the one it opens into.
+   *
+   * The desktop Projects window (`ProjectsWindow.tsx`) passes one: it has no
+   * `Editor` screen of its own — it is a *separate* native window from the
+   * one that does — so "opening" a project there means activating it in the
+   * document list both windows share and bringing the other window forward,
+   * not a navigation this stack could perform.
+   */
+  onOpenProject?: (id: string) => void;
+};
+
+export function DashboardScreen({ onOpenProject }: DashboardScreenProps = {}) {
   const { t } = useTranslation();
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -59,8 +74,11 @@ export function DashboardScreen() {
   const context = useServerContext();
 
   const openProject = useCallback(
-    (id: string) => navigation.navigate('Editor', { projectId: id }),
-    [navigation],
+    (id: string) =>
+      onOpenProject
+        ? onOpenProject(id)
+        : navigation.navigate('Editor', { projectId: id }),
+    [navigation, onOpenProject],
   );
 
   if (!context) {
@@ -133,12 +151,15 @@ function ProjectList({
   );
 
   /**
-   * Uploads a recording and opens the project it makes.
+   * Uploads a recording and lets it transcribe in the background.
    *
-   * The score does not exist yet when this returns: the project is created in a
-   * `transcribing` state and fills itself in when the job lands, which is why
-   * the editor is opened straight away rather than waited for — the same shape
-   * as a generation, and the editor already knows how to show one running.
+   * The score does not exist yet when this returns: the project is created in
+   * a `transcribing` state and fills itself in when the job lands. Unlike a
+   * generation, this does **not** open the editor straight away — a
+   * transcription runs for minutes, not seconds, and a reader dropped into a
+   * project with nothing in it yet has no way to tell "still working" from
+   * "came back empty". The list shows it as transcribing instead (see
+   * `renderItem` below), and opening it is refused until it lands.
    */
   const transcribeAudio = useCallback(
     async (file: NativeUploadFile) => {
@@ -147,11 +168,10 @@ function ProjectList({
       // server behind it, but the session can still have ended since.
       const token = await context.getToken?.();
       if (!client || !token) return;
-      const saved = await client.transcribeAudio(file, file.name, token);
+      await client.transcribeAudio(file, file.name, token);
       await refetch();
-      onOpened(saved.id);
     },
-    [context, refetch, onOpened],
+    [context, refetch],
   );
 
   if (isLoading) {
@@ -199,23 +219,42 @@ function ProjectList({
           </Text>
         }
         renderItem={({ item }: { item: ProjectSummary }) => {
-          const activate = () => onOpen(item.id);
+          // A `generating` or `transcribing` project has no finished score to
+          // open yet — the editor would show whatever is there so far (for
+          // transcription, minutes of nothing) with no way to tell "still
+          // working" from "came back empty". Refused here instead, at the one
+          // place that already knows every project's status without an extra
+          // fetch.
+          const busy = item.status !== 'ready';
+          const activate = () => {
+            if (!busy) onOpen(item.id);
+          };
+          const statusLabel =
+            item.status === 'transcribing'
+              ? t('dashboard.transcribing')
+              : item.status === 'generating'
+              ? t('dashboard.generating')
+              : null;
           return (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={item.name}
+              accessibilityState={{ disabled: busy }}
               onPress={activate}
               // macOS has no synthesized-touch fallback for an assistive press,
               // so a VoiceOver activation reaches a Pressable only through
               // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
               onAccessibilityTap={activate}
               className="border-border bg-card rounded-lg border p-3"
-              style={{ minHeight: MIN_TOUCH_TARGET }}
+              style={{ minHeight: MIN_TOUCH_TARGET, opacity: busy ? 0.6 : 1 }}
             >
               <Text className="text-foreground font-medium">{item.name}</Text>
               <Text className="text-muted-foreground text-sm">
                 {new Date(item.updatedAt).toLocaleString()}
               </Text>
+              {statusLabel ? (
+                <Text className="text-info mt-1 text-sm">{statusLabel}</Text>
+              ) : null}
             </Pressable>
           );
         }}

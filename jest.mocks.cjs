@@ -16,10 +16,8 @@ require('react-native-gesture-handler/jestSetup');
   than failing to store. The package ships this mock for exactly that; it is an
   in-memory map, so a test that writes a preference can read it back.
 */
-jest.mock(
-  '@react-native-async-storage/async-storage',
-  () =>
-    require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock'),
 );
 
 jest.mock('react-native-safe-area-context', () => {
@@ -65,3 +63,18 @@ jest.mock('react-native-localize', () => ({
   getLocales: () => [{ languageTag: 'en', languageCode: 'en' }],
 }));
 
+/*
+  The document picker, which resolves its native module (`getEnforcing`) at
+  import time and throws without one — the same shape as `react-native-fs`
+  above. Nothing under test drives a real pick; this exists so `file-picker.ts`
+  and anything importing it (`MenuFileCommands`, `ImportButtons`, …) can be
+  required at all.
+*/
+jest.mock('@react-native-documents/picker', () => ({
+  errorCodes: { OPERATION_CANCELED: 'OPERATION_CANCELED' },
+  isErrorWithCode: () => false,
+  isKnownType: () => ({ UTType: null, mimeType: null }),
+  keepLocalCopy: jest.fn(async () => []),
+  pick: jest.fn(async () => []),
+  types: { allFiles: 'public.item' },
+}));

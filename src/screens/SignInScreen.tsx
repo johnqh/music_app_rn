@@ -55,6 +55,13 @@ export function SignInScreen() {
       title={creating ? t('auth.createAccount') : t('nav.signIn')}
     >
       <View className="gap-3">
+        {/*
+          `Input`'s own default carries no visible border — measured against
+          the web app's, which does (a 1px border in its own `Input`) — so
+          without one here, a text field and the plain background behind it
+          are the same colour and nothing says "type here". `border-border`
+          is the same token every bordered card in this app already uses.
+        */}
         <Input
           value={email}
           onChangeText={setEmail}
@@ -62,6 +69,7 @@ export function SignInScreen() {
           autoCapitalize="none"
           keyboardType="email-address"
           accessibilityLabel={t('auth.email')}
+          className="border-border rounded-md border"
         />
         <Input
           value={password}
@@ -69,6 +77,7 @@ export function SignInScreen() {
           placeholder={t('auth.passwordLabel')}
           secureTextEntry
           accessibilityLabel={t('auth.passwordLabel')}
+          className="border-border rounded-md border"
         />
         {error ? (
           <Text className="text-destructive text-base">{error}</Text>

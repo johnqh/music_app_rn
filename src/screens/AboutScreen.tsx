@@ -16,6 +16,7 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { AppVersion, Text } from '@sudobility/components-rn';
 import { version as appVersion } from '../../package.json';
+import { CONSTANTS } from '@/config/constants';
 import { ScreenScaffold } from './ScreenScaffold';
 
 export function AboutScreen() {
@@ -41,7 +42,7 @@ export function AboutScreen() {
           {t('home.heroTitle')}
         </Text>
         <Text className="text-muted-foreground text-base">
-          {t('home.heroBody', { appName: t('app.name') })}
+          {t('home.heroBody')}
         </Text>
       </View>
 
@@ -65,7 +66,7 @@ export function AboutScreen() {
           from `package.json`, which `push_all` bumps and syncs to the native
           platform files — so there is one version, not a second one typed. */}
       <View className="pt-2">
-        <AppVersion appName={t('app.name')} version={appVersion} />
+        <AppVersion appName={CONSTANTS.APP_NAME} version={appVersion} />
       </View>
     </ScreenScaffold>
   );

@@ -9,9 +9,6 @@
     "-1": "Flat",
     "-2": "Double flat"
   },
-  "app": {
-    "name": "Moosiac"
-  },
   "articulation": {
     "accent": "Accent",
     "marcato": "Marcato",
@@ -109,6 +106,8 @@
   "dashboard": {
     "create": "Create",
     "empty": "No projects yet.",
+    "generating": "Generating…",
+    "transcribing": "Transcribing…",
     "import": "Import",
     "importFormat": "Import a file",
     "importMidi": "Import MIDI",
@@ -118,6 +117,9 @@
     "importAudio": "Import Audio",
     "importModule": "Import Tracker Module",
     "importProject": "Import project file",
+    "connect": "Connect",
+    "myProjects": "My Projects",
+    "newFromTemplateAction": "New from Template",
     "projectFileError": {
       "invalidJson": "That file is not a project: it could not be read as JSON.",
       "notAProject": "That file is not a Moosiac project.",
@@ -798,7 +800,8 @@
   },
   "errors": {
     "createProject": "Failed to create project",
-    "loadProjects": "Could not load your projects."
+    "loadProjects": "Could not load your projects.",
+    "openProject": "Failed to open project"
   },
   "export": {
     "explain": "Choose a format. Each keeps a different amount of the music: MusicXML keeps the page, MIDI the performance, a tracker module the notes on a grid, and audio only the sound."
@@ -1337,6 +1340,56 @@
     "snapshotFirst": "Snapshot current work first",
     "unpublish": "Unpublish"
   },
+  "templates": {
+    "lead-sheet": {
+      "name": "Lead Sheet",
+      "description": "One treble staff, 16 bars of 4/4. The blank page."
+    },
+    "piano-grand-staff": {
+      "name": "Piano (Grand Staff)",
+      "description": "Treble over bass, 16 bars — two hands on one instrument."
+    },
+    "string-quartet": {
+      "name": "String Quartet",
+      "description": "Violin I & II, viola on alto clef, cello on bass. 16 bars."
+    },
+    "jazz-combo": {
+      "name": "Jazz Combo",
+      "description": "Trumpet, piano, upright bass and a jazz kit. 32 bars, B♭ major."
+    },
+    "rock-band": {
+      "name": "Rock Band",
+      "description": "Two guitars, bass and a rock kit. 32 bars at 120."
+    },
+    "satb-choir": {
+      "name": "SATB Choir",
+      "description": "Soprano, alto, tenor and bass voices. 16 bars."
+    },
+    "drum-kit": {
+      "name": "Drum Kit",
+      "description": "One percussion staff, 16 bars — the keyboard names every drum."
+    },
+    "waltz": {
+      "name": "Waltz (3/4)",
+      "description": "Piano in three, 24 bars — a different meter to start in."
+    },
+    "jig": {
+      "name": "Jig (6/8)",
+      "description": "A single melody line in compound time, 16 bars."
+    },
+    "gentle-piano-melody": {
+      "name": "Gentle Piano Melody",
+      "description": "An 8-bar C-major piano melody, written in, to start from."
+    },
+    "pop-arrangement": {
+      "name": "Pop Arrangement",
+      "description": "A two-track treble/bass arrangement skeleton, with notes."
+    },
+    "orchestral-passage": {
+      "name": "Orchestral Passage",
+      "description": "Block chords to orchestrate."
+    }
+  },
   "trackerFit": {
     "clampedNotes_one": "{{count}} note outside {{format}}'s range was moved by whole octaves.",
     "clampedNotes_other": "{{count}} notes outside {{format}}'s range were moved by whole octaves.",
@@ -1400,8 +1453,8 @@
     "featureEditorBody": "Engraved notation with a piano keyboard beneath it, over one score, with full undo history.",
     "featureAiTitle": "AI generation",
     "featureAiBody": "Generate whole pieces, or regenerate a selection of bars.",
-    "featureFormatsTitle": "MIDI & MusicXML",
-    "featureFormatsBody": "Import and export standard formats that work with your other tools."
+    "featureFormatsTitle": "Bring in audio. Make it yours.",
+    "featureFormatsBody": "Import MP3, MPA, or WAV recordings and turn them into editable notes. Work with songs from AI music generators like Suno and Udio, or pull notes from a favorite song to practice an instrument."
   },
   "clef": {
     "treble": "Treble",

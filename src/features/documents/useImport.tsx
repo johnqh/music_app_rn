@@ -48,7 +48,20 @@ function describeFailure(error: unknown, t: (key: string) => string): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-export function useImport() {
+export type UseImportOptions = {
+  /**
+   * Called once a file has actually landed in the document list — after
+   * `importDocument` succeeds, warnings or not, since a warning is not a
+   * failure. The desktop Projects window's `ImportPane` is the one caller
+   * that needs this: it is what tells `ProjectsSplitView` a project opened,
+   * so the window can focus the editor and dismiss itself the same way
+   * New and Template do.
+   */
+  onImported?: () => void;
+};
+
+export function useImport(options: UseImportOptions = {}) {
+  const { onImported } = options;
   const { t } = useTranslation();
   const list = useDocumentList();
   // Signed in, an import becomes a server project; the services say whether
@@ -88,11 +101,12 @@ export function useImport() {
           midiOptions,
         );
         if (result.warnings.length > 0) setWarnings(result.warnings);
+        onImported?.();
       } catch (error) {
         setFailure(describeFailure(error, t));
       }
     },
-    [list, services, t],
+    [list, services, t, onImported],
   );
 
   /**

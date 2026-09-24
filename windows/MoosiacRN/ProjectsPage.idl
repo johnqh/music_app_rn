@@ -1,0 +1,10 @@
+#include "NamespaceRedirect.h"
+
+namespace MoosiacRN
+{
+    [default_interface]
+    runtimeclass ProjectsPage : XAML_NAMESPACE.Controls.Page
+    {
+        ProjectsPage();
+    }
+}

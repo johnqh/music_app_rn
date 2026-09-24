@@ -1,10 +1,12 @@
 /**
  * The editor, laid out as the web app lays it out.
  *
- * Title bar, then the score with the inspector beside it, then the transport,
- * the keyboard and the status strip. The web app's `AppLayout` has exactly this
- * order, and matching it is the point: the two are the same product, and
- * somebody who knows where the transport is should not have to look for it.
+ * Title bar (where there is no menu bar to carry it instead — see
+ * `hasMenuBar()` below), then the score with the inspector beside it, then the
+ * transport, the keyboard and the status strip. The web app's `AppLayout` has
+ * exactly this order, and matching it is the point: the two are the same
+ * product, and somebody who knows where the transport is should not have to
+ * look for it.
  *
  * The inspector is a right-hand column, as it is on the web, and on a touch
  * device it **trades places with the canvas track gutter**: shown, the gutter
@@ -64,6 +66,7 @@ import { useScoreSelection } from '@/features/score/useScoreSelection';
 import { EditorToolbar } from '@/features/score-editor/EditorToolbar';
 import { LyricEntryBar } from '@/features/score-editor/LyricEntryBar';
 import { TitleBar } from './TitleBar';
+import { hasMenuBar } from '@/app/menu-commands';
 import { devicePrefs, useDevicePrefs } from '@/config/useDevicePrefs';
 import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
 import { StatusBar } from './StatusBar';
@@ -382,16 +385,29 @@ export function AppLayout({
       edges={['top', 'bottom', 'left', 'right']}
       onLayout={onLayout}
     >
-      <TitleBar
-        document={document}
-        onSave={onSave}
-        onExport={onExport}
-        onSettings={onSettings}
-        onDocuments={onDocuments}
-        {...(onSnapshots ? { onSnapshots } : {})}
-        {...(onPrint ? { onPrint } : {})}
-        {...(printing === undefined ? {} : { printing })}
-      />
+      {/*
+        Hidden wherever a menu bar exists to carry its buttons instead —
+        `hasMenuBar()` is the honest test, exactly as `menu-commands.ts`
+        argues for itself. macOS and Windows both grow one; iOS and Android
+        never will, and it is this bar or nothing there. Every button here has
+        a menu command by the same name's platform module: Save is `file.save`,
+        Undo/Redo are `edit.undo`/`edit.redo`, Export is the five `export.*`
+        formats, Print is `file.print`, Snapshots is `file.snapshots`, and
+        Projects/Settings are `nav.projects`/`nav.settings` — see
+        `MenuFileCommands` and `EditorScreen` for where each lands.
+      */}
+      {hasMenuBar() ? null : (
+        <TitleBar
+          document={document}
+          onSave={onSave}
+          onExport={onExport}
+          onSettings={onSettings}
+          onDocuments={onDocuments}
+          {...(onSnapshots ? { onSnapshots } : {})}
+          {...(onPrint ? { onPrint } : {})}
+          {...(printing === undefined ? {} : { printing })}
+        />
+      )}
       <DocumentTabs />
       <EditorToolbar
         document={document}
