@@ -219,13 +219,14 @@ function ProjectList({
           </Text>
         }
         renderItem={({ item }: { item: ProjectSummary }) => {
-          // A `generating` or `transcribing` project has no finished score to
-          // open yet — the editor would show whatever is there so far (for
-          // transcription, minutes of nothing) with no way to tell "still
+          // A `transcribing` project has no finished score to open yet — the
+          // editor would show minutes of nothing with no way to tell "still
           // working" from "came back empty". Refused here instead, at the one
           // place that already knows every project's status without an extra
-          // fetch.
-          const busy = item.status !== 'ready';
+          // fetch. A `generating` project is the opposite case: its notes
+          // stream into the editor as they are written, and opening it is
+          // how you watch.
+          const busy = item.status === 'transcribing';
           const activate = () => {
             if (!busy) onOpen(item.id);
           };

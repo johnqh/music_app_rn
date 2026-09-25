@@ -93,6 +93,13 @@ export type TransportBarProps = {
    */
   spatialActive?: boolean;
   onToggleSpatial?: () => void;
+  /**
+   * Keeps Play off while something else owns the score — a generation job
+   * writing it live. Everything else on the bar still works: Stop, the
+   * position controls, loop, metronome, tempo and volume change nothing the
+   * job is about to replace.
+   */
+  playDisabled?: boolean;
 };
 
 export function TransportBar({
@@ -103,6 +110,7 @@ export function TransportBar({
   onToggleKeyboard,
   spatialActive,
   onToggleSpatial,
+  playDisabled = false,
 }: TransportBarProps) {
   const { t } = useTranslation();
   const ink = useNotationInk();
@@ -176,6 +184,7 @@ export function TransportBar({
       <PlayPauseButton
         store={store}
         playing={playing}
+        disabled={playDisabled}
         onPress={() => void transport.togglePlay()}
       />
       <IconButton label={t('transport.stop')} onPress={transport.stop}>
@@ -372,10 +381,12 @@ export function TransportBar({
 function PlayPauseButton({
   store,
   playing,
+  disabled = false,
   onPress,
 }: {
   store: TransportStoreApi;
   playing: boolean;
+  disabled?: boolean;
   onPress: () => void;
 }) {
   const { t } = useTranslation();
@@ -387,7 +398,7 @@ function PlayPauseButton({
   return (
     <IconButton
       label={playing ? t('transport.pause') : t('transport.play')}
-      disabled={loading}
+      disabled={loading || disabled}
       onPress={onPress}
     >
       {playing ? (

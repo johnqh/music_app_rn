@@ -14,6 +14,7 @@ import { useProjectGeneration } from '@sudobility/music_client';
 import type {
   ForegroundPort,
   GenerationClient,
+  LiveGenerationFinal,
   ProjectGeneration,
 } from '@sudobility/music_client';
 import { InsufficientCreditsError } from '@sudobility/music_client';
@@ -44,6 +45,12 @@ const APP_FOREGROUND: ForegroundPort = {
 export type UseDocumentGenerationOptions = {
   /** Called when the server's copy has moved on. Awaited before unlocking. */
   onApplied?: () => void | Promise<void>;
+  /**
+   * Called with a generation's final score when the live stream delivered
+   * it. Awaited before unlocking; `onApplied` is then the polling fallback
+   * rather than a second adoption.
+   */
+  onComplete?: (final: LiveGenerationFinal) => void | Promise<void>;
   /**
    * Writes any pending edit before the job starts.
    *
@@ -103,13 +110,30 @@ export function useDocumentGeneration(
     [configured],
   );
 
+  /*
+    The live stream, from the same server the client talks to. Only with a
+    real client: a test's stub has no socket to open, and the hook opens none
+    when no `live` is given.
+  */
+  const live = useMemo(() => {
+    const baseUrl =
+      configured &&
+      'baseUrl' in configured &&
+      typeof configured.baseUrl === 'string'
+        ? configured.baseUrl
+        : null;
+    return baseUrl ? { baseUrl } : undefined;
+  }, [configured]);
+
   return useProjectGeneration(configured ? projectId : null, {
     store: document.store,
     client,
     getToken,
     foreground: APP_FOREGROUND,
+    ...(live ? { live } : {}),
     ...(options.flush ? { flush: options.flush } : {}),
     ...(options.onApplied ? { onApplied: options.onApplied } : {}),
+    ...(options.onComplete ? { onComplete: options.onComplete } : {}),
     /*
       A 402 is the one API refusal with an obvious remedy, so it raises the
       paywall rather than reporting a failure — and returning true marks it

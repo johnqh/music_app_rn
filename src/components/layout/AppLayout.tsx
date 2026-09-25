@@ -120,12 +120,22 @@ export type AppLayoutProps = {
    */
   exportSheet?: ReactNode;
   /**
-   * Anything that covers the score — a generation in progress, most of all.
+   * The row that says a job owns the score — a generation in progress.
    *
-   * Mounted over the notation and under nothing, because what it is covering is
-   * exactly what must not be touched while it is there.
+   * Mounted between the score and the transport rather than over the
+   * notation: the job's notes stream into the score as they are written, and
+   * the score is what the reader opened it to watch. What must not happen
+   * meanwhile is refused by `scoreReadOnly`, `playDisabled` and the store's
+   * edit lock, not by hiding the sheet.
    */
   overlay?: ReactNode;
+  /**
+   * Drops the score's touch handlers, so a tap neither moves the caret nor
+   * opens the menu that edits. For a project a job is writing.
+   */
+  scoreReadOnly?: boolean;
+  /** Keeps the transport's Play off. For a score about to be replaced. */
+  playDisabled?: boolean;
   /**
    * Generate Again, for a project whose score came from a generation: shown on
    * the property sheet's Score tab, where the web shows it. Absent otherwise.
@@ -165,6 +175,8 @@ export function AppLayout({
   onDocuments,
   exportSheet,
   overlay,
+  scoreReadOnly = false,
+  playDisabled = false,
   generation,
   onSnapshots,
   onReplace,
@@ -439,7 +451,6 @@ export function AppLayout({
         */}
         <View className="min-h-0 flex-1 flex-row">
           <View className="min-h-0 min-w-0 flex-1">
-            {overlay}
             {spatialActive ? (
               <SpatialSection document={document} />
             ) : (
@@ -452,8 +463,9 @@ export function AppLayout({
                 layoutMode={layoutMode}
                 pitchDisplay={pitchDisplay}
                 showTrackInfo={showTrackInfo}
-                onPress={onScorePress}
-                onLongPress={onScoreLongPress}
+                {...(scoreReadOnly
+                  ? {}
+                  : { onPress: onScorePress, onLongPress: onScoreLongPress })}
                 {...(initialScroll === undefined ? {} : { initialScroll })}
                 {...(onLeaveScroll ? { onLeaveScroll } : {})}
               />
@@ -518,10 +530,12 @@ export function AppLayout({
         the transport, which is the row a thumb goes to without looking. Fixed
         rows first, the variable one last.
       */}
+      {overlay}
       <TransportBar
         score={score}
         transport={transport}
         store={document.store}
+        playDisabled={playDisabled}
         spatialActive={spatialActive}
         onToggleSpatial={() => setSpatialActive(active => !active)}
         keyboardCollapsed={keyboardCollapsed}

@@ -1483,5 +1483,17 @@
     "alto": "Alto",
     "tenor": "Tenor",
     "percussion": "Percussion"
+  },
+  "overlay": {
+    "progress": "{{stage}} {{done}} of {{total}}: {{label}}",
+    "reconnecting": "Reconnecting…",
+    "polling": "Live updates unavailable; checking the project periodically.",
+    "lockedWhileGenerating": "Editing and playback resume when it finishes.",
+    "stage": {
+      "plan": "Planning",
+      "part": "Part",
+      "section": "Section",
+      "chunk": "Chunk"
+    }
   }
 }

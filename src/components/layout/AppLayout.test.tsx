@@ -227,6 +227,26 @@ describe('AppLayout', () => {
       expect(document.store.getState().selection.trackIds).toEqual([trackId]);
     });
 
+    it('hands the score no touch handlers while it is read-only', () => {
+      // A job writing the score: a tap must neither move the caret nor open
+      // the menu that edits. The lock in the store is what holds; this is
+      // what keeps the touch from reaching it at all.
+      mockScoreProps.onPress = undefined;
+      mockScoreProps.onLongPress = undefined;
+      renderWithApp(
+        <AppLayout
+          document={testDocument({ measures: 4 })}
+          onSave={jest.fn()}
+          onExport={jest.fn()}
+          onSettings={jest.fn()}
+          onDocuments={jest.fn()}
+          scoreReadOnly
+        />,
+      );
+      expect(mockScoreProps.onPress).toBeUndefined();
+      expect(mockScoreProps.onLongPress).toBeUndefined();
+    });
+
     it('keeps the selection when a long press lands on a bare stave, and opens the menu', () => {
       /*
         The long press used to aim the caret first, which clears the selection

@@ -81,9 +81,10 @@ function ProjectListing({
         </Text>
       }
       renderItem={({ item }: { item: ProjectSummary }) => {
-        // A `generating` or `transcribing` project has no finished score to
-        // open yet — the same refusal `DashboardScreen`'s list makes.
-        const busy = item.status !== 'ready';
+        // A `transcribing` project has no finished score to open yet — the
+        // same refusal `DashboardScreen`'s list makes, and the same welcome
+        // for a `generating` one, whose notes can be watched arriving.
+        const busy = item.status === 'transcribing';
         const activate = () => {
           if (!busy) onOpen(item.id);
         };

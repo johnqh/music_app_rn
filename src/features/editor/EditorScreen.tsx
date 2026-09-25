@@ -223,6 +223,24 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     // first — otherwise it is invisible to the job and then overwritten by its
     // result.
     flush: () => document.store.getState().saveNow(),
+    /*
+      The live stream delivered the final score — the one `GET /projects/:id`
+      would return — so it is adopted from the message rather than fetched
+      again, stopping the player first for the reason `onApplied` gives. The
+      store refuses it for a project that is no longer this document's.
+    */
+    onComplete: async final => {
+      if (!projectId) return;
+      document.store
+        .getState()
+        .adoptLiveResult(final.score, getAppServices().player, {
+          projectId,
+          serverUpdatedAt: final.updatedAt,
+          ...(final.lastGeneration
+            ? { lastGeneration: final.lastGeneration }
+            : {}),
+        });
+    },
     onApplied: async () => {
       /*
         Stop first, then adopt — the invariant the web app keeps too.
@@ -241,6 +259,19 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       await document.store.getState().reloadFromServer(getAppServices().player);
     },
   });
+
+  /*
+    The edit lock, for as long as a job owns the project. The read-only score
+    and the disabled Play are what the reader sees; this is what holds: every
+    edit goes through `dispatchCommand`, and with the lock held it refuses
+    content commands from any path — the keyboard, the inspector, a menu — so
+    nothing can dirty a score the server is in the middle of replacing.
+  */
+  const generating = generation.generating;
+  useEffect(() => {
+    document.store.getState().setEditLocked(generating);
+    return () => document.store.getState().setEditLocked(false);
+  }, [document, generating]);
 
   const generateInsertedBars = useCallback(() => {
     if (!projectId) return;
@@ -431,10 +462,17 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       onReplace={projectId ? setReplaceScope : undefined}
       onGenerateTrack={projectId ? () => setGenerateTrackOpen(true) : undefined}
       onGenerateInsertedBars={projectId ? generateInsertedBars : undefined}
+      // Read-only while a job writes the score: its notes arrive live and
+      // are worth watching, but not touching; and nothing plays music that
+      // is about to be replaced.
+      scoreReadOnly={generating}
+      playDisabled={generating}
       overlay={
         <GenerationOverlay
-          visible={generation.generating}
+          visible={generating}
           error={generation.error}
+          progress={generation.progress}
+          live={generation.live}
           onCancel={() => void generation.cancel()}
         />
       }

@@ -114,6 +114,26 @@ describe('useDocumentGeneration', () => {
     expect(options.flush).toBe(flush);
     expect(options.onApplied).toBe(onApplied);
   });
+
+  it('passes onComplete through, and omits it when not given', () => {
+    const onComplete = jest.fn();
+    expect(run('p1', { onComplete }).options.onComplete).toBe(onComplete);
+    expect('onComplete' in run('p1').options).toBe(false);
+  });
+
+  it('opens the live stream against the configured server, and none without one', () => {
+    // The socket URL is derived from the same base the client talks to.
+    const { options } = run(
+      'p1',
+      {},
+      {
+        createJob: jest.fn(),
+        baseUrl: 'https://api.example.test',
+      },
+    );
+    expect(options.live).toEqual({ baseUrl: 'https://api.example.test' });
+    expect('live' in run('p1', {}, null).options).toBe(false);
+  });
 });
 
 describe('the foreground port', () => {
