@@ -66,7 +66,7 @@ import { LevelSlider } from '@/components/controls/LevelSlider';
 import { ToolbarSelect } from '@/components/controls/ToolbarSelect';
 import { SynthLoadIndicator, useSynthLoad } from './SynthLoadIndicator';
 import { IconButton } from '@/components/layout/IconButton';
-import { usePositionReadout } from './usePositionReadout';
+import { useOnPositionFrame, usePositionReadout } from './usePositionReadout';
 import type { PositionSource } from './usePositionReadout';
 import type { TransportBinding, TransportStoreApi } from './usePlayerBinding';
 
@@ -474,7 +474,9 @@ const PositionScrubber = memo(function PositionScrubber({
   const { t } = useTranslation();
   const [tick, setTick] = useState(0);
   const [dragging, setDragging] = useState<number | null>(null);
-  useEffect(() => transport.onPosition(setTick), [transport]);
+  // Per frame, not per report — and never from inside the report; see
+  // `useOnPositionFrame` for the render-phase update this used to trip.
+  useOnPositionFrame(transport, setTick);
 
   return (
     <View className="min-w-24 flex-1">
