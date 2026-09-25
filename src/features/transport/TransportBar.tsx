@@ -42,6 +42,7 @@ import { useTranslation } from 'react-i18next';
 import { Input, Text } from '@sudobility/components-rn';
 import {
   ArrowPathRoundedSquareIcon,
+  CubeTransparentIcon,
   PauseIcon,
   PlayIcon,
   StopIcon,
@@ -85,6 +86,13 @@ export type TransportBarProps = {
    */
   keyboardCollapsed?: boolean;
   onToggleKeyboard?: () => void;
+  /**
+   * Whether the Spatial 3D stage is showing in the notation's place, and how
+   * to toggle it. Optional for the same reasons as the keyboard's: a host
+   * without the view does not offer a dead control.
+   */
+  spatialActive?: boolean;
+  onToggleSpatial?: () => void;
 };
 
 export function TransportBar({
@@ -93,6 +101,8 @@ export function TransportBar({
   store,
   keyboardCollapsed,
   onToggleKeyboard,
+  spatialActive,
+  onToggleSpatial,
 }: TransportBarProps) {
   const { t } = useTranslation();
   const ink = useNotationInk();
@@ -296,6 +306,26 @@ export function TransportBar({
         beside it: something you turn on while playing rather than something you
         edit. The web app puts it in the same place.
       */}
+      {/*
+        The Spatial toggle, before the keyboard's: the same on/off idiom, in
+        the same place the web bar puts it, with the same solid
+        `CubeTransparentIcon`.
+      */}
+      {onToggleSpatial ? (
+        <IconButton
+          label={
+            spatialActive ? t('editor.hideSpatial') : t('editor.showSpatial')
+          }
+          selected={spatialActive === true}
+          fill
+          onPress={onToggleSpatial}
+        >
+          <CubeTransparentIcon
+            size={ICON_SIZE}
+            color={spatialActive ? ink.onPrimary : ink.foreground}
+          />
+        </IconButton>
+      ) : null}
       {onToggleKeyboard ? (
         <IconButton
           label={

@@ -34,5 +34,7 @@ module.exports = {
     // Skia draws through a native canvas that does not exist under jest; the
     // score view is checked by the app, not here.
     '^@shopify/react-native-skia$': '<rootDir>/jest.skia.cjs',
+    // The Spatial stage: Skia plus `three`, neither of which jest can run.
+    '^@sudobility/music_spatial_rn$': '<rootDir>/jest.spatial.cjs',
   },
 };

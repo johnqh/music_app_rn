@@ -72,9 +72,11 @@ function recordingPlayer() {
 function Harness({
   document,
   keyboard,
+  spatial,
 }: {
   document: ReturnType<typeof testDocument>;
   keyboard?: { collapsed: boolean; onToggle: () => void };
+  spatial?: { active: boolean; onToggle: () => void };
 }) {
   const score = document.store.getState().score!;
   const transport = usePlayerBinding(document.store);
@@ -88,6 +90,9 @@ function Harness({
             keyboardCollapsed: keyboard.collapsed,
             onToggleKeyboard: keyboard.onToggle,
           }
+        : {})}
+      {...(spatial
+        ? { spatialActive: spatial.active, onToggleSpatial: spatial.onToggle }
         : {})}
     />
   );
@@ -314,5 +319,41 @@ describe('the keyboard toggle', () => {
     // Rather than a dead control.
     const { view } = setup();
     expect(view.queryByLabelText(/keyboard/i)).toBeNull();
+  });
+});
+
+describe('the Spatial toggle', () => {
+  /*
+    The same on/off idiom as the keyboard's, beside it, where the web bar
+    puts it: the 3D stage is something you turn on while playing, not a
+    setting. The bar reports the press; `AppLayout` holds the state.
+  */
+  it('reports a toggle rather than holding the state itself', () => {
+    const onToggle = jest.fn();
+    installTestAppServices({ player: recordingPlayer().player });
+    const view = renderWithApp(
+      <Harness
+        document={testDocument()}
+        spatial={{ active: false, onToggle }}
+      />,
+    );
+    fireEvent.press(view.getByLabelText('Show Spatial view'));
+    expect(onToggle).toHaveBeenCalled();
+  });
+
+  it('names what pressing it will do, not what is showing', () => {
+    installTestAppServices({ player: recordingPlayer().player });
+    const view = renderWithApp(
+      <Harness
+        document={testDocument()}
+        spatial={{ active: true, onToggle: jest.fn() }}
+      />,
+    );
+    expect(view.getByLabelText('Hide Spatial view')).toBeTruthy();
+  });
+
+  it('offers nothing when the host has no Spatial view', () => {
+    const { view } = setup();
+    expect(view.queryByLabelText(/Spatial/)).toBeNull();
   });
 });

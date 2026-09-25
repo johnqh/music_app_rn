@@ -1,5 +1,5 @@
 /**
- * The property sheet's tabs: the web's four, plus this app's Unplugged.
+ * The property sheet's four tabs.
  *
  * The order and the opening tab are music_types' (`INSPECTOR_TABS`) and
  * music_editing's (`defaultInspectorTab`), shared with the web: Score, Track, Note, Bar — and a
@@ -42,16 +42,15 @@ describe('InspectorPanel', () => {
     expect(view.getByTestId('inspector-tabs').props.selectedIndex).toBe(1);
   });
 
-  it("offers the web's four tabs in its order, then Unplugged", () => {
-    // Unplugged is this app's own, kept until music_spatial_rn exists — see
-    // `RN_INSPECTOR_TABS`. Last, so the shared four keep the web's positions.
+  it("offers the four tabs in the web's order", () => {
+    // No Unplugged tab: the stage arrangement is the Spatial view now, a
+    // toggle on the transport bar, as on the web.
     const view = renderWithApp(<InspectorPanel document={testDocument()} />);
     expect(view.getByTestId('inspector-tabs').props.values).toEqual([
       'Score',
       'Track',
       'Note',
       'Bar',
-      'Unplugged',
     ]);
   });
 

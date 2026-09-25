@@ -55,6 +55,7 @@ import {
   selectVisibleTrackIds,
 } from '@sudobility/music_editing';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
+import { SpatialSection } from '@/features/spatial/SpatialSection';
 import type { ScrollOffset } from '@/features/score/useScoreCanvas';
 import { TransportBar } from '@/features/transport/TransportBar';
 import { usePlayerBinding } from '@/features/transport/usePlayerBinding';
@@ -198,6 +199,13 @@ export function AppLayout({
     a full score on a phone.
   */
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('page');
+  /*
+    The Spatial 3D stage, in the notation's place while on. Session state,
+    not a device preference, as on the web: a view you step into and out of,
+    not a way the app is set up. `SpatialSection` itself switches the
+    Unplugged mix on for as long as it is mounted.
+  */
+  const [spatialActive, setSpatialActive] = useState(false);
   /*
     Open by default only where the music still reads beside it.
 
@@ -432,20 +440,24 @@ export function AppLayout({
         <View className="min-h-0 flex-1 flex-row">
           <View className="min-h-0 min-w-0 flex-1">
             {overlay}
-            <ScrollingScore
-              score={score}
-              activeTrackId={activeTrackId}
-              trackIds={visibleTrackIds}
-              selection={scoreSelection}
-              zoom={zoom}
-              layoutMode={layoutMode}
-              pitchDisplay={pitchDisplay}
-              showTrackInfo={showTrackInfo}
-              onPress={onScorePress}
-              onLongPress={onScoreLongPress}
-              {...(initialScroll === undefined ? {} : { initialScroll })}
-              {...(onLeaveScroll ? { onLeaveScroll } : {})}
-            />
+            {spatialActive ? (
+              <SpatialSection document={document} />
+            ) : (
+              <ScrollingScore
+                score={score}
+                activeTrackId={activeTrackId}
+                trackIds={visibleTrackIds}
+                selection={scoreSelection}
+                zoom={zoom}
+                layoutMode={layoutMode}
+                pitchDisplay={pitchDisplay}
+                showTrackInfo={showTrackInfo}
+                onPress={onScorePress}
+                onLongPress={onScoreLongPress}
+                {...(initialScroll === undefined ? {} : { initialScroll })}
+                {...(onLeaveScroll ? { onLeaveScroll } : {})}
+              />
+            )}
           </View>
           {inspectorVisible ? (
             /*
@@ -510,6 +522,8 @@ export function AppLayout({
         score={score}
         transport={transport}
         store={document.store}
+        spatialActive={spatialActive}
+        onToggleSpatial={() => setSpatialActive(active => !active)}
         keyboardCollapsed={keyboardCollapsed}
         onToggleKeyboard={() =>
           devicePrefs.getState().setKeyboardCollapsed(!keyboardCollapsed)

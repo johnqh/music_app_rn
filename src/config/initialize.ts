@@ -38,15 +38,16 @@ import { bundledSoundfontPath, nativeSynthApi } from '@moosiac/synth';
 /**
  * The player for this platform.
  *
- * On iOS and macOS, libfluidsynth (`@moosiac/synth`'s shared `apple/`
- * wrapper — a vendored XCFramework on iOS, Homebrew's dylib on macOS), and on
- * Windows TinySoundFont — the synthesizers the web plays through, driven by
- * the same shared scheduler (`SoundfontPlaybackEngine` over
- * `NativeSynthBackend`). The per-note MP3 engine decoded every instrument
- * before the first note and timed itself from JavaScript timers: a long
- * "Preparing instruments" and a playhead that jumped. Platforms without a
- * native module or bundled font retain the sample engine as a fallback —
- * Android, until it gets its own native synth module.
+ * On macOS, libfluidsynth (`@moosiac/synth`'s shared `apple/` wrapper over
+ * Homebrew's dylib), and on Windows TinySoundFont — the synthesizers the web
+ * plays through, driven by the same shared scheduler
+ * (`SoundfontPlaybackEngine` over `NativeSynthBackend`). The per-note MP3
+ * engine decoded every instrument before the first note and timed itself
+ * from JavaScript timers: a long "Preparing instruments" and a playhead that
+ * jumped. Platforms without a native module or a font it can read retain the
+ * sample engine as a fallback — Android, until it gets its own native synth
+ * module, and iOS, whose vendored XCFramework cannot read the bundled SF3
+ * (see `createPlayer`).
  */
 /*
   Dialogs as real macOS sheets. This app patches a modal host into React Native
@@ -57,10 +58,21 @@ import { bundledSoundfontPath, nativeSynthApi } from '@moosiac/synth';
 if (Platform.OS === 'macos') setNativeDialogsSupported(true);
 
 function createPlayer(soundfont: SoundfontOptions): IMusicPlayer {
+  /*
+    Not iOS, for now. The vendored FluidSynth XCFramework (the official iOS
+    build) is compiled without libsndfile — its binary carries the string
+    "Unsupported wave format %u (without libsndfile)" and no `sf_open` or
+    Vorbis symbols — and `FluidR3Mono_GM.sf3` is Ogg-Vorbis-compressed, which
+    only libsndfile can decode. So `fluid_synth_sfload` failed on every
+    instrument load on iPhone and iPad ("Could not load the soundfont at
+    …/MoosiacRN.app/FluidR3Mono_GM.sf3"), while macOS, linking Homebrew's
+    libsndfile-enabled fluidsynth, played the same file fine. iOS takes the
+    sample engine until either an SF3-capable FluidSynth is vendored (built
+    with libsndfile + ogg + vorbis for device and simulator) or an
+    uncompressed SF2 is bundled instead.
+  */
   const soundfontUri =
-    Platform.OS === 'ios' ||
-    Platform.OS === 'macos' ||
-    Platform.OS === 'windows'
+    Platform.OS === 'macos' || Platform.OS === 'windows'
       ? bundledSoundfontPath()
       : null;
   if (soundfontUri && nativeSynthApi.isSupported()) {

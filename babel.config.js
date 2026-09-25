@@ -25,6 +25,14 @@ module.exports = function (api) {
         optional, and the failure appears only when bundling.
       */
       '@babel/plugin-transform-export-namespace-from',
+      /*
+        `three` (reached through `@sudobility/music_spatial_core`, the Spatial
+        view's projection) uses static class blocks, which the React Native
+        preset does not transform — Metro stops the bundle with "Static class
+        blocks are not enabled". Same category as the zod plugin above: only
+        seen when bundling.
+      */
+      '@babel/plugin-transform-class-static-block',
       [
         'module-resolver',
         {

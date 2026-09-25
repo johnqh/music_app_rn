@@ -9,7 +9,7 @@
   <Identity
     Name="bf643b29-b8f6-42a2-8797-8c822d9c7283"
     Publisher="CN=qianghuang"
-    Version="0.0.47.0" />
+    Version="0.0.48.0" />
 
   <mp:PhoneIdentity PhoneProductId="bf643b29-b8f6-42a2-8797-8c822d9c7283" PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
 
@@ -20,8 +20,8 @@
   </Properties>
 
   <Dependencies>
-    <TargetDeviceFamily Name="Windows.Universal" MinVersion="0.0.47.0" MaxVersionTested="10.0.26100.0" />
-    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="0.0.47.0" MaxVersionTested="10.0.26100.0" />
+    <TargetDeviceFamily Name="Windows.Universal" MinVersion="0.0.48.0" MaxVersionTested="10.0.26100.0" />
+    <TargetDeviceFamily Name="Windows.Desktop" MinVersion="0.0.48.0" MaxVersionTested="10.0.26100.0" />
   </Dependencies>
 
   <Resources>

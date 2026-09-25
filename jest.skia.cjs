@@ -14,6 +14,9 @@ const Passthrough = ({ children }) => React.createElement(View, null, children);
 module.exports = {
   Canvas: Passthrough,
   Picture: () => null,
+  // The Spatial stage draws its projected wireframes with these.
+  Points: () => null,
+  Rect: () => null,
   Group: Passthrough,
   createPicture: () => ({}),
   Skia: {},

@@ -89,6 +89,33 @@ describe('AppLayout desktop menu', () => {
   });
 });
 
+describe('AppLayout Spatial view', () => {
+  it("shows the 3D stage in the score's place while the toggle is on", () => {
+    /*
+      The stage replaces the notation rather than joining it: the transport's
+      toggle swaps the two, and the button then offers the way back. The view
+      itself is stubbed (`jest.spatial.cjs`) — what is pinned is the swap.
+    */
+    const view = renderWithApp(
+      <AppLayout
+        document={testDocument()}
+        onSave={jest.fn()}
+        onExport={jest.fn()}
+        onSettings={jest.fn()}
+        onDocuments={jest.fn()}
+      />,
+    );
+    expect(view.queryByTestId('spatial-view')).toBeNull();
+
+    fireEvent.press(view.getByLabelText('Show Spatial view'));
+    expect(view.getByTestId('spatial-view')).toBeTruthy();
+    expect(view.getByLabelText('Hide Spatial view')).toBeTruthy();
+
+    fireEvent.press(view.getByLabelText('Hide Spatial view'));
+    expect(view.queryByTestId('spatial-view')).toBeNull();
+  });
+});
+
 describe('AppLayout', () => {
   it('puts the transport above the keyboard', () => {
     /*
