@@ -57,6 +57,7 @@ import {
 } from '@sudobility/music_lib';
 import { getAppServices } from '@/config/initialize';
 import { getMusicClient } from '@/config/server';
+import { useServerContext } from '@/config/useServerContext';
 import { useAuth } from '@/auth/AuthContext';
 import {
   useActiveDocument,
@@ -150,9 +151,11 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     [list, document],
   );
   const { user, getToken, siteAdmin } = useAuth();
+  const serverContext = useServerContext();
   const score = useStore(document.store, s => s.score);
   const origin = useStore(document.store, s => s.origin);
   const lastGeneration = useStore(document.store, s => s.lastGeneration);
+  const projectOrigin = useStore(document.store, s => s.projectOrigin);
 
   /**
    * The Save button: write what is pending, to wherever the document lives.
@@ -239,6 +242,9 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
           ...(final.lastGeneration
             ? { lastGeneration: final.lastGeneration }
             : {}),
+          // So a blank project reads as generated the moment its score
+          // lands, as the row now says, without fetching the project again.
+          job: final.job ? { id: final.job.id, kind: final.job.kind } : null,
         });
     },
     onApplied: async () => {
@@ -441,6 +447,15 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       */
       onDocuments={() => navigation.navigate('Dashboard')}
       {...(canPrint() ? { onPrint, printing } : {})}
+      {...(projectId
+        ? {
+            origin: {
+              origin: projectOrigin,
+              projectId,
+              context: serverContext,
+            },
+          }
+        : {})}
       {...(projectId && lastGeneration
         ? {
             generation: {

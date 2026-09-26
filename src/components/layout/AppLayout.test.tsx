@@ -173,19 +173,8 @@ describe('AppLayout', () => {
     act(() => devicePrefs.getState().setKeyboardCollapsed(false));
   });
 
-  it('insets every edge, because a landscape phone wears its notch on a side', () => {
-    /*
-      Phones are landscape-only, so the sensor housing is never at the top and
-      the top inset is 0 — which is exactly why `edges={['top','bottom']}`
-      looked right on the Mac and on the iPad and was wrong on every iPhone.
-      Measured on an iPhone 16 Pro simulator with the display mask on: the
-      Dynamic Island covered the transport's Go-to-start button completely, the
-      first control of the editing bar, and the word "Acoustic" in the canvas
-      track gutter.
-
-      Asserted on the prop rather than on a rendered inset: a test renderer has
-      no safe area to measure, and the bug was the *declaration*.
-    */
+  it('insets only the top edge below the status bar', () => {
+    /* The editor content is full-bleed on the sides and bottom. */
     const view = renderWithApp(
       <AppLayout
         document={testDocument()}
@@ -200,7 +189,7 @@ describe('AppLayout', () => {
       .map(node => node.props.edges as string[] | undefined)
       .find(value => Array.isArray(value));
     expect(edges).toBeDefined();
-    expect([...edges!].sort()).toEqual(['bottom', 'left', 'right', 'top']);
+    expect(edges).toEqual(['top']);
   });
 
   describe('touches on the score', () => {

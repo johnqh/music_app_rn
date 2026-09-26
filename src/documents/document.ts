@@ -32,6 +32,7 @@ import type {
   DocumentStore,
   StoreContext,
 } from '@sudobility/music_lib';
+import type { ProjectOrigin } from '@sudobility/music_types';
 
 export type MusicDocument = {
   readonly id: string;
@@ -107,6 +108,8 @@ export function newDocument(
     origin?: DocumentOrigin;
     /** For a project just created: where the create left the server. */
     serverUpdatedAt?: string;
+    /** For a project just created: where the server recorded it came from. */
+    projectOrigin?: ProjectOrigin | null;
   },
 ): MusicDocument {
   return asDocument(
@@ -117,6 +120,9 @@ export function newDocument(
       ...(input.origin ? { origin: input.origin } : {}),
       ...(input.serverUpdatedAt
         ? { serverUpdatedAt: input.serverUpdatedAt }
+        : {}),
+      ...(input.projectOrigin !== undefined
+        ? { projectOrigin: input.projectOrigin }
         : {}),
     }),
   );

@@ -35,6 +35,7 @@ import type {
   TransportSettings,
 } from '@sudobility/music_types';
 import type { IMusicPlayer } from '@sudobility/music_player/core';
+import { playbackTracks } from '@sudobility/music_player/core';
 import { selectVisibleTrackIds } from '@sudobility/music_editing';
 import type { EditingState, EditingStoreApi } from '@sudobility/music_editing';
 import { unpluggedMixes } from '@sudobility/music_lib';
@@ -123,6 +124,26 @@ export type PlayerBinding = {
  */
 const loadedScores = new WeakMap<IMusicPlayer, Score>();
 
+/**
+ * Whether two scores differ in `unplugged` and nothing else — the shape of
+ * every listener or instrument move on the stage. Identity per field: the
+ * store freezes what it holds, so a field that kept its identity kept its
+ * contents.
+ */
+function onlyUnpluggedChanged(before: Score, after: Score): boolean {
+  if (before.unplugged === after.unplugged) return false;
+  const keys = new Set([...Object.keys(before), ...Object.keys(after)]);
+  for (const key of keys) {
+    if (key === 'unplugged') continue;
+    if (
+      (before as unknown as Record<string, unknown>)[key] !==
+      (after as unknown as Record<string, unknown>)[key]
+    )
+      return false;
+  }
+  return true;
+}
+
 /** The measure a tick falls in, on the first track — every track shares the grid. */
 function measureAt(score: Score, tick: number) {
   const measures = score.tracks[0]?.measures ?? [];
@@ -192,14 +213,30 @@ export function bindPlayer<T extends EditingState & Partial<TransportSettings>>(
 
   const offStore = store.subscribe(state => {
     if (state.score !== lastScore) {
+      const previous = lastScore;
       lastScore = state.score;
       // A new score is loaded with the visible tracks as they are now, so the
-      // visible-track check below has nothing to add. This also covers every
-      // drag on the Unplugged stage: moving an instrument or the listener is
-      // a `score.unplugged` edit, so it is a new score reference too, and
-      // `load` recomputes the arrangement's mix from it.
+      // visible-track check below has nothing to add.
       lastVisible = state.visibleTrackIds;
-      if (lastScore) void load(lastScore);
+      if (!lastScore) return;
+      // A drag on the Unplugged stage — the listener or an instrument moved —
+      // is a `score.unplugged` edit and nothing else, and it arrives once per
+      // animation frame. Only the arrangement's mix changed, so push that
+      // mix, as the player itself does for a mix change while playing; a
+      // full `load` here rebuilt the whole note schedule per frame while
+      // stopped, which is what made the first frames of a drag stutter.
+      if (
+        previous &&
+        onlyUnpluggedChanged(previous, lastScore) &&
+        loadedScores.get(player) === previous
+      ) {
+        loadedScores.set(player, lastScore);
+        player.applyMix(
+          playbackTracks(scoreForPlayback(lastScore, state.unpluggedActive)),
+        );
+        return;
+      }
+      void load(lastScore);
       return;
     }
     // Hiding a track silences it — pushed straight to the player rather than

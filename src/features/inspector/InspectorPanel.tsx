@@ -30,6 +30,7 @@ import { ScoreTab } from './ScoreTab';
 import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
 import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
+import type { ProjectOriginProps } from '@/features/generation/ProjectOriginPanel';
 import {
   INSPECTOR_TABS,
   INSPECTOR_TAB_LABEL_KEY,
@@ -53,12 +54,15 @@ export type InspectorPanelProps = {
   onReplace?: (scope: ReplaceScope) => void;
   /** Generate Again, shown under the Score tab's fields, as on the web. */
   generation?: GenerationChoicesProps;
+  /** Where the project came from, shown above Generate Again, as on the web. */
+  origin?: ProjectOriginProps;
 };
 
 export function InspectorPanel({
   document,
   onReplace,
   generation,
+  origin,
 }: InspectorPanelProps) {
   const { t } = useTranslation();
   const selection = useStore(document.store, s => s.selection);
@@ -91,6 +95,7 @@ export function InspectorPanel({
           <ScoreTab
             document={document}
             {...(generation ? { generation } : {})}
+            {...(origin ? { origin } : {})}
           />
         ) : null}
         {tab === 'track' ? (

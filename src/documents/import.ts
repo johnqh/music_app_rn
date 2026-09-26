@@ -37,7 +37,7 @@ import {
   projectScoreForServer,
 } from '@sudobility/music_lib';
 import type { MidiImportOptions, MidiSummary } from '@sudobility/music_lib';
-import type { Score } from '@sudobility/music_types';
+import type { ProjectCreateOrigin, Score } from '@sudobility/music_types';
 import { newDocument } from './document';
 import type { DocumentServices, MusicDocument } from './document';
 import type { DocumentList } from './document-list';
@@ -131,13 +131,15 @@ async function place(
   services: DocumentServices,
   score: Score,
   title: string,
+  /** What the project records it came from: the file, by format and name. */
+  origin: ProjectCreateOrigin,
 ): Promise<MusicDocument> {
   const { context } = services;
   if (hasServer(context) && (await context.getToken()) !== null) {
     try {
       const { client, token } = await authorizedServer(context);
       const saved = await client.createProject(
-        { name: title, score: projectScoreForServer(score) },
+        { name: title, score: projectScoreForServer(score), origin },
         token,
       );
       return newDocument(services, {
@@ -145,6 +147,7 @@ async function place(
         title,
         origin: { kind: 'project', projectId: saved.id },
         serverUpdatedAt: saved.updatedAt,
+        projectOrigin: saved.origin ?? null,
       });
     } catch (error) {
       if (error instanceof ApiError || error instanceof AuthRequiredError) {
@@ -232,7 +235,16 @@ export async function importDocument(
 
   const fileName = uri.split('/').pop() ?? '';
   const document = list.open(
-    await place(services, score, statedTitle || importedTitle(score, fileName)),
+    await place(
+      services,
+      score,
+      statedTitle || importedTitle(score, fileName),
+      {
+        kind: 'imported',
+        format,
+        ...(fileName ? { fileName } : {}),
+      },
+    ),
   );
   return { document, warnings };
 }

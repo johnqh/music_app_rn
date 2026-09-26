@@ -330,7 +330,11 @@ describe('where an import lands', () => {
     expect(state.serverUpdatedAt).toBe('2026-09-15T00:00:00.000Z');
     expect(state.dirty).toBe(false);
     expect(createProject).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'Sonata' }),
+      expect.objectContaining({
+        name: 'Sonata',
+        // The project records the file it came from, by format and name.
+        origin: { kind: 'imported', format: 'midi', fileName: 'a.mid' },
+      }),
       'tok',
     );
     state.dispose();

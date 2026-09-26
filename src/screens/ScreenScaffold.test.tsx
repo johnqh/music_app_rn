@@ -72,47 +72,19 @@ describe('ScreenScaffold', () => {
   });
 });
 
-describe('ScreenScaffold insets', () => {
-  /**
-   * The padding the scrolling body actually lays out with.
-   */
-  function padding() {
+describe('ScreenScaffold edge padding', () => {
+  it('does not add horizontal or bottom safe-area insets', () => {
     const view = renderWithApp(
       <ScreenScaffold title="Projects">
         <ServerUnavailable />
       </ScreenScaffold>,
     );
     const scroller = view.UNSAFE_getByType(ScrollView);
-    return StyleSheet.flatten(
+    const style = StyleSheet.flatten(
       scroller.props.contentContainerStyle as object,
     ) as Record<string, number>;
-  }
-
-  it('keeps the body clear of the side housing', () => {
-    // A notched phone is landscape-only here, so the housing is on a side.
-    const style = padding();
-    expect(style.paddingLeft).toBeGreaterThan(insets.left);
-    expect(style.paddingRight).toBeGreaterThan(insets.right);
-  });
-
-  it('keeps the last row clear of the navigation bar', () => {
-    /*
-      The failure this exists for: `paddingVertical` alone, on the belief that
-      "the scroll view's own content inset covers the bottom". That is a
-      UIScrollView-inside-a-navigation-controller fact and nothing at all on
-      Android, where a scrolled Settings screen put the bottom of its last row
-      inside the gesture band — measured on a Pixel 9 Pro XL, whose
-      `navigationBars` inset is 24dp.
-    */
-    const style = padding();
-    expect(style.paddingBottom).toBeGreaterThanOrEqual(insets.bottom);
-  });
-
-  it('leaves the top to the header the navigator draws', () => {
-    // Doubling it would push every screen's first row down by a header again,
-    // so the top is the scaffold's own padding and the bottom is that plus the
-    // inset — stated as the difference, which is the rule itself.
-    const style = padding();
-    expect(style.paddingBottom - style.paddingTop).toBe(insets.bottom);
+    expect(style.paddingLeft).toBe(16);
+    expect(style.paddingRight).toBe(16);
+    expect(style.paddingBottom).toBe(16);
   });
 });

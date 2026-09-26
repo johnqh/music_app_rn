@@ -29,7 +29,7 @@ import {
   isVocalInstrumentValue,
 } from '@sudobility/music_types';
 import type { NoteEvent } from '@sudobility/music_types';
-import { SafeAreaView, useSafeAreaInsets } from '@/platform/SafeArea';
+import { SafeAreaView } from '@/platform/SafeArea';
 import {
   useCallback,
   useEffect,
@@ -70,6 +70,7 @@ import { TitleBar } from './TitleBar';
 import { hasMenuBar } from '@/app/menu-commands';
 import { devicePrefs, useDevicePrefs } from '@/config/useDevicePrefs';
 import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
+import type { ProjectOriginProps } from '@/features/generation/ProjectOriginPanel';
 import { StatusBar } from './StatusBar';
 import { useContainerSize } from '@/features/layout/useContainerSize';
 import { inspectorOpensByDefault } from '@/features/layout/inspector-default';
@@ -141,6 +142,12 @@ export type AppLayoutProps = {
    * the property sheet's Score tab, where the web shows it. Absent otherwise.
    */
   generation?: GenerationChoicesProps;
+  /**
+   * Where the open project came from — its job, file, recording or source
+   * project — shown on the Score tab above Generate Again, as on the web.
+   * Absent for a document with no project.
+   */
+  origin?: ProjectOriginProps;
   /** Opens the snapshot history. Absent for a document with no project. */
   onSnapshots?: () => void;
   /**
@@ -178,6 +185,7 @@ export function AppLayout({
   scoreReadOnly = false,
   playDisabled = false,
   generation,
+  origin,
   onSnapshots,
   onReplace,
   onGenerateTrack,
@@ -223,11 +231,13 @@ export function AppLayout({
 
     Width alone, and height nowhere in it: a column takes no height, so opening
     one costs the notation nothing but width. An unmeasured 0 answers false,
-    which is the same first-render behaviour as before. The insets have to come
-    off the frame first — see `inspectorOpensByDefault`.
+    which is the same first-render behaviour as before. The content now spans
+    the full width, so safe-area side insets do not reduce available space.
   */
-  const insets = useSafeAreaInsets();
-  const roomForBoth = inspectorOpensByDefault(size.width, insets);
+  const roomForBoth = inspectorOpensByDefault(size.width, {
+    left: 0,
+    right: 0,
+  });
   const [inspectorOpen, setInspectorOpen] = useState<boolean | null>(null);
   const inspectorVisible = inspectorOpen ?? roomForBoth;
   /*
@@ -387,22 +397,13 @@ export function AppLayout({
   if (!score) return null;
   return (
     /*
-      All four edges, and `left`/`right` are the ones that matter here.
-
-      Phones are landscape-only (see the Info.plist), so on every notched
-      iPhone the sensor housing is on a *side* rather than the top — and with
-      only `top`/`bottom` the app drew straight under it. Measured on an
-      iPhone 16 Pro simulator with the display mask on: the Dynamic Island
-      covered the transport's Go-to-start button completely, the first control
-      of the editing bar, and the word "Acoustic" in the canvas track gutter;
-      the rounded screen corners clipped the title bar's glyph at one end and
-      the Settings button at the other. The top inset is 0 in landscape (the
-      status bar is hidden), which is why this looked fine on the Mac and on
-      the iPad, where there is no housing at all.
+      Only the top edge is inset: the custom title bar starts below the status
+      bar. The canvas, transport, keyboard and app background extend edge-to-edge
+      horizontally and to the bottom of the display.
     */
     <SafeAreaView
       className="bg-background flex-1"
-      edges={['top', 'bottom', 'left', 'right']}
+      edges={['top']}
       onLayout={onLayout}
     >
       {/*
@@ -487,6 +488,7 @@ export function AppLayout({
                 document={document}
                 {...(onReplace ? { onReplace } : {})}
                 {...(generation ? { generation } : {})}
+                {...(origin ? { origin } : {})}
               />
             </View>
           ) : null}

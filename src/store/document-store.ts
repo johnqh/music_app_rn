@@ -34,7 +34,11 @@ import {
   createUiSlice,
   createUnpluggedSlice,
 } from '@sudobility/music_editing';
-import { getMusicPosition } from '@sudobility/music_types';
+import {
+  getMusicPosition,
+  originAfterJob,
+  projectOriginForDocument,
+} from '@sudobility/music_types';
 import type {
   EditingState,
   EditingStoreApi,
@@ -48,7 +52,9 @@ import {
 import type {
   DocumentFileStorage,
   DocumentOrigin,
+  GenerationJobKind,
   GenerationRecord,
+  ProjectOrigin,
   SaveState,
   Score,
   TransportSettings,
@@ -82,11 +88,24 @@ export type LiveResultMeta = {
   /** The server's stamp for the score, as `GET /projects/:id` would report it. */
   serverUpdatedAt: string;
   lastGeneration?: GenerationRecord | undefined;
+  /**
+   * The job that produced the score, so the origin the server wrote for a
+   * generated project can be mirrored here without re-reading the row: the
+   * stream carries the score and nothing about where the project came from.
+   */
+  job?: { id: string; kind: GenerationJobKind } | null;
 };
 
 export type DocumentSlice = {
   title: string;
   origin: DocumentOrigin;
+  /**
+   * For a project: where it came from — its job, file, recording or source
+   * project — or null for a local document and for a project written before
+   * the server recorded it. Distinct from `origin`, which says where this
+   * document's bytes live.
+   */
+  projectOrigin: ProjectOrigin | null;
   /** True once something worth saving changed since the last write. */
   dirty: boolean;
   saveState: SaveState;
@@ -168,6 +187,8 @@ export type CreateDocumentStoreOptions = {
   /** For a project: where the server's copy stood when this was read. */
   serverUpdatedAt?: string | null;
   lastGeneration?: GenerationRecord | null;
+  /** For a project: where it came from, as the server recorded it. */
+  projectOrigin?: ProjectOrigin | null;
   /** For a project: client-only state loaded from local storage. */
   localUi?: ProjectLocalUiState;
   debounceMs?: number;
@@ -301,6 +322,7 @@ export function createDocumentStore(options: CreateDocumentStoreOptions) {
         saveState: 'saved' as SaveState,
         serverUpdatedAt: options.serverUpdatedAt ?? null,
         lastGeneration: options.lastGeneration ?? null,
+        projectOrigin: options.projectOrigin ?? null,
         serverAvailable: hasServer(context),
 
         markDirty: () => {
@@ -348,7 +370,13 @@ export function createDocumentStore(options: CreateDocumentStoreOptions) {
           if (!score) throw new Error('Cannot sync a document with no score.');
           const { client, token } = await authorizedServer(context);
           const project = await client.createProject(
-            { name: get().title, score: projectScoreForServer(score) },
+            {
+              name: get().title,
+              score: projectScoreForServer(score),
+              // A document opened from a file becomes an import of that file;
+              // one never saved anywhere started from nothing.
+              origin: projectOriginForDocument(get().origin),
+            },
             token,
           );
           saver.adopted(score);
@@ -357,6 +385,7 @@ export function createDocumentStore(options: CreateDocumentStoreOptions) {
           const unchanged = get().score === score;
           set(state => {
             state.origin = { kind: 'project', projectId: project.id };
+            state.projectOrigin = project.origin ?? null;
             state.serverUpdatedAt = project.updatedAt;
             // Clean only if nothing moved while the project was being made;
             // otherwise the pending save now carries it to the project.
@@ -380,6 +409,7 @@ export function createDocumentStore(options: CreateDocumentStoreOptions) {
           set(state => {
             state.title = record.name;
             state.lastGeneration = record.lastGeneration ?? null;
+            state.projectOrigin = record.origin ?? null;
             state.serverUpdatedAt = record.updatedAt;
             state.dirty = false;
             state.saveState = 'saved';
@@ -431,6 +461,14 @@ export function createDocumentStore(options: CreateDocumentStoreOptions) {
             state.serverUpdatedAt = result.serverUpdatedAt;
             if (result.lastGeneration)
               state.lastGeneration = result.lastGeneration;
+            // The same rule the server applied to the row, so a project that
+            // was blank a moment ago reads as generated without a re-read.
+            if (result.job)
+              state.projectOrigin = originAfterJob(
+                state.projectOrigin,
+                result.job.kind,
+                result.job.id,
+              );
             state.dirty = false;
             state.saveState = 'saved';
           });
@@ -481,6 +519,7 @@ export async function openProjectDocument(
     context,
     serverUpdatedAt: record.updatedAt,
     lastGeneration: record.lastGeneration ?? null,
+    projectOrigin: record.origin ?? null,
     localUi: await loadProjectLocalUi(context.storage, projectId),
   });
 }

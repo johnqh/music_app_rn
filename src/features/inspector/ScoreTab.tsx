@@ -20,10 +20,13 @@ import { Field } from './Field';
 import type { MusicDocument } from '@/documents/document';
 import { GenerationChoices } from '@/features/generation/GenerationChoices';
 import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
+import { ProjectOriginPanel } from '@/features/generation/ProjectOriginPanel';
+import type { ProjectOriginProps } from '@/features/generation/ProjectOriginPanel';
 
 export function ScoreTab({
   document,
   generation,
+  origin,
 }: {
   document: MusicDocument;
   /**
@@ -32,6 +35,8 @@ export function ScoreTab({
    * score, like its title.
    */
   generation?: GenerationChoicesProps;
+  /** Where the project came from, above Generate Again, as on the web. */
+  origin?: ProjectOriginProps;
 }) {
   const { t } = useTranslation();
   const store = document.store;
@@ -87,6 +92,7 @@ export function ScoreTab({
           accessibilityLabel={t('inspector.composer')}
         />
       </Field>
+      {origin ? <ProjectOriginPanel {...origin} /> : null}
       {generation ? <GenerationChoices {...generation} /> : null}
     </View>
   );

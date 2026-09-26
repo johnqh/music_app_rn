@@ -7,7 +7,6 @@
  */
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from '@/platform/SafeArea';
 import { useTranslation } from 'react-i18next';
 import { Heading, Text, touchSlop } from '@sudobility/components-rn';
 import { ScreenBackBar } from '@/components/layout/ScreenBackBar';
@@ -22,36 +21,17 @@ export function ScreenScaffold({
   title?: string;
   children: ReactNode;
 }) {
-  /*
-    The side and bottom insets, added to this screen's own padding.
-
-    Phones are landscape-only, so a notched iPhone puts its sensor housing on
-    a *side*: measured on an iPhone 16 Pro simulator with the display mask on,
-    the Dynamic Island sat across the Docs topic list and covered the whole of
-    "USING THE APP" and the row under it. The navigator draws the header and
-    insets that itself; the body is this component's, and it had no inset at
-    all. The top is still not read here — the header covers it.
-
-    **The bottom is this component's too, and only iOS made that look
-    otherwise.** This used to say "the scroll view's own content inset covers
-    the bottom", which is true of a UIScrollView inside a navigation
-    controller and of nothing on Android: there is no automatic content inset
-    there, so the last row of a scrolled screen ended flush against the
-    navigation bar. Measured on a Pixel 9 Pro XL (landscape, gesture
-    navigation, `navigationBars` 72px tall): Settings scrolled to the end put
-    the bottom 24px of the Credits row inside the gesture band, where a press
-    is the system's rather than the app's.
-  */
-  const insets = useSafeAreaInsets();
+  // The navigator owns the top/status-bar inset. The body stays full-bleed;
+  // this scaffold's regular spacing is independent of device insets.
   return (
     <ScrollView
       className="bg-background flex-1"
       contentContainerStyle={{
         gap: PADDING,
         paddingTop: PADDING,
-        paddingBottom: PADDING + insets.bottom,
-        paddingLeft: PADDING + insets.left,
-        paddingRight: PADDING + insets.right,
+        paddingBottom: PADDING,
+        paddingLeft: PADDING,
+        paddingRight: PADDING,
       }}
     >
       {/*

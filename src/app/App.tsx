@@ -17,7 +17,7 @@ import '@/config/designTheme';
 import { useEffect, useMemo } from 'react';
 import { GestureRoot } from '@/platform/GestureRoot';
 import { SafeAreaProvider } from '@/platform/SafeArea';
-import { AppState } from 'react-native';
+import { AppState, StatusBar } from 'react-native';
 import { getSharedAppState, queryClient } from './appState';
 import { DocumentsProvider } from '@/documents/DocumentsContext';
 import { Toasts } from '@/features/toasts/Toasts';
@@ -55,6 +55,7 @@ export default function App() {
   return (
     <GestureRoot>
       <SafeAreaProvider>
+        <StatusBar hidden={false} />
         {/*
           Outside the vars provider, because it decides what those vars are.
         */}
