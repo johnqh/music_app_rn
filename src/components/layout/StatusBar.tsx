@@ -39,7 +39,7 @@ export function StatusBar({ document }: { document: MusicDocument }) {
   const openIssues = () => setIssuesOpen(true);
 
   return (
-    <View className="border-border bg-card flex-row items-center gap-3 border-t px-3 py-1">
+    <View className="bg-card flex-row items-center gap-3 px-3 py-1">
       <Text className="text-muted-foreground text-sm" numberOfLines={1}>
         {selectionSummaryLabel(selection, libraryCopy.selection(), regenerated)}
       </Text>

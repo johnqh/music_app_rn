@@ -9,6 +9,7 @@ import type { ReactNode } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Heading, Text, touchSlop } from '@sudobility/components-rn';
+import { useSafeAreaInsets } from '@/platform/SafeArea';
 import { ScreenBackBar } from '@/components/layout/ScreenBackBar';
 
 /** The scaffold's own padding, in points — `p-4`, stated so a side inset can add to it. */
@@ -21,8 +22,9 @@ export function ScreenScaffold({
   title?: string;
   children: ReactNode;
 }) {
-  // The navigator owns the top/status-bar inset. The body stays full-bleed;
-  // this scaffold's regular spacing is independent of device insets.
+  // The navigator owns the top inset. Only the content clears side cutouts;
+  // the background and bottom still extend to the screen edges.
+  const insets = useSafeAreaInsets();
   return (
     <ScrollView
       className="bg-background flex-1"
@@ -30,8 +32,8 @@ export function ScreenScaffold({
         gap: PADDING,
         paddingTop: PADDING,
         paddingBottom: PADDING,
-        paddingLeft: PADDING,
-        paddingRight: PADDING,
+        paddingLeft: PADDING + insets.left,
+        paddingRight: PADDING + insets.right,
       }}
     >
       {/*

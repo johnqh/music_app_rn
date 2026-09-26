@@ -29,7 +29,7 @@ import {
   isVocalInstrumentValue,
 } from '@sudobility/music_types';
 import type { NoteEvent } from '@sudobility/music_types';
-import { SafeAreaView } from '@/platform/SafeArea';
+import { SafeAreaView, useSafeAreaInsets } from '@/platform/SafeArea';
 import {
   useCallback,
   useEffect,
@@ -207,6 +207,7 @@ export function AppLayout({
     the keyboard. Measured on the frame, the answer is a fact about the device.
   */
   const { size, onLayout } = useContainerSize();
+  const insets = useSafeAreaInsets();
   /*
     A device pref, expanded by default and remembered, as on the web. It was a
     `useState(true)` here: collapsed on every launch and forgotten on every tab,
@@ -231,13 +232,10 @@ export function AppLayout({
 
     Width alone, and height nowhere in it: a column takes no height, so opening
     one costs the notation nothing but width. An unmeasured 0 answers false,
-    which is the same first-render behaviour as before. The content now spans
-    the full width, so safe-area side insets do not reduce available space.
+    which is the same first-render behaviour as before. The frame includes the
+    side insets; subtract them to measure the space available to the score.
   */
-  const roomForBoth = inspectorOpensByDefault(size.width, {
-    left: 0,
-    right: 0,
-  });
+  const roomForBoth = inspectorOpensByDefault(size.width, insets);
   const [inspectorOpen, setInspectorOpen] = useState<boolean | null>(null);
   const inspectorVisible = inspectorOpen ?? roomForBoth;
   /*
@@ -397,9 +395,9 @@ export function AppLayout({
   if (!score) return null;
   return (
     /*
-      Only the top edge is inset: the custom title bar starts below the status
-      bar. The canvas, transport, keyboard and app background extend edge-to-edge
-      horizontally and to the bottom of the display.
+      The top inset keeps the title bar below the status bar when present.
+      Each section paints to the screen edges while its content clears the
+      side cutouts. The bottom remains edge-to-edge.
     */
     <SafeAreaView
       className="bg-background flex-1"
@@ -418,30 +416,44 @@ export function AppLayout({
         `MenuFileCommands` and `EditorScreen` for where each lands.
       */}
       {hasMenuBar() ? null : (
-        <TitleBar
-          document={document}
-          onSave={onSave}
-          onExport={onExport}
-          onSettings={onSettings}
-          onDocuments={onDocuments}
-          {...(onSnapshots ? { onSnapshots } : {})}
-          {...(onPrint ? { onPrint } : {})}
-          {...(printing === undefined ? {} : { printing })}
-        />
+        <SafeAreaView edges={['left', 'right']} className="bg-primary">
+          <TitleBar
+            document={document}
+            onSave={onSave}
+            onExport={onExport}
+            onSettings={onSettings}
+            onDocuments={onDocuments}
+            {...(onSnapshots ? { onSnapshots } : {})}
+            {...(onPrint ? { onPrint } : {})}
+            {...(printing === undefined ? {} : { printing })}
+          />
+        </SafeAreaView>
       )}
-      <DocumentTabs />
-      <EditorToolbar
-        document={document}
-        layoutMode={layoutMode}
-        onLayoutModeChange={setLayoutMode}
-        onEnterLyrics={beginLyricEntry}
-        inspectorVisible={inspectorVisible}
-        {...(onGenerateTrack ? { onGenerateTrack } : {})}
-        {...(onGenerateInsertedBars ? { onGenerateInsertedBars } : {})}
-        onToggleInspector={() => setInspectorOpen(!inspectorVisible)}
-      />
-
-      <View className="min-h-0 flex-1">
+      <SafeAreaView
+        edges={['left', 'right']}
+        style={{ backgroundColor: '#fafafa' }}
+      >
+        <DocumentTabs />
+      </SafeAreaView>
+      <SafeAreaView
+        edges={['left', 'right']}
+        className="border-border bg-card border-b"
+      >
+        <EditorToolbar
+          document={document}
+          layoutMode={layoutMode}
+          onLayoutModeChange={setLayoutMode}
+          onEnterLyrics={beginLyricEntry}
+          inspectorVisible={inspectorVisible}
+          {...(onGenerateTrack ? { onGenerateTrack } : {})}
+          {...(onGenerateInsertedBars ? { onGenerateInsertedBars } : {})}
+          onToggleInspector={() => setInspectorOpen(!inspectorVisible)}
+        />
+      </SafeAreaView>
+      <SafeAreaView
+        edges={['left', 'right']}
+        className="bg-background min-h-0 flex-1"
+      >
         {/*
           Always a row: the inspector is a right-hand column wherever it is
           shown. This was two complete class strings chosen at render, never a
@@ -493,9 +505,10 @@ export function AppLayout({
             </View>
           ) : null}
         </View>
-      </View>
+      </SafeAreaView>
 
-      {/*
+      <SafeAreaView edges={['left', 'right']} className="bg-card">
+        {/*
         Stated heights below the score; only the score absorbs what is left.
 
         There is no letter-key row: the web app has none, and note entry there
@@ -503,28 +516,28 @@ export function AppLayout({
         own duration picker, duplicating the toolbar's — is a different app
         wearing the same name.
       */}
-      {/*
+        {/*
         Above both bars: while writing words, the field is what the software
         keyboard must not cover.
       */}
-      {lyricEntry !== null && selectedLyricNotes.length > 0 ? (
-        <LyricEntryBar
-          store={document.store}
-          notes={lyricEntry.notes}
-          startIndex={lyricEntry.startIndex}
-          onSelectNote={noteId => {
-            expectedLyricSelectionRef.current = [noteId];
-            document.store.getState().setSelection({
-              eventIds: [noteId],
-              measureIds: [],
-              trackIds: [],
-            });
-          }}
-          onClose={() => setLyricEntry(null)}
-        />
-      ) : null}
+        {lyricEntry !== null && selectedLyricNotes.length > 0 ? (
+          <LyricEntryBar
+            store={document.store}
+            notes={lyricEntry.notes}
+            startIndex={lyricEntry.startIndex}
+            onSelectNote={noteId => {
+              expectedLyricSelectionRef.current = [noteId];
+              document.store.getState().setSelection({
+                eventIds: [noteId],
+                measureIds: [],
+                trackIds: [],
+              });
+            }}
+            onClose={() => setLyricEntry(null)}
+          />
+        ) : null}
 
-      {/*
+        {/*
         Transport above the keyboard, matching the web app.
 
         The keyboard is the one panel here that changes height — it collapses,
@@ -532,21 +545,34 @@ export function AppLayout({
         the transport, which is the row a thumb goes to without looking. Fixed
         rows first, the variable one last.
       */}
-      {overlay}
-      <TransportBar
-        score={score}
-        transport={transport}
-        store={document.store}
-        playDisabled={playDisabled}
-        spatialActive={spatialActive}
-        onToggleSpatial={() => setSpatialActive(active => !active)}
-        keyboardCollapsed={keyboardCollapsed}
-        onToggleKeyboard={() =>
-          devicePrefs.getState().setKeyboardCollapsed(!keyboardCollapsed)
-        }
-      />
-      <KeyboardPanel document={document} collapsed={keyboardCollapsed} />
-      <StatusBar document={document} />
+        {overlay}
+      </SafeAreaView>
+      <SafeAreaView
+        edges={['left', 'right']}
+        className="border-border bg-card border-t"
+      >
+        <TransportBar
+          score={score}
+          transport={transport}
+          store={document.store}
+          playDisabled={playDisabled}
+          spatialActive={spatialActive}
+          onToggleSpatial={() => setSpatialActive(active => !active)}
+          keyboardCollapsed={keyboardCollapsed}
+          onToggleKeyboard={() =>
+            devicePrefs.getState().setKeyboardCollapsed(!keyboardCollapsed)
+          }
+        />
+      </SafeAreaView>
+      <SafeAreaView edges={['left', 'right']} className="bg-card">
+        <KeyboardPanel document={document} collapsed={keyboardCollapsed} />
+      </SafeAreaView>
+      <SafeAreaView
+        edges={['left', 'right']}
+        className="border-border bg-card border-t"
+      >
+        <StatusBar document={document} />
+      </SafeAreaView>
       <ScoreActionsSheet
         open={actionsOpen}
         /*

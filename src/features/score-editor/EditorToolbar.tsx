@@ -321,7 +321,7 @@ export function EditorToolbar({
       is exactly what the web app measured and moved them for.
     */
     <View
-      className="border-border bg-card flex-row items-stretch border-b"
+      className="bg-card flex-row items-stretch"
       style={{ height: TOOLBAR_HEIGHT }}
     >
       <ScrollView

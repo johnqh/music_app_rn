@@ -173,8 +173,8 @@ describe('AppLayout', () => {
     act(() => devicePrefs.getState().setKeyboardCollapsed(false));
   });
 
-  it('insets only the top edge below the status bar', () => {
-    /* The editor content is full-bleed on the sides and bottom. */
+  it('insets the top and protects section content from side cutouts', () => {
+    /* Backgrounds fill the width; no section adds a bottom inset. */
     const view = renderWithApp(
       <AppLayout
         document={testDocument()}
@@ -187,9 +187,10 @@ describe('AppLayout', () => {
     const edges = view
       .UNSAFE_getAllByProps({})
       .map(node => node.props.edges as string[] | undefined)
-      .find(value => Array.isArray(value));
-    expect(edges).toBeDefined();
-    expect(edges).toEqual(['top']);
+      .filter(value => Array.isArray(value));
+    expect(edges).toContainEqual(['top']);
+    expect(edges).toContainEqual(['left', 'right']);
+    expect(edges.every(value => !value?.includes('bottom'))).toBe(true);
   });
 
   describe('touches on the score', () => {

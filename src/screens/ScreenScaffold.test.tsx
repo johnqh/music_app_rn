@@ -73,7 +73,7 @@ describe('ScreenScaffold', () => {
 });
 
 describe('ScreenScaffold edge padding', () => {
-  it('does not add horizontal or bottom safe-area insets', () => {
+  it('adds side cutout insets without adding a bottom inset', () => {
     const view = renderWithApp(
       <ScreenScaffold title="Projects">
         <ServerUnavailable />
@@ -83,8 +83,8 @@ describe('ScreenScaffold edge padding', () => {
     const style = StyleSheet.flatten(
       scroller.props.contentContainerStyle as object,
     ) as Record<string, number>;
-    expect(style.paddingLeft).toBe(16);
-    expect(style.paddingRight).toBe(16);
+    expect(style.paddingLeft).toBe(16 + insets.left);
+    expect(style.paddingRight).toBe(16 + insets.right);
     expect(style.paddingBottom).toBe(16);
   });
 });

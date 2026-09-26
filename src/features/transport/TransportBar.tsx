@@ -163,7 +163,7 @@ export function TransportBar({
     <View
       accessibilityRole="toolbar"
       accessibilityLabel={t('transport.transport')}
-      className="border-border bg-card flex-row items-center gap-1 border-t px-2 py-1"
+      className="bg-card flex-row items-center gap-1 px-2 py-1"
     >
       <IconButton
         label={t('transport.goToStart')}
