@@ -42,7 +42,7 @@
     "@shopify/react-native-skia": "2.2.12",
     "@sudobility/building_blocks_rn": "^0.0.76",
     "@sudobility/components-rn": "^1.0.110",
-    "@sudobility/consumables_client": "^0.0.27",
+    "@sudobility/consumables_client": "^0.0.28",
     "@sudobility/design": "^1.1.55",
     "@sudobility/di": "^1.5.66",
     "@sudobility/di_rn": "^0.1.142",
