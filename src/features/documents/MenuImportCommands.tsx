@@ -22,6 +22,14 @@ import type { MenuCommand } from '@/app/menu-commands';
 import type { NativeUploadFile } from '@sudobility/music_client';
 import { useAuth } from '@/auth/AuthContext';
 import { getMusicClient } from '@/config/server';
+import { useServerContext } from '@/config/useServerContext';
+import { useTranslation } from 'react-i18next';
+import { navigationRef } from '@/app/Navigation';
+import {
+  useDocumentList,
+  useDocumentServices,
+} from '@/documents/DocumentsContext';
+import { openProjectInto } from '@/documents/document';
 import { ImportFeedback, useImport } from './useImport';
 import { useOpenLink } from '@/app/useOpenLink';
 import { AudioImportSheet } from './AudioImportSheet';
@@ -35,31 +43,37 @@ const IMPORT_FOR: Partial<Record<MenuCommand, ImportFormat>> = {
 export function MenuImportCommands() {
   const importer = useImport();
   const { run, importFile } = importer;
-  const { getToken } = useAuth();
+  const { getToken, user } = useAuth();
+  const { t } = useTranslation();
+  const context = useServerContext();
+  const list = useDocumentList();
+  const services = useDocumentServices();
   const [audioOpen, setAudioOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   /**
-   * Uploads a recording and lets it transcribe in the background.
+   * Uploads a recording and opens the project it becomes.
    *
-   * The score does not exist yet when this returns: the project is created in
-   * a `transcribing` state and fills itself in when the job lands. Unlike the
-   * other imports here, this does **not** open the project — a transcription
-   * runs for minutes, not seconds, and there is nothing to show yet. It
-   * appears in the dashboard's project list, marked as transcribing, and
-   * opens once it lands (`DashboardScreen`'s own refusal is what enforces
-   * that — this file has no document list of its own to gate).
+   * The project is created in a `transcribing` state and opened at once, as
+   * every other import here opens what it made: the editor shows each part
+   * arriving in the score as the transcriber finishes it.
    */
   const transcribeAudio = useCallback(
     async (file: NativeUploadFile) => {
       const client = getMusicClient();
       const token = await getToken();
       // The sheet says why it cannot run when there is no server or account;
-      // this is the same check a moment later, since a token can expire.
-      if (!client || !token) return;
-      await client.transcribeAudio(file, file.name, token);
+      // this is the same check a moment later, since a token can expire —
+      // and it says so, where returning used to close the sheet as though
+      // the recording had gone and then do nothing at all.
+      if (!client || !token) throw new Error(t('importAudio.signInRequired'));
+      const project = await client.transcribeAudio(file, file.name, token);
+      await openProjectInto(list, services, project.id);
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('Editor', { projectId: project.id });
+      }
     },
-    [getToken],
+    [getToken, list, services, t],
   );
 
   useMenuCommand(
@@ -92,13 +106,23 @@ export function MenuImportCommands() {
       <AudioImportSheet
         open={audioOpen}
         busy={uploading}
-        available
+        available={context !== null && user !== null}
+        unavailableReason={context !== null ? 'signedOut' : 'server'}
         onClose={() => setAudioOpen(false)}
         onUpload={async file => {
           setUploading(true);
           try {
             await transcribeAudio(file);
             setAudioOpen(false);
+          } catch (error) {
+            // Closed first, then reported through the importer's own failure
+            // dialog, as every other format's refusal is. With no catch this
+            // was an unhandled rejection: the spinner stopped and nothing
+            // said why.
+            setAudioOpen(false);
+            importer.setFailure(
+              error instanceof Error ? error.message : String(error),
+            );
           } finally {
             setUploading(false);
           }

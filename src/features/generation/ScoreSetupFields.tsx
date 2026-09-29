@@ -77,9 +77,13 @@ const INSTRUMENT_OPTIONS = generationInstrumentOptionsFlat();
  * height nobody stated in advance; React Native cannot without measuring, so
  * this animates opacity and a small offset and lets the layout reflow at once.
  *
- * `useNativeDriver` because both properties it touches are ones the native
- * driver supports — the animation then runs off the JS thread, which matters on
- * a sheet that is animating while a form is being typed into.
+ * **Not on the native driver.** It was, since opacity and a transform are
+ * the two things that driver can animate. On macOS it left the block at the
+ * opacity it was mounted with: the fields were there, laid out, taking their
+ * space — and invisible, which is also untouchable, since a view under 1%
+ * alpha is skipped by hit testing. Turning "Generate for me" on opened a
+ * blank gap where the prompt and the style pickers should have been. Two
+ * hundred milliseconds of a fade is not work the JS thread needs sparing.
  */
 function Reveal({ shown, children }: { shown: boolean; children: ReactNode }) {
   const [mounted, setMounted] = useState(shown);
@@ -90,7 +94,7 @@ function Reveal({ shown, children }: { shown: boolean; children: ReactNode }) {
     const animation = Animated.timing(progress, {
       toValue: shown ? 1 : 0,
       duration: REVEAL_MS,
-      useNativeDriver: true,
+      useNativeDriver: false,
     });
     animation.start(({ finished }) => {
       // Unmounted only once the fade has actually finished: cut short by a

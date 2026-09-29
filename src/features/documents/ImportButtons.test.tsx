@@ -192,12 +192,10 @@ describe('ImportButtons', () => {
     );
     openImportMenu(view);
     // The sheet opens the OS picker itself the moment it opens — there is no
-    // "Choose a recording" step to press any more, see `AudioImportSheet`.
+    // "Choose a recording" step to press any more, and no Transcribe to
+    // confirm with: choosing the file sends it. See `AudioImportSheet`.
     await act(async () => {
       fireEvent.press(view.getByText('Import Audio'));
-    });
-    await act(async () => {
-      fireEvent.press(view.getByText('Transcribe'));
     });
     expect(onTranscribeAudio).toHaveBeenCalled();
     await waitFor(() =>

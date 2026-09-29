@@ -2,24 +2,25 @@
  * Importing a recording as a project.
  *
  * Nothing is analysed here. The file is handed to the server, which separates
- * it, transcribes each part and sends back a score — so this picks a file, says
- * what will happen, and uploads. The models and the weights that used to make
- * this the heaviest screen in the web app all live in `midi_transcriber_api`.
+ * it and transcribes each part, so this picks a file and uploads it. The
+ * models and the weights that used to make this the heaviest screen in the
+ * web app all live in `midi_transcriber_api`.
  *
- * There is no tempo field and no confirm step, because the score does not exist
- * yet when the sheet closes: the project is created immediately in a
- * `transcribing` state and fills itself in when the job lands.
+ * **Choosing the file is the whole of it.** The OS picker opens the moment
+ * this is asked to open, as every other import on the menu does, and the
+ * recording is sent as soon as one is chosen. There used to be a dialog in
+ * between — the file's name, what would happen, a Transcribe button — which
+ * asked the reader to confirm the thing they had just done. There is nothing
+ * to decide in it: no tempo, no options, and the project that opens next is
+ * where the result is watched arriving.
  *
- * **Opens the OS picker itself, the moment this is asked to open** — matching
- * every other import on this menu (`useImport`'s `run`), which never made the
- * reader hit a "Choose file" button before the picker they came here for. The
- * sheet stays off screen until a file exists to show it for (or the server
- * cannot transcribe at all, which is the one thing worth explaining before a
- * pick). Cancelling that first pick closes the whole flow — there is nothing
- * on screen yet to leave open. `available` is checked first, before ever
- * touching the picker: uploading a recording only to be told afterwards that
- * the server never could is the worst order to learn that in, and here the
- * capability is already known.
+ * Two things are still said, because each is the only word the reader gets.
+ * That the recording is on its way, while it is: an upload takes seconds and
+ * a screen that does nothing for that long reads as a tap that missed. And
+ * that it cannot be done at all, *before* the picker rather than after it —
+ * uploading a recording only to be told the server never could is the worst
+ * order to learn that in, and needing to sign in is a different thing to be
+ * told than needing a server.
  *
  * **The recording is uploaded by path, not by bytes.** React Native's `Blob`
  * cannot be constructed from an `ArrayBuffer`, so reading a recording in order
@@ -28,26 +29,14 @@
  * for exactly this: the browser passes its `File`, native passes
  * `{ uri, name, type }` and RN's networking layer streams it.
  */
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { FormModal, Text } from '@sudobility/components-rn';
+import { FormModal, Spinner, Text } from '@sudobility/components-rn';
 import type { NativeUploadFile } from '@sudobility/music_client';
 import { audioMimeFor } from '@sudobility/music_io';
 import { createFilePicker } from '@/documents/file-picker';
 import { AUDIO_IMPORT_EXTENSIONS } from '@sudobility/music_types';
-
-/**
- * The formats as a reader names them, for the description.
- *
- * The list is music_types' `AUDIO_IMPORT_EXTENSIONS`, the one the web picker
- * offers — this sheet kept its own copy of it and of the MIME table beside it —
- * and the words are the web's: the description takes `{{formats}}`, so the
- * two apps describe the import in one sentence rather than two.
- */
-const FORMAT_NAMES = AUDIO_IMPORT_EXTENSIONS.map(ext => ext.toUpperCase()).join(
-  ', ',
-);
 
 export function nativeUploadFor(uri: string): NativeUploadFile {
   const name = uri.split('/').pop() ?? 'recording';
@@ -60,8 +49,16 @@ export type AudioImportSheetProps = {
   open: boolean;
   /** True while the recording is being uploaded. */
   busy?: boolean;
-  /** False where this deployment cannot transcribe at all. */
+  /** False where a recording cannot be transcribed at all. */
   available?: boolean;
+  /**
+   * Why not, when it cannot. A recording is transcribed on the server into a
+   * project that belongs to an account, so there are two ways to be without
+   * it: no server, or nobody signed in. They have different remedies, and
+   * telling a reader who only has to sign in that the server cannot do it
+   * sends them away from a feature they have.
+   */
+  unavailableReason?: 'server' | 'signedOut';
   onClose: () => void;
   onUpload: (file: NativeUploadFile) => void;
 };
@@ -70,11 +67,11 @@ export function AudioImportSheet({
   open,
   busy = false,
   available = true,
+  unavailableReason = 'server',
   onClose,
   onUpload,
 }: AudioImportSheetProps) {
   const { t } = useTranslation();
-  const [picked, setPicked] = useState<NativeUploadFile | null>(null);
 
   const choose = async (): Promise<void> => {
     const picker = createFilePicker();
@@ -83,9 +80,9 @@ export function AudioImportSheet({
       return;
     }
     const uri = await picker.pickFile(AUDIO_IMPORT_EXTENSIONS);
-    // Cancelling before anything was chosen closes the whole flow — there is
-    // nothing on screen yet to leave open instead.
-    if (uri) setPicked(nativeUploadFor(uri));
+    // Chosen is sent. Cancelled closes the whole flow — there is nothing on
+    // screen to leave open instead.
+    if (uri) onUpload(nativeUploadFor(uri));
     else onClose();
   };
 
@@ -99,52 +96,37 @@ export function AudioImportSheet({
     if (open && available) void choose();
   }, [open, available]);
 
-  const close = (): void => {
-    setPicked(null);
-    onClose();
-  };
+  // The caller closes this when the upload lands or fails; nothing here can
+  // be cancelled part-way, so while it is busy there is no way out offered.
+  const sending = available && busy;
 
   return (
     <FormModal
-      visible={open && (Boolean(picked) || !available)}
+      visible={open && (sending || !available)}
       title={t('importAudio.title')}
-      onClose={close}
-      actions={[
-        { label: t('common.cancel'), onPress: close, variant: 'ghost' },
-        {
-          label: t('importAudio.upload'),
-          onPress: () => {
-            if (picked) onUpload(picked);
-          },
-          variant: 'primary',
-          ...(available && picked ? {} : { disabled: true }),
-          ...(busy ? { loading: true } : {}),
-        },
-      ]}
+      onClose={sending ? () => undefined : onClose}
+      actions={
+        sending
+          ? []
+          : [{ label: t('common.cancel'), onPress: onClose, variant: 'ghost' }]
+      }
       closeAriaLabel={t('common.closeDialog')}
     >
       <View className="gap-2 p-1">
-        {available ? (
-          <>
+        {sending ? (
+          <View className="flex-row items-center gap-3">
+            <Spinner />
             <Text className="text-foreground text-base">
-              {t('importAudio.description', { formats: FORMAT_NAMES })}
+              {t('importAudio.sending')}
             </Text>
-            {picked ? (
-              <Text className="text-muted-foreground text-sm">
-                {picked.name}
-              </Text>
-            ) : null}
-            {/*
-              A warning rather than a choice: trimming would mean decoding the
-              audio here, which is the very work that was moved to the server.
-            */}
-            <Text className="text-muted-foreground text-sm">
-              {t('importAudio.longRecording')}
-            </Text>
-          </>
+          </View>
         ) : (
           <Text className="text-foreground text-base">
-            {t('importAudio.unavailable')}
+            {t(
+              unavailableReason === 'signedOut'
+                ? 'importAudio.signInRequired'
+                : 'importAudio.unavailable',
+            )}
           </Text>
         )}
       </View>

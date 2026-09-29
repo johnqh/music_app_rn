@@ -347,6 +347,36 @@ diff --git a/node_modules/react-native-macos/React/Fabric/Mounting/ComponentView
  @end
  
  #ifdef __cplusplus
+diff --git a/node_modules/react-native-macos/React/Fabric/Mounting/ComponentViews/View/RCTViewComponentView.mm b/node_modules/react-native-macos/React/Fabric/Mounting/ComponentViews/View/RCTViewComponentView.mm
+index 6e20d03..44889b9 100644
+--- a/node_modules/react-native-macos/React/Fabric/Mounting/ComponentViews/View/RCTViewComponentView.mm
++++ b/node_modules/react-native-macos/React/Fabric/Mounting/ComponentViews/View/RCTViewComponentView.mm
+@@ -766,6 +766,25 @@ - (void)prepareForRecycle
+     _allowsVibrancy = NO;
+     self.acceptsFirstMouse = NO;
+     self.mouseDownCanMoveWindow = YES;
++    // [Moosiac: hover state is the last occupant's, not the next one's.
++    // A view taken off screen under the pointer — a row clicked to leave its
++    // list — never receives mouseExited:, so it goes back to the pool with
++    // _hasMouseOver still YES. Reused for another row, mouseEntered: then
++    // returns early and that row never reports the pointer arriving. Which
++    // rows inherit a stale view depends on the order they are recycled in,
++    // so it looked random and changed every time the list was rebuilt.
++    if (_trackingArea) {
++      [self removeTrackingArea:_trackingArea];
++      _trackingArea = nil;
++    }
++    _hasMouseOver = NO;
++    if (_hasClipViewBoundsObserver) {
++      _hasClipViewBoundsObserver = NO;
++      [[NSNotificationCenter defaultCenter] removeObserver:self
++                                                      name:NSViewBoundsDidChangeNotification
++                                                    object:nil];
++    }
++    // Moosiac]
+ #endif // macOS]
+ }
+ 
 diff --git a/node_modules/react-native-macos/ReactCommon/react/renderer/core/ShadowNode.cpp b/node_modules/react-native-macos/ReactCommon/react/renderer/core/ShadowNode.cpp
 --- a/node_modules/react-native-macos/ReactCommon/react/renderer/core/ShadowNode.cpp
 +++ b/node_modules/react-native-macos/ReactCommon/react/renderer/core/ShadowNode.cpp

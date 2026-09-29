@@ -17,6 +17,7 @@
     "tenuto": "Tenuto"
   },
   "auth": {
+    "signInWithGoogle": "Continue with Google",
     "createAccount": "Create account",
     "email": "Email",
     "haveAccount": "I already have an account",
@@ -961,8 +962,10 @@
   },
   "importAudio": {
     "choose": "Choose a recording",
-    "description": "Turns a recording into a project, split into parts — vocals, drums, bass, guitar, piano and the rest, each on its own track. It runs on the server and takes a few minutes, so the project appears straight away and fills itself in when it is done. Expect a sketch to edit, not a copy of the record. {{formats}}.",
+    "description": "Turns a recording into a project, split into parts — vocals, drums, bass, guitar, piano and the rest, each on its own track. It runs on the server and takes a few minutes: the project opens straight away, and each part appears in the score as it is transcribed. Expect a sketch to edit, not a copy of the record. {{formats}}.",
     "longRecording": "Long recordings take a while, and very long ones are refused.",
+    "sending": "Sending the recording…",
+    "signInRequired": "Sign in to import a recording. It is transcribed on the server into a project of yours, so it needs an account.",
     "title": "Import audio",
     "unavailable": "Audio transcription is not available on this server.",
     "upload": "Transcribe"
@@ -1512,12 +1515,14 @@
     "percussion": "Percussion"
   },
   "overlay": {
+    "transcribingNotes": "Transcribing the recording…",
     "progress": "{{stage}} {{done}} of {{total}}: {{label}}",
     "reconnecting": "Reconnecting…",
     "polling": "Live updates unavailable; checking the project periodically.",
     "lockedWhileGenerating": "Editing and playback resume when it finishes.",
     "stage": {
       "plan": "Planning",
+      "separate": "Separating",
       "part": "Part",
       "section": "Section",
       "chunk": "Chunk"

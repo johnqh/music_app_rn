@@ -17,15 +17,43 @@ import { useSiteAdmin } from '@sudobility/music_client';
 import { getMusicClient, getNetworkClient } from '@/config/server';
 import type { ReactNode } from 'react';
 import { getApps, initializeApp } from 'firebase/app';
+import * as firebaseAuthModule from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   createUserWithEmailAndPassword,
   getAuth,
+  initializeAuth,
   onAuthStateChanged,
+  signInWithCredential,
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
-import type { Auth, User } from 'firebase/auth';
+import type { Auth, Persistence, User } from 'firebase/auth';
+import { Platform } from 'react-native';
+import { signInWithGoogleOAuthDesktop } from '@sudobility/auth_lib/oauth';
+import { WebAuth } from '@sudobility/building_blocks_rn';
 import { CONSTANTS } from '@/config/constants';
+
+/**
+ * Whether Google sign-in can be offered here.
+ *
+ * On the desktop it goes through the system browser — an
+ * `ASWebAuthenticationSession` on macOS — by way of building_blocks_rn's
+ * `WebAuth` and auth_lib's PKCE flow, the same pair every desktop app in the
+ * family uses. A phone would need Google's native SDK, which this app does
+ * not carry, so it is not offered there rather than offered and failing.
+ * And it needs a client to sign in *with*: an unconfigured build shows no
+ * button, exactly as one with no Firebase key shows no server.
+ */
+const DESKTOP = Platform.OS === 'macos' || Platform.OS === 'windows';
+export function googleSignInAvailable(): boolean {
+  return (
+    DESKTOP &&
+    CONSTANTS.FIREBASE_API_KEY !== '' &&
+    CONSTANTS.GOOGLE_OAUTH_CLIENT_ID !== '' &&
+    CONSTANTS.GOOGLE_OAUTH_REVERSED_CLIENT_ID !== ''
+  );
+}
 
 export type AuthUser = {
   uid: string;
@@ -48,6 +76,15 @@ export type AuthState = {
   siteAdmin: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
+  /**
+   * Signs in with Google, where `googleAvailable` says it can.
+   *
+   * Resolves either way: closing the browser sheet is an ordinary outcome,
+   * not a failure to report, and the auth state simply does not change.
+   */
+  signInGoogle: () => Promise<void>;
+  /** Whether to offer it. See `googleSignInAvailable`. */
+  googleAvailable: boolean;
   signOut: () => Promise<void>;
   /**
    * The current ID token, or null when signed out.
@@ -60,16 +97,45 @@ export type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 
+/**
+ * Made once. `initializeAuth` may be called a single time per app, and
+ * `readIdToken` asks for this on every request.
+ */
+let cachedAuth: Auth | null = null;
+
 function firebaseAuth(): Auth | null {
   if (!CONSTANTS.FIREBASE_API_KEY) return null;
-  const app =
-    getApps()[0] ??
-    initializeApp({
-      apiKey: CONSTANTS.FIREBASE_API_KEY,
-      authDomain: CONSTANTS.FIREBASE_AUTH_DOMAIN,
-      projectId: CONSTANTS.FIREBASE_PROJECT_ID,
-    });
-  return getAuth(app);
+  if (cachedAuth) return cachedAuth;
+  const existing = getApps()[0];
+  if (existing) {
+    cachedAuth = getAuth(existing);
+    return cachedAuth;
+  }
+  const app = initializeApp({
+    apiKey: CONSTANTS.FIREBASE_API_KEY,
+    authDomain: CONSTANTS.FIREBASE_AUTH_DOMAIN,
+    projectId: CONSTANTS.FIREBASE_PROJECT_ID,
+  });
+  /*
+    Kept on the device, so signing in is done once rather than at every
+    launch. Left to `getAuth`, the JS SDK holds a session in memory under
+    React Native — there is no browser storage for it to fall back on — and
+    the account is gone the moment the app quits.
+
+    `getReactNativePersistence` exists only in the SDK's React Native build,
+    which Metro resolves and a test runner does not, and its types do not
+    declare it. Read off the module so its absence is a fallback rather than
+    a crash at import.
+  */
+  const persistenceFor = (
+    firebaseAuthModule as unknown as {
+      getReactNativePersistence?: (storage: unknown) => Persistence;
+    }
+  ).getReactNativePersistence;
+  cachedAuth = persistenceFor
+    ? initializeAuth(app, { persistence: persistenceFor(AsyncStorage) })
+    : getAuth(app);
+  return cachedAuth;
 }
 
 /**
@@ -145,6 +211,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!auth) throw new Error('Sign-in is not configured in this build.');
         await createUserWithEmailAndPassword(auth, email, password);
       },
+      signInGoogle: async () => {
+        if (!auth) throw new Error('Sign-in is not configured in this build.');
+        const credential = await signInWithGoogleOAuthDesktop(
+          {
+            clientId: CONSTANTS.GOOGLE_OAUTH_CLIENT_ID,
+            reversedClientId: CONSTANTS.GOOGLE_OAUTH_REVERSED_CLIENT_ID,
+          },
+          WebAuth,
+        );
+        // Null is the reader closing the sheet.
+        if (credential) await signInWithCredential(auth, credential);
+      },
+      googleAvailable: googleSignInAvailable(),
       signOut: async () => {
         if (auth) await firebaseSignOut(auth);
       },
@@ -170,6 +249,8 @@ export function useAuth(): AuthState {
       siteAdmin: false,
       signIn: async () => undefined,
       signUp: async () => undefined,
+      signInGoogle: async () => undefined,
+      googleAvailable: false,
       signOut: async () => undefined,
       getToken: async () => null,
     }

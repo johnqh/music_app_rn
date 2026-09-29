@@ -1,0 +1,350 @@
+{
+  "metadata": {
+    "version": "1.7",
+    "lastUpdated": "2026-07-12",
+    "whatsNew": "Sensei made adjustments to the layout"
+  },
+  "capture": {
+    "loopOrder": "languages_first"
+  },
+  "build": {
+    "metroPort": 8082,
+    "ios": {
+      "appName": "Sudojo",
+      "workspace": "Sudojo.xcworkspace",
+      "scheme": "Sudojo"
+    },
+    "macos": {
+      "workspace": "Sudojo.xcworkspace",
+      "scheme": "Sudojo-macOS"
+    }
+  },
+  "app": {
+    "name": "Sudojo",
+    "bundleId": "com.sudobility.sudojo",
+    "packageName": "com.sudobility.sudojo",
+    "developer": "Sudobility",
+    "website": "https://sudojo.com",
+    "supportUrl": "https://sudojo.com/support",
+    "marketingUrl": "https://sudojo.com",
+    "privacyPolicyUrl": "https://sudojo.com/privacy",
+    "termsOfServiceUrl": "https://sudojo.com/terms",
+    "contactEmail": "support@sudojo.com",
+    "privacyEmail": "privacy@sudojo.com",
+    "copyright": "© 2025-2026 Sudobility",
+    "scheme": "sudojo"
+  },
+  "subscriptions": {
+    "products": [
+      {
+        "key": "blue_belt_monthly",
+        "appleProductId": "blue_belt_monthly",
+        "googleSku": "blue_belt_monthly"
+      },
+      {
+        "key": "blue_belt_annual",
+        "appleProductId": "blue_belt_annual",
+        "googleSku": "blue_belt_annual"
+      },
+      {
+        "key": "red_belt_monthly",
+        "appleProductId": "red_belt_monthly",
+        "googleSku": "red_belt_monthly"
+      },
+      {
+        "key": "red_belt_annual",
+        "appleProductId": "red_belt_annual",
+        "googleSku": "red_belt_annual"
+      }
+    ]
+  },
+  "supportedLanguages": [
+    { "code": "en", "name": "English", "primary": true },
+    { "code": "zh", "name": "Chinese (Simplified)", "primary": false },
+    { "code": "zh-Hant", "name": "Chinese (Traditional)", "primary": false },
+    { "code": "ja", "name": "Japanese", "primary": false },
+    { "code": "ko", "name": "Korean", "primary": false },
+    { "code": "es", "name": "Spanish", "primary": false },
+    { "code": "fr", "name": "French", "primary": false },
+    { "code": "de", "name": "German", "primary": false },
+    { "code": "pt", "name": "Portuguese", "primary": false },
+    { "code": "it", "name": "Italian", "primary": false },
+    { "code": "ru", "name": "Russian", "primary": false },
+    { "code": "sv", "name": "Swedish", "primary": false },
+    { "code": "th", "name": "Thai", "primary": false },
+    { "code": "uk", "name": "Ukrainian", "primary": false },
+    { "code": "vi", "name": "Vietnamese", "primary": false }
+  ],
+  "appleAppStore": {
+    "primaryCategory": "Games",
+    "primarySubcategory": "Puzzle",
+    "secondaryCategory": "Education",
+    "secondarySubcategory": "Educational Games",
+    "contentRights": {
+      "doesNotContainThirdPartyContent": true,
+      "hasRightsToAllContent": true
+    },
+    "ageRating": {
+      "ageRatingDeclaration": {
+        "kidsAgeBand": null,
+        "gamblingAndContests": "NONE",
+        "gambling": false,
+        "frequentOrIntenseCartoonOrFantasyViolence": false,
+        "frequentOrIntenseRealisticViolence": false,
+        "frequentOrIntenseSexualContentOrNudity": false,
+        "infrequentOrMildSexualContentOrNudity": false,
+        "frequentOrIntenseMatureOrSuggestiveThemes": false,
+        "infrequentOrMildMatureOrSuggestiveThemes": false,
+        "frequentOrIntenseHorrorOrFearThemes": false,
+        "infrequentOrMildHorrorOrFearThemes": false,
+        "frequentOrIntenseMedicalOrTreatmentInformation": false,
+        "infrequentOrMildMedicalOrTreatmentInformation": false,
+        "frequentOrIntenseProfanityOrCrudeHumor": false,
+        "infrequentOrMildProfanityOrCrudeHumor": false,
+        "frequentOrIntenseAlcoholTobaccoOrDrugUseOrReferences": false,
+        "infrequentOrMildAlcoholTobaccoOrDrugUseOrReferences": false,
+        "frequentOrIntenseSimulatedGambling": false,
+        "infrequentOrMildSimulatedGambling": false,
+        "unrestrictedWebAccess": false,
+        "gamblingSimulated": false
+      },
+      "expectedRating": "4+"
+    },
+    "appReview": {
+      "contactFirstName": "",
+      "contactLastName": "",
+      "contactPhone": "",
+      "contactEmail": "support@sudojo.com",
+      "demoAccountName": "",
+      "demoAccountPassword": "",
+      "notes": "The app can be used without an account (anonymous sign-in). Creating an account is optional and enables cross-device progress sync. Subscription is optional — free tier provides daily puzzles and beginner-to-challenging difficulty levels."
+    },
+    "pricing": {
+      "priceTier": 0,
+      "availableInAllTerritories": true
+    },
+    "appPrivacy": {
+      "privacyPolicyUrl": "https://sudojo.com/privacy",
+      "dataCollection": {
+        "collectsData": true,
+        "dataTypes": [
+          {
+            "type": "Contact Info",
+            "subtype": "Email Address",
+            "purposes": ["App Functionality"],
+            "linked": true,
+            "tracking": false
+          },
+          {
+            "type": "Contact Info",
+            "subtype": "Name",
+            "purposes": ["App Functionality"],
+            "linked": true,
+            "tracking": false
+          },
+          {
+            "type": "Identifiers",
+            "subtype": "User ID",
+            "purposes": ["App Functionality"],
+            "linked": true,
+            "tracking": false
+          },
+          {
+            "type": "Usage Data",
+            "subtype": "Product Interaction",
+            "purposes": ["Analytics", "App Functionality"],
+            "linked": true,
+            "tracking": false
+          },
+          {
+            "type": "Diagnostics",
+            "subtype": "Crash Data",
+            "purposes": ["Analytics"],
+            "linked": false,
+            "tracking": false
+          },
+          {
+            "type": "Diagnostics",
+            "subtype": "Performance Data",
+            "purposes": ["Analytics"],
+            "linked": false,
+            "tracking": false
+          },
+          {
+            "type": "Purchases",
+            "subtype": "Purchase History",
+            "purposes": ["App Functionality"],
+            "linked": true,
+            "tracking": false
+          }
+        ]
+      }
+    },
+    "platforms": {
+      "ios": {
+        "minimumOsVersion": "15.1",
+        "devices": ["iPhone", "iPod touch"],
+        "supportsAppleWatch": false,
+        "supportsGameCenter": false,
+        "supportsUniversalPurchase": true
+      },
+      "ipados": {
+        "minimumOsVersion": "15.1",
+        "devices": ["iPad"],
+        "supportsMultitasking": true,
+        "supportsSplitView": true,
+        "supportsUniversalPurchase": true
+      },
+      "macos": {
+        "minimumOsVersion": "13.0",
+        "architectures": ["arm64", "x86_64"],
+        "category": "Games",
+        "subcategory": "Puzzle Games",
+        "supportsUniversalPurchase": true
+      }
+    }
+  },
+  "googlePlay": {
+    "defaultLanguage": "en-US",
+    "applicationCategory": "GAME_PUZZLE",
+    "contentRating": {
+      "targetAgeGroup": "all",
+      "contentDescriptors": {
+        "violence": "none",
+        "sexualContent": "none",
+        "language": "none",
+        "controlledSubstance": "none",
+        "digitalPurchases": "yes",
+        "sharesInfo": "no",
+        "sharesLocation": "no",
+        "gambling": "none"
+      },
+      "expectedRating": "Everyone",
+      "interactiveElements": ["Digital Purchases"]
+    },
+    "dataSafety": {
+      "overview": {
+        "dataSharedWithThirdParties": false,
+        "dataCollected": true,
+        "securityPractices": {
+          "dataEncryptedInTransit": true,
+          "requestDataDeletion": true
+        }
+      },
+      "dataTypesCollected": [
+        {
+          "category": "Personal info",
+          "type": "Email address",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": ["App functionality", "Account management"],
+          "ephemeral": false
+        },
+        {
+          "category": "Personal info",
+          "type": "Name",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": ["App functionality", "Account management"],
+          "ephemeral": false
+        },
+        {
+          "category": "Financial info",
+          "type": "Purchase history",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": ["App functionality"],
+          "ephemeral": false
+        },
+        {
+          "category": "App activity",
+          "type": "App interactions",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": ["Analytics"],
+          "ephemeral": false
+        },
+        {
+          "category": "App info and performance",
+          "type": "Crash logs",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": ["Analytics"],
+          "ephemeral": false
+        },
+        {
+          "category": "App info and performance",
+          "type": "Diagnostics",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": ["Analytics"],
+          "ephemeral": false
+        },
+        {
+          "category": "Device or other IDs",
+          "type": "Device or other IDs",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": ["Analytics", "App functionality"],
+          "ephemeral": false
+        }
+      ]
+    },
+    "pricing": {
+      "free": true,
+      "containsAds": false,
+      "inAppPurchases": true,
+      "inAppPurchaseRange": "$0.99 - $49.99 per item"
+    },
+    "targetAudience": {
+      "targetAge": "all",
+      "appealsToChildren": false,
+      "familyProgram": false
+    },
+    "contactDetails": {
+      "email": "support@sudojo.com",
+      "website": "https://sudojo.com",
+      "privacyPolicy": "https://sudojo.com/privacy"
+    }
+  },
+  "microsoftStore": {
+    "category": "Games",
+    "subcategory": "Puzzle & trivia",
+    "properties": {
+      "category": "Games",
+      "subcategory": "Puzzle & trivia",
+      "privacyPolicyUrl": "https://sudojo.com/privacy",
+      "supportContactUrl": "https://sudojo.com/support",
+      "websiteUrl": "https://sudojo.com"
+    },
+    "ageRating": {
+      "iarc": "3+",
+      "contentDescriptors": {
+        "violence": "none",
+        "fear": "none",
+        "sexuality": "none",
+        "drugs": "none",
+        "language": "none",
+        "discrimination": "none",
+        "gambling": "none",
+        "onlineInteractivity": "none",
+        "inAppPurchases": true
+      }
+    },
+    "pricing": {
+      "free": true,
+      "inAppPurchases": true
+    },
+    "systemRequirements": {
+      "minimumOs": "Windows 10 version 17763.0",
+      "architecture": ["x64", "ARM64"]
+    }
+  }
+}

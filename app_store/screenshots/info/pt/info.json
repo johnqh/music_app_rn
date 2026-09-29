@@ -1,0 +1,130 @@
+{
+  "locale": "Português",
+  "appleAppStore": {
+    "title": "Sudojo - Aprenda técnicas de Sudoku",
+    "subtitle": "Domine 60+ técnicas de Sudoku",
+    "keywords": "Sudoku, quebra-cabeças, cérebro, lógica, técnicas, solucionador, dicas, aprendizado, estratégia, diário, desafio, treinamento, número, grade, marcas a lápis",
+    "promotionalText": "Domine Sudoku de iniciante a especialista com mais de 60 técnicas de resolução e dicas inteligentes.",
+    "description": "Sudojo é a plataforma definitiva de aprendizado de Sudoku que ensina como resolver quebra-cabeças — não apenas fornece respostas. Progrida do iniciante ao especialista por meio de um sistema de cinturões estruturado, dominando mais de 60 técnicas reais de resolução usadas por jogadores campeões.\n\nDESAFIOS DIÁRIOS\n• Um quebra-cabeça novo todos os dias, adaptado ao seu nível de habilidade\n• Monitore sua sequência diária e compita consigo mesmo\n• Compartilhe seus quebra-cabeças concluídos com amigos\n\nAPRENDA MAIS DE 60 TÉCNICAS DE RESOLUÇÃO\n• Cada técnica inclui explicações passo a passo e quebra-cabeças práticos\n\nBasics: Casa cheia, Único escondido, Único nu\nPairs & Tuples: Par Escondido, Par descoberto, Candidatos Trancados, Tríplice Oculta, Tríplice nu, Quadra Oculta, Quadro nu\nFish: X-Arriero, Peixe espada, Águas-vivas, Squirmbag\nFinned Fish: X-Wing com nadadeira, Espada de peixe com nadadeira, Jellyfish com nadadeira, Squirmbag com nadadeira\nSashimi Fish: X-Wing Sashimi, Peixe Espada Sashimi, Juba Sashimi\nFranken Fish: X-Wing Franken, Espada de Franken, Jellyfish de Franken\nWings: Pena XY, XYZ-Wing, WXYZ-Wing, Asa VWXYZ, Asa UVWXYZ, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Arranha-céu, Pássaro-de-papel de duas cordas, Retângulo vazio, Coloração simples, W-asa, Pares remotos, Grula, Fogos de artifício\nUnique Rectangles: Retângulo Único Tipo 1, Retângulo Único Tipo 2, Retângulo Único Tipo 3, Retângulo Único Tipo 4, Retângulo Único Tipo 5, Retângulo Único Oculto, Retângulo evitável\nAlmost Locked Sets: Conjuntos quase fechados, ALS-XZ, Cadeia ALS, Sue de Coq, Flor da Morte\nChains: Ciclos X, Ciclos X agrupados, Cadeia X, Cadeia XY, AIC, Coloração de Medusa, ERRO+1, Cadeias forçadas, Rede de Forçamento\n\nSISTEMA INTELIGENTE DE DICA\n• Dicas que ensinam a técnica, não apenas a resposta\n• Destaque visual mostra exatamente quais células e candidatos importam\n• Passo a passo com explicação lógica da resolução\n• Entenda o \"porquê\" de cada movimento\n\nSISTEMA DE PROGRESSÃO POR CINTURÃO\n• 12 níveis de cinturão, do Cinturão Branco (iniciante) ao Cinturão Preto (mestre)\n• Cada cinturão introduz novas técnicas e quebra-cabeças mais difíceis\n• Ganhe pontos, desbloqueie medalhas e acompanhe seu progresso\n• Veja suas habilidades de resolução crescerem com o tempo\n\n12 NÍVEIS DE DIFICULDADE\n• Iniciante a Extremo — sempre há um novo desafio\n• Cada nível se concentra em técnicas específicas\n• Acesso gratuito aos níveis fundamentais\n• Versão Premium desbloqueia dificuldades avançadas e expert\n\nMAIS RECURSOS\n• Insira quebra-cabeças personalizados manualmente ou escaneie de papel\n• Vários modos de exibição: Números, Kanji (漢数字) ou Emoji\n• Marcadores de lápis com modo automático de candidatos\n• Cronômetro e realce de erros (opcional)\n• Modo escuro e 16 opções de idioma\n• Sincronize seu progresso entre dispositivos com sua conta\n• Funciona no iPhone, iPad e Mac\n\nGRATUITO E PREMIUM\n• Jogar quebra-cabeças diários e níveis de iniciante a desafiadores gratuitamente\n• Assine para desbloquear níveis avançados, técnicas expert e acesso completo às dicas\n• Cinturão Azul: desbloqueia níveis Difícil, Intenso e Expert\n• Cinturão Vermelho: desbloqueia todos os níveis, incluindo Brutal e Brain Freeze\n\nSeja você pegando Sudoku pela primeira vez ou um resolvedor experiente em busca de técnicas avançadas, Sudojo é o caminho para a excelência.\n\nTermos de Uso: https://sudojo.com/en/terms\nPolítica de Privacidade: https://sudojo.com/en/privacy",
+    "whatsNew": "Desempenho melhorado na tela de detalhes da técnica e correção de pequenos bugs.",
+    "supportUrl": "https://sudojo.com/support",
+    "marketingUrl": "https://sudojo.com/marketing"
+  },
+  "googlePlay": {
+    "title": "Sudojo: Técnicas de Sudoku",
+    "shortDescription": "Domine 60+ técnicas de Sudoku com dicas inteligentes e desafios diários.",
+    "fullDescription": "Sudojo é a plataforma definitiva de aprendizado de Sudoku que ensina como resolver quebra-cabeças — não apenas fornece as respostas. Avance do nível iniciante ao avançado por meio de um sistema de cinturões estruturado, dominando mais de 60 técnicas reais de resolução usadas por jogadores campeões.\n\nDESAFIOS DIÁRIOS\n• Um quebra-cabeça novo todos os dias, adaptado ao seu nível de habilidade\n• Monitore sua sequência diária e compita consigo mesmo\n• Compartilhe seus quebra-cabeças concluídos com amigos\n\nAPRENDA MAIS DE 60 TÉCNICAS DE RESOLUÇÃO\n• Cada técnica inclui explicações passo a passo e quebra-cabeças práticos\n\nBasics: Casa cheia, Único escondido, Único nu\nPairs & Tuples: Par Escondido, Par descoberto, Candidatos Trancados, Tríplice Oculta, Tríplice nu, Quadra Oculta, Quadro nu\nFish: X-Arriero, Peixe espada, Águas-vivas, Squirmbag\nFinned Fish: X-Wing com nadadeira, Espada de peixe com nadadeira, Jellyfish com nadadeira, Squirmbag com nadadeira\nSashimi Fish: X-Wing Sashimi, Peixe Espada Sashimi, Juba Sashimi\nFranken Fish: X-Wing Franken, Espada de Franken, Jellyfish de Franken\nWings: Pena XY, XYZ-Wing, WXYZ-Wing, Asa VWXYZ, Asa UVWXYZ, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Arranha-céu, Pássaro-de-papel de duas cordas, Retângulo vazio, Coloração simples, W-asa, Pares remotos, Grula, Fogos de artifício\nUnique Rectangles: Retângulo Único Tipo 1, Retângulo Único Tipo 2, Retângulo Único Tipo 3, Retângulo Único Tipo 4, Retângulo Único Tipo 5, Retângulo Único Oculto, Retângulo evitável\nAlmost Locked Sets: Conjuntos quase fechados, ALS-XZ, Cadeia ALS, Sue de Coq, Flor da Morte\nChains: Ciclos X, Ciclos X agrupados, Cadeia X, Cadeia XY, AIC, Coloração de Medusa, ERRO+1, Cadeias forçadas, Rede de Forçamento\n\nSISTEMA INTELIGENTE DE DICA\n• Dicas que ensinam a técnica, não apenas a resposta\n• Destaque visual mostra exatamente quais células e candidatos são importantes\n• Passo a passo com explicação lógica da resolução\n• Entenda o \"porquê\" de cada movimento\n\nSISTEMA DE PROGRESSÃO POR CINTURÃO\n• 12 níveis de cinturão, do Cinturão Branco (iniciante) ao Cinturão Preto (mestre)\n• Cada cinturão introduz novas técnicas e quebra-cabeças mais difíceis\n• Ganhe pontos, desbloqueie medalhas e acompanhe seu progresso\n\n12 NÍVEIS DE DIFICULDADE\n• Iniciante a Extremo — sempre há um novo desafio\n• Cada nível se concentra em técnicas específicas\n• Acesso gratuito aos níveis fundamentais\n• O plano Premium desbloqueia dificuldades avançadas e expert\n\nMAIS RECURSOS\n• Insira quebra-cabeças personalizados manualmente\n• Vários modos de exibição: Números, Kanji (漢数字) ou Emoji\n• Marcadores de lápis com modo automático de candidatos\n• Cronômetro e destaque de erros (opcional)\n• Modo escuro e 16 opções de idioma\n• Sincronize seu progresso entre dispositivos com sua conta\n\nGRATUITO E PREMIUM\n• Jogar quebra-cabeças diários e níveis de iniciante a desafiador gratuitamente\n• Assine para desbloquear níveis avançados, técnicas expert e acesso completo às dicas\n• Cinturão Azul: desbloqueia níveis Difícil, Intenso e Expert\n• Cinturão Vermelho: desbloqueia todos os níveis, incluindo Brutal e Brain Freeze\n\nSeja você pegando Sudoku pela primeira vez ou um resolvedor experiente em busca de técnicas avançadas, Sudojo é o caminho para a excelência.\n\nTermos de Uso: https://sudojo.com/en/terms\nPolítica de Privacidade: https://sudojo.com/en/privacy",
+    "tags": [
+      "Sudoku",
+      "Quebra-cabeça",
+      "Treinamento cerebral",
+      "Lógica",
+      "Educação"
+    ]
+  },
+  "microsoftStore": {
+    "productName": "Sudojo",
+    "description": "Sudojo é a plataforma definitiva de aprendizado de Sudoku que ensina como resolver quebra-cabeças — não apenas fornece as respostas. Avance do nível iniciante ao avançado por meio de um sistema estruturado de cinturões, enquanto domina mais de 60 técnicas reais de resolução usadas por jogadores campeões.\n\nDESAFIOS DIÁRIOS\n• Um quebra-cabeça novo todos os dias, adaptado ao seu nível de habilidade\n• Monitore sua sequência diária e compita com você mesmo\n• Compartilhe seus quebra-cabeças concluídos com amigos\n\nAPRENDA MAIS DE 60 TÉCNICAS DE RESOLUÇÃO\n• Cada técnica inclui explicações passo a passo e quebra-cabeças práticos\n\nBasics: Casa cheia, Único escondido, Único nu\nPairs & Tuples: Par Escondido, Par descoberto, Candidatos Trancados, Tríplice Oculta, Tríplice nu, Quadra Oculta, Quadro nu\nFish: X-Arriero, Peixe espada, Águas-vivas, Squirmbag\nFinned Fish: X-Wing com nadadeira, Espada de peixe com nadadeira, Jellyfish com nadadeira, Squirmbag com nadadeira\nSashimi Fish: X-Wing Sashimi, Peixe Espada Sashimi, Juba Sashimi\nFranken Fish: X-Wing Franken, Espada de Franken, Jellyfish de Franken\nWings: Pena XY, XYZ-Wing, WXYZ-Wing, Asa VWXYZ, Asa UVWXYZ, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Arranha-céu, Pássaro-de-papel de duas cordas, Retângulo vazio, Coloração simples, W-asa, Pares remotos, Grula, Fogos de artifício\nUnique Rectangles: Retângulo Único Tipo 1, Retângulo Único Tipo 2, Retângulo Único Tipo 3, Retângulo Único Tipo 4, Retângulo Único Tipo 5, Retângulo Único Oculto, Retângulo evitável\nAlmost Locked Sets: Conjuntos quase fechados, ALS-XZ, Cadeia ALS, Sue de Coq, Flor da Morte\nChains: Ciclos X, Ciclos X agrupados, Cadeia X, Cadeia XY, AIC, Coloração de Medusa, ERRO+1, Cadeias forçadas, Rede de Forçamento\n\nSISTEMA INTELIGENTE DE DICA\n• Dicas que ensinam a técnica, não apenas a resposta\n• Destaque visual mostra exatamente quais células e candidatos são importantes\n• Passo a passo com explicação lógica da resolução\n\nSISTEMA DE PROGRESSÃO POR CINTURÃO\n• 12 níveis de cinturão, do Cinturão Branco (iniciante) ao Cinturão Preto (mestre)\n• Cada cinturão introduz novas técnicas e quebra-cabeças mais difíceis\n• Ganhe pontos, desbloqueie medalhas e acompanhe seu progresso\n\n12 NÍVEIS DE DIFICULDADE\n• Iniciante a Extremo — sempre há um novo desafio\n• Acesso gratuito aos níveis fundamentais\n• Versão Premium desbloqueia dificuldades avançadas e expert\n\nMAIS RECURSOS\n• Insira quebra-cabeças personalizados manualmente\n• Vários modos de exibição: Números, Kanji (漢数字) ou Emoji\n• Marcadores de lápis com modo automático de candidatos\n• Modo escuro e 16 opções de idioma\n• Sincronize seu progresso entre dispositivos\n\nTermos de Uso: https://sudojo.com/en/terms\nPolítica de Privacidade: https://sudojo.com/en/privacy",
+    "shortDescription": "Domine mais de 60 técnicas de resolução Sudoku com dicas inteligentes, desafios diários e uma progressão de cinturão de iniciante a especialista.",
+    "searchTerms": "Sudoku;quebra-cabeça;treinamento cerebral;lógica;técnicas;solucionador;aprendizado;estratégia;desafio diário;puzzle numérico",
+    "whatsNew": "Desempenho melhorado na tela de detalhes da técnica e correção de pequenos bugs."
+  },
+  "privacyPolicy": {
+    "url": "https://Sudojo.com/privacy",
+    "lastUpdated": "2025-01-01",
+    "summary": {
+      "introduction": "Sudojo (\"nós\", \"nosso\" ou \"nós\") respeita sua privacidade e está comprometida em proteger seus dados pessoais. Esta política de privacidade explica como coletamos, usamos e protegemos suas informações quando você usa nosso aplicativo.",
+      "informationWeCollect": {
+        "youProvide": [
+          "Informações da conta (endereço de e-mail, nome de exibição) quando você cria uma conta",
+          "Progresso do jogo, estatísticas e dados de conclusão de quebra-cabeças",
+          "Preferências e configurações do usuário (tema, idioma, modo de exibição)",
+          "As informações de pagamento são processadas através da Apple App Store, Google Jogar, ou Microsoft Store via RevenueCat"
+        ],
+        "automaticallyCollected": [
+          "Informações do dispositivo (modelo, versão do sistema operativo, tamanho da tela)",
+          "Padrões de uso do aplicativo e interações com recursos por meio do Firebase Analytics",
+          "Relatórios de falhas e dados de desempenho por meio do Firebase Crashlytics",
+          "Endereço IP para localização geral (nível de país)"
+        ]
+      },
+      "howWeUse": [
+        "Ofereça e melhore a experiência de aprendizagem Sudoku",
+        "Sincronize seu progresso entre dispositivos",
+        "Processar e gerenciar assinaturas",
+        "Analise os padrões de uso para melhorar técnicas e quebra-cabeças",
+        "Envie atualizações importantes do serviço",
+        "Rastreie pontos, conquistas e progressão de nível"
+      ],
+      "sharing": "Não vendemos seus dados pessoais. Compartilhamos dados apenas com provedores de serviços (Firebase, RevenueCat) necessários para operar o aplicativo, quando exigido por lei ou com seu consentimento.",
+      "security": "Utilizamos criptografia em trânsito (TLS) e em repouso, realizamos avaliações de segurança regulares, aplicamos controles de acesso e usamos infraestrutura de nuvem segura.",
+      "retention": "Retemos as suas informações enquanto a sua conta estiver ativa. Pode solicitar a eliminação a qualquer momento, entrando em contacto com privacy@Sudojo.com.",
+      "rights": [
+        "Acesse seus dados pessoais",
+        "Corrigir dados incorretos",
+        "Solicitar a exclusão dos seus dados",
+        "Exporte o seu progresso no jogo",
+        "Cancelar recebimento de comunicações de marketing"
+      ],
+      "children": "Nosso serviço é projetado para usuários de todas as idades. Não coletamos intencionalmente informações pessoais de crianças com menos de 13 anos sem consentimento verificável dos pais. Usuários com menos de 13 anos podem usar o aplicativo sem criar uma conta.",
+      "contact": "privacidade@Sudojo.com"
+    }
+  },
+  "termsOfService": {
+    "url": "https://Sudojo.com/terms",
+    "lastUpdated": "2025-01-01",
+    "summary": {
+      "acceptance": "Ao acessar ou usar o Sudojo, você concorda em se vincular a estes Termos de Serviço.",
+      "serviceDescription": "Sudojo é uma aplicação de aprendizado Sudoku, oferecendo aprendizado progressivo com desafios diários, níveis de dificuldade baseados em habilidades, mais de 60 técnicas de resolução e planos gratuitos e premium.",
+      "accounts": "Você deve fornecer informações precisas, manter a segurança da conta, assumir a responsabilidade pelo atividade sob sua conta e nos notificar sobre acesso não autorizado.",
+      "acceptableUse": "Você concorda em não contornar as assinaturas, usar bots ou automação, fazer engenharia reversa do aplicativo, compartilhar credenciais de conta ou interromper o serviço.",
+      "subscriptions": "Os recursos premium são cobrados com periodicidade recorrente. As assinaturas são renovadas automaticamente, a menos que sejam canceladas com pelo menos 24 horas de antecedência em relação ao fim do período atual. Os reembolsos seguem a política de reembolso da respectiva loja de aplicativos.",
+      "intellectualProperty": "Todo o conteúdo, recursos, quebra-cabeças, técnicas e design são de propriedade da Sudobility e protegidos por direitos autorais e leis de marcas registradas.",
+      "limitationOfLiability": "O serviço é fornecido \"como está\" sem garantias de qualquer tipo. Não nos responsabilizamos por danos indiretos ou consequentes.",
+      "termination": "Podemos encerrar contas por violação destes termos. Os usuários podem excluir suas contas a qualquer momento.",
+      "contact": "support@Sudojo.com"
+    }
+  },
+  "subscriptions": {
+    "blue_belt_monthly": {
+      "apple": {
+        "name": "Cinta Azul (mensal)",
+        "description": "Desbloqueia os modos de dificuldade Difícil, Intenso e Experto. Inclui acesso completo às pistas com explicações passo a passo das técnicas. Sincroniza o progresso entre iPhone, iPad e Mac."
+      },
+      "google": {
+        "name": "Cinta Azul (mensal)",
+        "description": "Desbloqueia os níveis de dificuldade Difícil, Intenso e Experto. Inclui acesso completo às pistas com explicações passo a passo das técnicas. Sincronize o progresso em todos os seus dispositivos, incluindo Android, iPhone, iPad e Mac."
+      }
+    },
+    "blue_belt_annual": {
+      "apple": {
+        "name": "Cinta Azul (anual)",
+        "description": "Desbloqueia os modos de jogo Difícil, Intenso e Experto. Inclui acesso completo às pistas com explicações passo a passo das técnicas. Sincroniza o progresso entre iPhone, iPad e Mac. Salve com um plano anual."
+      },
+      "google": {
+        "name": "Cinta Azul (anual)",
+        "description": "Desbloqueia os níveis de dificuldade Difícil, Intenso e Experto. Inclui acesso completo às pistas com explicações passo a passo das técnicas. Sincronize o progresso em todos os seus dispositivos, incluindo Android, iPhone, iPad e Mac. Salve com um plano anual."
+      }
+    },
+    "red_belt_monthly": {
+      "apple": {
+        "name": "Cinta Vermelha (mensal)",
+        "description": "Desbloqueia todos os níveis de dificuldade, incluindo Brutal e Brain Freeze. Acesso completo a todas as técnicas de resolução e passos completos de dicas. Sincronize o progresso entre iPhone, iPad e Mac."
+      },
+      "google": {
+        "name": "Cinta Vermelha (mensal)",
+        "description": "Desbloqueia todos os níveis de dificuldade, incluindo Brutal e Brain Freeze. Acesso completo a todas as técnicas de resolução e passos completos de dicas. Sincronize o progresso em todos os seus dispositivos, incluindo Android, iPhone, iPad e Mac."
+      }
+    },
+    "red_belt_annual": {
+      "apple": {
+        "name": "Cinta Vermelha (anual)",
+        "description": "Desbloqueia todos os níveis de dificuldade, incluindo Brutal e Brain Freeze. Acesso completo a todas as técnicas de resolução e passos completos de dicas. Sincronize o progresso entre iPhone, iPad e Mac. Salve com um plano anual."
+      },
+      "google": {
+        "name": "Cinta Vermelha (anual)",
+        "description": "Desbloqueia todos os níveis de dificuldade, incluindo Brutal e Brain Freeze. Acesso completo a todas as técnicas de resolução e passos completos de dicas. Sincronize o progresso em todos os seus dispositivos, incluindo Android, iPhone, iPad e Mac. Salve com um plano anual."
+      }
+    }
+  }
+}

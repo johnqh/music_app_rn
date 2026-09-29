@@ -1,0 +1,30 @@
+{
+  "source": "https://github.com/jamesjingyi/mockup-device-frames",
+  "note": "Device frame PNGs with transparent screen areas. Screenshots are placed behind the frame.",
+  "frames": {
+    "iphone_6_9": {
+      "file": "iphone_16_plus_black.png",
+      "frame_size": [1490, 2996],
+      "screen_origin": [100, 100],
+      "screen_size": [1290, 2796]
+    },
+    "ipad_13": {
+      "file": "ipad_air_13_space_gray_landscape.png",
+      "frame_size": [2932, 2248],
+      "screen_origin": [100, 100],
+      "screen_size": [2732, 2048]
+    },
+    "android_phone": {
+      "file": "pixel_9_pro_xl_obsidian.png",
+      "frame_size": [1684, 3272],
+      "screen_origin": [170, 140],
+      "screen_size": [1344, 2992]
+    },
+    "android_10_inch_tablet": {
+      "file": "pixel_tablet_porcelain.png",
+      "frame_size": [3147, 2131],
+      "screen_origin": [200, 200],
+      "screen_size": [2747, 1731]
+    }
+  }
+}

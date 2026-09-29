@@ -1,0 +1,35 @@
+{
+  "ios": {
+    "iphone_6_9": {
+      "simulator": "iPhone 16 Plus",
+      "runtime": "iOS-18-6",
+      "resolution": "1290x2796"
+    }
+  },
+  "ipados": {
+    "ipad_13": {
+      "simulator": "iPad Air 13-inch (M3)",
+      "runtime": "iOS-18-6",
+      "resolution": "2048x2732",
+      "store_resolution": "2732x2048"
+    }
+  },
+  "macos": {
+    "macos_desktop": {
+      "app": "native",
+      "resolution": "2880x1800"
+    }
+  },
+  "android": {
+    "android_phone": {
+      "emulator": "Pixel_9_Pro_XL",
+      "resolution": "1344x2992",
+      "store_resolution": "1080x1920"
+    },
+    "android_10_inch_tablet": {
+      "emulator": "Medium_Tablet",
+      "resolution": "1600x2560",
+      "store_resolution": "2560x1600"
+    }
+  }
+}

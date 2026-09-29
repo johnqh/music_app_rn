@@ -96,6 +96,13 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
     JS-reachable version, for File ▸ Projects) does, so launch and the menu
     command can never drift into two ways of making this window.
   */
+  /*
+    Hidden when closed, not destroyed — the promise the Projects window
+    already makes. The editor window holds the React tree every menu command
+    is answered by and every project opens into; released on close, the next
+    project chosen had no window to appear in.
+  */
+  self.window.releasedWhenClosed = NO;
   [self.window orderOut:nil];
   [MoosiacProjectsWindow showProjectsWindow];
 }
@@ -175,7 +182,33 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
 - (void)moosiacEditRedo:(id)sender { [self postMenuCommand:@"edit.redo"]; }
 - (void)moosiacFilePrint:(id)sender { [self postMenuCommand:@"file.print"]; }
 - (void)moosiacFileSnapshots:(id)sender { [self postMenuCommand:@"file.snapshots"]; }
-- (void)moosiacNavProjects:(id)sender { [self postMenuCommand:@"nav.projects"]; }
+/*
+  Shown here, natively, as well as announced to JavaScript.
+
+  Every other item is JavaScript's to act on, and this one used to be too:
+  the listener that turned `nav.projects` into a call back to
+  `MoosiacProjectsWindow.show` lives in the editor window's React tree. With
+  that window closed there was nobody listening, so with no window open at
+  all — exactly when a way to open one is wanted — File ▸ Projects… did
+  nothing. The window is AppKit's and so is the menu, and launch already
+  opens it this way. The command is still posted, so whatever JavaScript
+  does on it happens too; asking for a window already in front is a no-op.
+*/
+- (void)moosiacNavProjects:(id)sender
+{
+  [MoosiacProjectsWindow showProjectsWindow];
+  [self postMenuCommand:@"nav.projects"];
+}
+
+/*
+  Clicking the Dock icon with nothing open: the same request, from the other
+  place a reader makes it.
+*/
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)hasVisibleWindows
+{
+  if (!hasVisibleWindows) [MoosiacProjectsWindow showProjectsWindow];
+  return YES;
+}
 - (void)moosiacNavSettings:(id)sender { [self postMenuCommand:@"nav.settings"]; }
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
@@ -438,6 +471,92 @@ RCT_EXPORT_METHOD(close)
 {
   dispatch_async(dispatch_get_main_queue(), ^{
     [sProjectsWindow orderOut:nil];
+  });
+}
+
+@end
+
+/**
+ * The system's pop-up menu, for a `Select`.
+ *
+ * `@sudobility/components-rn`'s `Select` opens its choices as an `NSMenu` on
+ * a desktop when the app provides this module, and as a list it draws itself
+ * when it does not. The drawn list works; this is what a Mac user expects
+ * under a pop-up button, and it can extend past the window's edge where a
+ * drawn one is clipped by it.
+ *
+ * Registered under the name the component looks for. Declared here rather
+ * than in a file of its own for the reason the menu bridge above gives: a
+ * second class in one `.mm` needs no new entry in the Xcode project.
+ */
+@interface MoosiacPopupMenu : NSObject <RCTBridgeModule>
+@property (nonatomic, copy) NSString *selectedKey;
+@end
+
+@implementation MoosiacPopupMenu
+
+RCT_EXPORT_MODULE(PopupMenuModule);
+
++ (BOOL)requiresMainQueueSetup
+{
+  return YES;
+}
+
+- (void)menuItemClicked:(NSMenuItem *)sender
+{
+  self.selectedKey = sender.representedObject;
+}
+
+RCT_EXPORT_METHOD(show:(NSArray<NSDictionary *> *)items
+                  screenX:(double)screenX
+                  screenY:(double)screenY
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+{
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self.selectedKey = nil;
+
+    NSMenu *menu = [[NSMenu alloc] initWithTitle:@""];
+    menu.autoenablesItems = NO;
+    NSMenuItem *current = nil;
+    for (NSDictionary *item in items) {
+      if ([item[@"separator"] boolValue]) {
+        [menu addItem:[NSMenuItem separatorItem]];
+        continue;
+      }
+      NSMenuItem *menuItem = [[NSMenuItem alloc] initWithTitle:item[@"label"] ?: @""
+                                                        action:@selector(menuItemClicked:)
+                                                 keyEquivalent:@""];
+      menuItem.target = self;
+      menuItem.representedObject = item[@"key"];
+      menuItem.enabled = YES;
+      if ([item[@"selected"] boolValue]) {
+        menuItem.state = NSControlStateValueOn;
+        current = menuItem;
+      }
+      [menu addItem:menuItem];
+    }
+
+    /*
+      The point arrives measured from the top-left of the window's content,
+      which is where React Native counts from; AppKit counts from the bottom
+      left of the screen. The key window, not the main one: this app has two,
+      and a select is pressed in whichever is in front.
+    */
+    NSWindow *window = NSApp.keyWindow ?: NSApp.mainWindow;
+    if (!window) {
+      resolve([NSNull null]);
+      return;
+    }
+    NSRect content = [window contentRectForFrameRect:window.frame];
+    NSPoint location = NSMakePoint(content.origin.x + screenX,
+                                   content.origin.y + content.size.height - screenY);
+
+    // Blocks until the menu is dismissed. Opened with the current choice
+    // under the pointer, as a pop-up button opens.
+    [menu popUpMenuPositioningItem:current atLocation:location inView:nil];
+
+    resolve(self.selectedKey ?: (id)[NSNull null]);
   });
 }
 

@@ -1,6 +1,7 @@
 /**
- * The row that says a generation job owns this score, while the notes it
- * writes appear in the score above.
+ * The row that says a job owns this score — a generation, or the
+ * transcription of a recording — while the notes it writes appear in the
+ * score above.
  *
  * A generation is a job, not a request that resolves: `POST /jobs` returns as
  * soon as the row exists and the work happens afterwards — and the work is
@@ -18,17 +19,26 @@
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Spinner, Text } from '@sudobility/components-rn';
-import type { LiveGenerationProgress } from '@sudobility/music_types';
+import type {
+  LiveGenerationProgress,
+  ProjectStatus,
+} from '@sudobility/music_types';
 import type { LiveStatus } from '@sudobility/music_client';
 
 export function GenerationOverlay({
   visible,
+  status = 'generating',
   error,
   progress = null,
   live = 'off',
   onCancel,
 }: {
   visible: boolean;
+  /**
+   * Which kind of job it is. The two lock the editor identically and stream
+   * the same way; what differs is the sentence.
+   */
+  status?: ProjectStatus;
   error: string | null;
   /** The stream's last progress note, when there is one. */
   progress?: LiveGenerationProgress | null;
@@ -38,6 +48,7 @@ export function GenerationOverlay({
 }) {
   const { t } = useTranslation();
   if (!visible) return null;
+  const transcribing = status === 'transcribing';
   return (
     <View
       testID="generation-status-strip"
@@ -45,11 +56,18 @@ export function GenerationOverlay({
       className="border-border bg-background flex-row flex-wrap items-center gap-x-3 gap-y-1 border-t px-4 py-2"
     >
       <Spinner />
-      <Text className="text-foreground text-base">{t('generate.working')}</Text>
+      <Text className="text-foreground text-base">
+        {t(transcribing ? 'overlay.transcribingNotes' : 'generate.working')}
+      </Text>
       {progress ? (
         <Text className="text-muted-foreground text-sm">
           {t('overlay.progress', {
-            stage: t(`overlay.stage.${progress.stage}`),
+            // A transcription's first stage splits the recording into
+            // parts; "Planning" is what a generation does before it writes.
+            stage:
+              transcribing && progress.stage === 'plan'
+                ? t('overlay.stage.separate')
+                : t(`overlay.stage.${progress.stage}`),
             done: progress.done,
             total: progress.total,
             label: progress.label,

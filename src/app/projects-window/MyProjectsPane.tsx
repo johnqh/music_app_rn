@@ -3,9 +3,8 @@
  * Connect item turns into once signed in (`ProjectsSidebar.tsx`).
  *
  * A trimmed `DashboardScreen`'s `ProjectList`: the same fetch
- * (`useProjects`) and the same row (name, updated time, a `generating`/
- * `transcribing` project refuses to open, exactly as the phone/tablet
- * dashboard's does), without that screen's own New Project button and
+ * (`useProjects`) and the same row (name, updated time, and which job is
+ * writing it when one is), without that screen's own New Project button and
  * Import menu — this window's sidebar is where both of those live now, and
  * offering them a second time here would be the same entry point twice.
  */
@@ -15,6 +14,7 @@ import { MIN_TOUCH_TARGET, Spinner, Text } from '@sudobility/components-rn';
 import { useProjects } from '@sudobility/music_client';
 import type { ProjectSummary } from '@sudobility/music_types';
 import { useServerContext } from '@/config/useServerContext';
+import { PressableCard } from '@/components/controls/PressableCard';
 import { ServerUnavailable } from '@/screens/ScreenScaffold';
 
 export type MyProjectsPaneProps = {
@@ -61,6 +61,7 @@ function ProjectListing({
           accessibilityRole="button"
           onPress={() => void refetch()}
           onAccessibilityTap={() => void refetch()}
+          style={{ minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' }}
         >
           <Text className="text-primary">{t('library.retry')}</Text>
         </Pressable>
@@ -81,13 +82,9 @@ function ProjectListing({
         </Text>
       }
       renderItem={({ item }: { item: ProjectSummary }) => {
-        // A `transcribing` project has no finished score to open yet — the
-        // same refusal `DashboardScreen`'s list makes, and the same welcome
-        // for a `generating` one, whose notes can be watched arriving.
-        const busy = item.status === 'transcribing';
-        const activate = () => {
-          if (!busy) onOpen(item.id);
-        };
+        // A busy project opens like any other, as in `DashboardScreen`'s
+        // list: its notes can be watched arriving, whichever job writes them.
+        const activate = () => onOpen(item.id);
         const statusLabel =
           item.status === 'transcribing'
             ? t('dashboard.transcribing')
@@ -95,15 +92,7 @@ function ProjectListing({
             ? t('dashboard.generating')
             : null;
         return (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={item.name}
-            accessibilityState={{ disabled: busy }}
-            onPress={activate}
-            onAccessibilityTap={activate}
-            className="border-border bg-card rounded-lg border p-3"
-            style={{ minHeight: MIN_TOUCH_TARGET, opacity: busy ? 0.6 : 1 }}
-          >
+          <PressableCard label={item.name} onPress={activate}>
             <Text className="text-foreground font-medium">{item.name}</Text>
             <Text className="text-muted-foreground text-sm">
               {new Date(item.updatedAt).toLocaleString()}
@@ -111,7 +100,7 @@ function ProjectListing({
             {statusLabel ? (
               <Text className="text-info mt-1 text-sm">{statusLabel}</Text>
             ) : null}
-          </Pressable>
+          </PressableCard>
         );
       }}
     />

@@ -8,6 +8,7 @@
  * who was looking at Connect the moment they finished signing in lands on
  * My Projects rather than a pane that no longer applies to them.
  */
+import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { MIN_TOUCH_TARGET, Text, cn } from '@sudobility/components-rn';
@@ -65,9 +66,14 @@ function SidebarItem({
   selected: boolean;
   onPress: () => void;
 }) {
+  // Under the pointer, as the rows in the panes beside it are — see
+  // `PressableCard`. The selected item keeps its own tint either way.
+  const [hovered, setHovered] = useState(false);
   return (
     <Pressable
       accessibilityRole="menuitem"
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
       accessibilityLabel={label}
       accessibilityState={{ selected }}
       onPress={onPress}
@@ -75,7 +81,10 @@ function SidebarItem({
       // VoiceOver activation reaches a Pressable only through
       // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
       onAccessibilityTap={onPress}
-      className={cn('flex-row items-center px-4', selected && 'bg-primary/10')}
+      className={cn(
+        'flex-row items-center px-4',
+        selected ? 'bg-primary/10' : hovered && 'bg-primary/5',
+      )}
       style={{ minHeight: MIN_TOUCH_TARGET }}
     >
       <Text

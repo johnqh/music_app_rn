@@ -3,7 +3,7 @@
  * recording" tap standing between selecting Audio and the file dialog.
  */
 import { jest } from '@jest/globals';
-import { act, fireEvent } from '@testing-library/react-native';
+import { act } from '@testing-library/react-native';
 import { renderWithApp } from '@/test/render';
 import { AudioImportSheet } from './AudioImportSheet';
 
@@ -48,19 +48,52 @@ describe('AudioImportSheet', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('shows the chosen file and transcribes it on confirm', async () => {
+  it('sends the recording as soon as it is chosen, with nothing to confirm', async () => {
+    // Choosing the file is the decision. A dialog after it asked the reader
+    // to confirm what they had just done.
     mockPickFile.mockResolvedValue('/tmp/take-3.mp3');
     const onUpload = jest.fn();
     const view = renderWithApp(
       <AudioImportSheet open onClose={jest.fn()} onUpload={onUpload} />,
     );
     await act(async () => undefined);
-    expect(view.getByText('take-3.mp3')).toBeTruthy();
 
-    fireEvent.press(view.getByText('Transcribe'));
     expect(onUpload).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'take-3.mp3' }),
     );
+    expect(view.queryByText('Transcribe')).toBeNull();
+    expect(view.queryByText('Import audio')).toBeNull();
+  });
+
+  it('says the recording is on its way while it is, and offers no way out of it', async () => {
+    mockPickFile.mockResolvedValue('/tmp/take-3.mp3');
+    const view = renderWithApp(
+      <AudioImportSheet open busy onClose={jest.fn()} onUpload={jest.fn()} />,
+    );
+    await act(async () => undefined);
+
+    expect(view.getByText('Sending the recording…')).toBeTruthy();
+    expect(view.queryByText('Cancel')).toBeNull();
+  });
+
+  it('says to sign in, rather than that the server cannot, when that is the reason', async () => {
+    // Two ways to be without transcription, with different remedies. A
+    // reader who only has to sign in must not be told the feature is absent.
+    const view = renderWithApp(
+      <AudioImportSheet
+        open
+        available={false}
+        unavailableReason="signedOut"
+        onClose={jest.fn()}
+        onUpload={jest.fn()}
+      />,
+    );
+    expect(
+      await view.findByText(/^Sign in to import a recording/),
+    ).toBeTruthy();
+    expect(
+      view.queryByText('Audio transcription is not available on this server.'),
+    ).toBeNull();
   });
 
   it('shows the unavailable message immediately, without touching the picker', async () => {

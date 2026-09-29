@@ -114,3 +114,27 @@ The same patch also carries two macOS fixes to React Native itself:
   the same value inside `ShadowNode::clone` — a use-after-free in
   `folly::dynamic::type()`. Every read and write now happens under a new
   `nativePropsMutex_DEPRECATED`.
+
+### …and reset a recycled view's hover state
+
+The same patch file carries a second, unrelated fix, in
+`RCTViewComponentView.mm`'s `prepareForRecycle`.
+
+Fabric pools its native views. A view taken off screen while the pointer is
+over it — a row clicked to leave the list it is in, which is the ordinary way
+to leave a list — never receives `mouseExited:`, so it returns to the pool with
+`_hasMouseOver` still `YES`. Handed out again for some other row,
+`mouseEntered:` returns early on that flag and the row never reports the
+pointer arriving: `onHoverIn` is simply not called. Which rows inherit a stale
+view depends on the order the pool hands them back, so the symptom is a list
+where some rows answer the pointer and some do not, apparently at random, and
+a different set each time the list is rebuilt.
+
+`prepareForRecycle` already resets `acceptsFirstMouse` and the rest of the
+macOS view state; this adds the tracking area, `_hasMouseOver` and the
+clip-view observer to it. Worth sending upstream.
+
+patch-package cannot regenerate this file here — it refuses a project with no
+npm or yarn lockfile, and this one has bun's. The hunk was diffed by hand
+against the unmodified file and the whole patch checked with `git apply
+--check` against a pristine `react-native-macos@0.81.9`.

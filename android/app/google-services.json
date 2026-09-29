@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "858232741643",
+    "project_id": "moosiac-671d1",
+    "storage_bucket": "moosiac-671d1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:858232741643:android:9f5effc80d815885d98c0e",
+        "android_client_info": {
+          "package_name": "com.sudobility.moosiac"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "858232741643-c5pgcocg344pvtq4rre4h8vvss1khrff.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB4hqRLBYfte-L_PfaxSLoZwcsWOQOeSTY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "858232741643-c5pgcocg344pvtq4rre4h8vvss1khrff.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "858232741643-70o0sn0f8puh5ivio3dgtr0a3oohmt6j.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.sudobility.moosiac"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

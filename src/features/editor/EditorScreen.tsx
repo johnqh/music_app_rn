@@ -5,7 +5,7 @@
  * app's. What is here is the handful of actions that need the document, the
  * storage and the transport at once.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -274,6 +274,30 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     nothing can dirty a score the server is in the middle of replacing.
   */
   const generating = generation.generating;
+
+  /*
+    A transcription that ended badly says so after the strip has gone. The
+    strip is what shows `generation.error`, and it goes the moment the
+    project is ready again — for a failure, the same moment. A generation's
+    failure reaches a toast through the hook, by way of its job; a
+    transcription has no job, and the reader is now in front of the project
+    when it fails rather than learning of it from a row in a list.
+  */
+  const lastStatusRef = useRef(generation.status);
+  useEffect(() => {
+    const previous = lastStatusRef.current;
+    lastStatusRef.current = generation.status;
+    if (
+      previous === 'transcribing' &&
+      generation.status === 'ready' &&
+      generation.error
+    ) {
+      document.store
+        .getState()
+        .pushToast({ message: generation.error, severity: 'error' });
+    }
+  }, [document, generation.status, generation.error]);
+
   useEffect(() => {
     document.store.getState().setEditLocked(generating);
     return () => document.store.getState().setEditLocked(false);
@@ -485,6 +509,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       overlay={
         <GenerationOverlay
           visible={generating}
+          status={generation.status}
           error={generation.error}
           progress={generation.progress}
           live={generation.live}

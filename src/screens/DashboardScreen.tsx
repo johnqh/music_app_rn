@@ -151,15 +151,13 @@ function ProjectList({
   );
 
   /**
-   * Uploads a recording and lets it transcribe in the background.
+   * Uploads a recording and opens the project it becomes.
    *
-   * The score does not exist yet when this returns: the project is created in
-   * a `transcribing` state and fills itself in when the job lands. Unlike a
-   * generation, this does **not** open the editor straight away — a
-   * transcription runs for minutes, not seconds, and a reader dropped into a
-   * project with nothing in it yet has no way to tell "still working" from
-   * "came back empty". The list shows it as transcribing instead (see
-   * `renderItem` below), and opening it is refused until it lands.
+   * The project is created in a `transcribing` state and this goes straight
+   * to it, as a generation does and for the same reason: the editor watches
+   * the project's live stream, where each part lands in the score as the
+   * transcriber finishes it, under a strip naming the part being worked on.
+   * The place to wait is in front of the score, not on a row with a badge.
    */
   const transcribeAudio = useCallback(
     async (file: NativeUploadFile) => {
@@ -168,10 +166,11 @@ function ProjectList({
       // server behind it, but the session can still have ended since.
       const token = await context.getToken?.();
       if (!client || !token) return;
-      await client.transcribeAudio(file, file.name, token);
+      const project = await client.transcribeAudio(file, file.name, token);
       await refetch();
+      onOpened(project.id);
     },
-    [context, refetch],
+    [context, refetch, onOpened],
   );
 
   if (isLoading) {
@@ -219,17 +218,10 @@ function ProjectList({
           </Text>
         }
         renderItem={({ item }: { item: ProjectSummary }) => {
-          // A `transcribing` project has no finished score to open yet — the
-          // editor would show minutes of nothing with no way to tell "still
-          // working" from "came back empty". Refused here instead, at the one
-          // place that already knows every project's status without an extra
-          // fetch. A `generating` project is the opposite case: its notes
-          // stream into the editor as they are written, and opening it is
-          // how you watch.
-          const busy = item.status === 'transcribing';
-          const activate = () => {
-            if (!busy) onOpen(item.id);
-          };
+          // A busy project opens like any other: generated or transcribed,
+          // its notes stream into the editor as they are written, and
+          // opening it is how you watch. The label says which is happening.
+          const activate = () => onOpen(item.id);
           const statusLabel =
             item.status === 'transcribing'
               ? t('dashboard.transcribing')
@@ -240,14 +232,13 @@ function ProjectList({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={item.name}
-              accessibilityState={{ disabled: busy }}
               onPress={activate}
               // macOS has no synthesized-touch fallback for an assistive press,
               // so a VoiceOver activation reaches a Pressable only through
               // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
               onAccessibilityTap={activate}
               className="border-border bg-card rounded-lg border p-3"
-              style={{ minHeight: MIN_TOUCH_TARGET, opacity: busy ? 0.6 : 1 }}
+              style={{ minHeight: MIN_TOUCH_TARGET }}
             >
               <Text className="text-foreground font-medium">{item.name}</Text>
               <Text className="text-muted-foreground text-sm">

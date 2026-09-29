@@ -24,3 +24,10 @@ android/app/.cxx/
 .env
 .env.local
 .env.*.local
+
+# App Store build artifacts and secrets
+app_store/builds/
+app_store/.metro.pid
+app_store/.metro.log
+app_store/.env
+app_store/.keys/

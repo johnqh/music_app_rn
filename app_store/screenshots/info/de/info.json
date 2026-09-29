@@ -1,0 +1,124 @@
+{
+  "locale": "Deutsch",
+  "appleAppStore": {
+    "title": "Sudojo - Lerne Sudoku-Techniken",
+    "subtitle": "Meistere 60+ Lösungsstrategien",
+    "keywords": "Sudoku, Rätsel, Gehirn, Logik, Techniken, Löser, Hinweise, Lernen, Strategie, täglich, Herausforderung, Training, Zahl, Gitter, Bleistiftmarkierungen",
+    "promotionalText": "Beherrsche Sudoku von Anfänger bis Experte mit über 60 Lösungstechniken und intelligenten Hinweisen.",
+    "description": "Sudojo ist die ultimative Sudoku-Lernplattform, die Ihnen beibringt, wie man Rätsel löst – nicht nur die Antworten liefert. Werden Sie von Anfänger zu Experte durch ein strukturiertes Gürtelsystem, während Sie mehr als 60 echte Lösungstechniken meistern, die von Meisterschaftsspielern verwendet werden.\n\nTÄGLICHE HERAUSFORDERUNGEN\n• Ein neues Rätsel jeden Tag, angepasst an Ihr Niveau\n• Verfolgen Sie Ihre tägliche Serie und messen Sie sich mit sich selbst\n• Teilen Sie Ihre gelösten Rätsel mit Freunden\n\nLERNEN SIE MEHR ALS 60 LÖSUNGSTECHNIKEN\n• Jede Technik enthält Schritt-für-Schritt-Erklärungen und Übungs-Rätsel\n\nBasics: Vollhaus, Verstecktes Einzel, Nacktes Einzel\nPairs & Tuples: Verstecktes Paar, Nacktes Paar, Gesperrte Kandidaten, Verstecktes Tripel, Nacktes Tripel, Versteckte Vierergruppe, Nacktes Quadrupel\nFish: X-Flugzeug, Schwertfisch, Quallen, Squirmbag\nFinned Fish: Finn- X-Wing, Finned Swordfish, Flossen-Jellyfish, Finn-Squirmbag\nSashimi Fish: Sashimi-X-Wing, Sashimi-Schwertfisch, Sashimi-Jellyfish\nFranken Fish: Franken-X-Wing, Franken-Schwertfisch, Franken-Quallenfisch\nWings: XY-Flügel, XYZ-Wing, WXYZ-Wing, VWXYZ-Wing, UVWXYZ-Wing, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Hochhaus, Zweireihen-Kite, Leeres Rechteck, Einfache Farbgebung, W-Flügel, Fernpaare, Kranich, Feuerwerk\nUnique Rectangles: Eindeutiges Rechteck Typ 1, Eindeutiges Rechteck Typ 2, Eindeutiges Rechteck Typ 3, Eindeutiges Rechteck Typ 4, Eindeutiges Rechteck Typ 5, Verstecktes eindeutiges Rechteck, Vermeidbarer Rechteck\nAlmost Locked Sets: Fast geschlossene Mengen, ALS-XZ, ALS-Kette, Sue de Coq, Todblüte\nChains: X-Zyklen, Gruppierte X-Zyklen, X-Kette, XY-Kette, AIC, Medusa-Färbung, FEHLER+1, Zwingende Ketten, Zwangspfad\n\nSMARTES HINWEISSYSTEM\n• Hinweise, die Ihnen die Technik beibringen, nicht nur die Antwort liefern\n• Visuelle Hervorhebung zeigt genau, welche Zellen und Kandidaten wichtig sind\n• Schritt-für-Schritt-Anleitung zum Lösungslogik\n• Verstehen Sie den „Warum“ hinter jedem Zug\n\nGÜRTEL-FORTSCHRITTS-SYSTEM\n• 12 Gürtelstufen von Weißgurt (Anfänger) bis Schwarzgurt (Meister)\n• Jeder Gürtel führt neue Techniken und schwierigere Rätsel ein\n• Sammeln Sie Punkte, entsperren Sie Abzeichen und verfolgen Sie Ihre Verbesserung\n• Beobachten Sie, wie sich Ihre Lösungsfähigkeiten im Laufe der Zeit entwickeln\n\n12 SCHWIERIGKEITSSTUFEN\n• Von Anfänger bis Extrem – es gibt immer eine neue Herausforderung\n• Jede Stufe konzentriert sich auf spezifische Techniken\n• Kostenlose Zugänge zu den Grundstufen\n• Premium entsperrt fortgeschrittene und Experten-Schwierigkeiten\n\nWEITERE FUNKTIONEN\n• Geben Sie benutzerdefinierte Rätsel manuell ein oder scannen Sie sie von Papier\n• Mehrere Anzeigemodi: Zahlen, Kanji (漢数字) oder Emoji\n• Bleistift-Markierungen mit automatischem Kandidatenmodus\n• Timer und Fehlermarkierung (optional)\n• Dunkler Modus und 16 Sprachoptionen\n• Synchronisieren Sie Ihren Fortschritt über Geräte mit Ihrem Konto\n• Funktioniert auf iPhone, iPad und Mac\n\nKOSTENLOS UND PREMIUM\n• Spielen tägliche Rätsel und Ebenen von Anfänger bis herausfordernd kostenlos\n• Abonnieren Sie, um fortgeschrittene Ebenen, Experten-Techniken und vollen Zugang zu Hinweisen freizuschalten\n• Blauer Gürtel: Entsperren Sie die Ebenen Schwierig, Intensiv und Experte\n• Roter Gürtel: Entsperren Sie alle Ebenen inklusive Brutal und Gehirn-Stop\n\nEgal, ob Sie Sudoku zum ersten Mal aufgreifen oder ein erfahrener Löser sind, der fortgeschrittene Techniken lernen möchte, ist Sudojo Ihr Weg zur Meisterschaft.\n\nNutzungsbedingungen: https://sudojo.com/en/terms\nDatenschutzrichtlinie: https://sudojo.com/en/privacy",
+    "whatsNew": "Verbesserte Leistung auf dem Bildschirm mit den Technikdetails und kleinere Fehler behoben.",
+    "supportUrl": "https://sudojo.com/support",
+    "marketingUrl": "https://sudojo.com/marketing"
+  },
+  "googlePlay": {
+    "title": "Sudojo: Sudoku-Techniken",
+    "shortDescription": "Meistere 60+ Sudoku-Techniken mit cleveren Hinweisen und täglichen Aufgaben.",
+    "fullDescription": "Sudojo ist die ultimative Sudoku-Lernplattform, die Ihnen beibringt, wie man Rätsel löst – nicht nur die Antworten liefert. Fortschritt von Anfänger bis Experte durch ein strukturiertes Gürtelsystem, während Sie mehr als 60 echte Lösungstechniken meistern, die von Meisterschaftsspielern verwendet werden.\n\nTÄGLICHE HERAUSFORDERUNGEN\n• Ein neues Rätsel jeden Tag, angepasst an Ihr Niveau\n• Verfolgen Sie Ihre tägliche Serie und messen Sie sich mit sich selbst\n• Teilen Sie Ihre gelösten Rätsel mit Freunden\n\nLERNEN SIE MEHR ALS 60 LÖSUNGSTECHNIKEN\n• Jede Technik enthält Schritt-für-Schritt-Erklärungen und Übungs-Rätsel\n\nBasics: Vollhaus, Verstecktes Einzel, Nacktes Einzel\nPairs & Tuples: Verstecktes Paar, Nacktes Paar, Gesperrte Kandidaten, Verstecktes Tripel, Nacktes Tripel, Versteckte Vierergruppe, Nacktes Quadrupel\nFish: X-Flugzeug, Schwertfisch, Quallen, Squirmbag\nFinned Fish: Finn- X-Wing, Finned Swordfish, Flossen-Jellyfish, Finn-Squirmbag\nSashimi Fish: Sashimi-X-Wing, Sashimi-Schwertfisch, Sashimi-Jellyfish\nFranken Fish: Franken-X-Wing, Franken-Schwertfisch, Franken-Quallenfisch\nWings: XY-Flügel, XYZ-Wing, WXYZ-Wing, VWXYZ-Wing, UVWXYZ-Wing, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Hochhaus, Zweireihen-Kite, Leeres Rechteck, Einfache Farbgebung, W-Flügel, Fernpaare, Kranich, Feuerwerk\nUnique Rectangles: Eindeutiges Rechteck Typ 1, Eindeutiges Rechteck Typ 2, Eindeutiges Rechteck Typ 3, Eindeutiges Rechteck Typ 4, Eindeutiges Rechteck Typ 5, Verstecktes eindeutiges Rechteck, Vermeidbarer Rechteck\nAlmost Locked Sets: Fast geschlossene Mengen, ALS-XZ, ALS-Kette, Sue de Coq, Todblüte\nChains: X-Zyklen, Gruppierte X-Zyklen, X-Kette, XY-Kette, AIC, Medusa-Färbung, FEHLER+1, Zwingende Ketten, Zwangspfad\n\nSMARTES HINWEISSYSTEM\n• Hinweise, die Ihnen die Technik beibringen, nicht nur die Antwort liefern\n• Visuelle Hervorhebung zeigt genau, welche Zellen und Kandidaten wichtig sind\n• Schritt-für-Schritt-Anleitung zum Lösungslogik\n• Lernen Sie das „Warum“ hinter jedem Zug\n\nGÜRTEL-FORTSCHRITTS-SYSTEM\n• 12 Gürtelstufen von Weißgurt (Anfänger) bis Schwarzgurt (Meister)\n• Jeder Gürtel führt neue Techniken und schwierigere Rätsel ein\n• Sammeln Sie Punkte, entsperren Sie Abzeichen und verfolgen Sie Ihre Verbesserung\n\n12 SCHWIERIGKEITSSTUFEN\n• Von Anfänger bis Extrem – es gibt immer eine neue Herausforderung\n• Jede Stufe konzentriert sich auf spezifische Techniken\n• Kostenlose Zugänge zu den Grundlagen\n• Premium entsperrt fortgeschrittene und Experten-Schwierigkeiten\n\nWEITERE FUNKTIONEN\n• Manuelle Eingabe von benutzerdefinierten Rätseln\n• Mehrere Anzeigemodi: Zahlen, Kanji (漢数字) oder Emoji\n• Bleistift-Markierungen mit automatischem Kandidatenmodus\n• Timer und Fehlerhervorhebung (optional)\n• Dunkler Modus und 16 Sprachoptionen\n• Synchronisieren Sie Ihren Fortschritt über Geräte mit Ihrem Konto\n\nKOSTENLOS UND PREMIUM\n• Spielen tägliche Rätsel und Ebenen von Anfänger bis herausfordernd kostenlos\n• Abonnieren Sie, um fortgeschrittene Ebenen, Experten-Techniken und vollen Hint-Zugang freizuschalten\n• Blauer Gürtel: Entsperren Sie Schwierig, Intensiv und Experten-Ebenen\n• Roter Gürtel: Entsperren Sie alle Ebenen inklusive Brutal und Brain Freeze\n\nEgal, ob Sie Sudoku zum ersten Mal aufgreifen oder ein erfahrener Löser sind, der fortgeschrittene Techniken lernen möchte, ist Sudojo Ihr Weg zur Meisterschaft.\n\nNutzungsbedingungen: https://sudojo.com/en/terms\nDatenschutzrichtlinie: https://sudojo.com/en/privacy",
+    "tags": ["Sudoku", "Rätsel", "Gehirntraining", "Logik", "Bildung"]
+  },
+  "microsoftStore": {
+    "productName": "Sudojo",
+    "description": "Sudojo ist die ultimative Sudoku-Lernplattform, die Ihnen beibringt, Rätsel zu lösen – nicht nur die Antworten liefert. Werden Sie von Anfänger bis Experte durch ein strukturiertes Gürtelsystem, während Sie mehr als 60 echte Lösungstechniken meistern, die von Meisterschaftsspielern verwendet werden.\n\nTÄGLICHE HERAUSFORDERUNGEN\n• Ein neues Rätsel jeden Tag, angepasst an Ihr Niveau\n• Verfolgen Sie Ihre tägliche Serie und messen Sie sich mit sich selbst\n• Teilen Sie Ihre gelösten Rätsel mit Freunden\n\nLERNEN SIE MEHR ALS 60 LÖSUNGSTECHNIKEN\n• Jede Technik enthält Schritt-für-Schritt-Erklärungen und Übungs-Rätsel\n\nBasics: Vollhaus, Verstecktes Einzel, Nacktes Einzel\nPairs & Tuples: Verstecktes Paar, Nacktes Paar, Gesperrte Kandidaten, Verstecktes Tripel, Nacktes Tripel, Versteckte Vierergruppe, Nacktes Quadrupel\nFish: X-Flugzeug, Schwertfisch, Quallen, Squirmbag\nFinned Fish: Finn- X-Wing, Finned Swordfish, Flossen-Jellyfish, Finn-Squirmbag\nSashimi Fish: Sashimi-X-Wing, Sashimi-Schwertfisch, Sashimi-Jellyfish\nFranken Fish: Franken-X-Wing, Franken-Schwertfisch, Franken-Quallenfisch\nWings: XY-Flügel, XYZ-Wing, WXYZ-Wing, VWXYZ-Wing, UVWXYZ-Wing, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Hochhaus, Zweireihen-Kite, Leeres Rechteck, Einfache Farbgebung, W-Flügel, Fernpaare, Kranich, Feuerwerk\nUnique Rectangles: Eindeutiges Rechteck Typ 1, Eindeutiges Rechteck Typ 2, Eindeutiges Rechteck Typ 3, Eindeutiges Rechteck Typ 4, Eindeutiges Rechteck Typ 5, Verstecktes eindeutiges Rechteck, Vermeidbarer Rechteck\nAlmost Locked Sets: Fast geschlossene Mengen, ALS-XZ, ALS-Kette, Sue de Coq, Todblüte\nChains: X-Zyklen, Gruppierte X-Zyklen, X-Kette, XY-Kette, AIC, Medusa-Färbung, FEHLER+1, Zwingende Ketten, Zwangspfad\n\nSMARTES HINWEISSYSTEM\n• Hinweise, die Ihnen die Technik beibringen, nicht nur die Antwort liefern\n• Visuelle Hervorhebung zeigt genau, welche Zellen und Kandidaten wichtig sind\n• Schritt-für-Schritt-Anleitung zum Lösungslogik\n\nGÜRTEL-FORTSCHRITTS-SYSTEM\n• 12 Gürtelstufen von Weißgurt (Anfänger) bis Schwarzgurt (Meister)\n• Jeder Gürtel führt neue Techniken und schwierigere Rätsel ein\n• Punkte sammeln, Abzeichen freischalten und Ihren Fortschritt verfolgen\n\n12 SCHWIERIGKEITSSTUFEN\n• Von Anfänger bis Extrem – es gibt immer eine neue Herausforderung\n• Kostenlose Zugänge zu den Grundstufen\n• Premium öffnet fortgeschrittene und Experten-Schwierigkeiten\n\nWEITERE FUNKTIONEN\n• Manuelle Eingabe von benutzerdefinierten Rätseln\n• Mehrere Anzeigemodi: Zahlen, Kanji (漢数字) oder Emoji\n• Bleistift-Markierungen mit automatischem Kandidatenmodus\n• Dunkler Modus und 16 Sprachoptionen\n• Synchronisieren Sie Ihren Fortschritt über Geräte\n\nNutzungsbedingungen: https://sudojo.com/en/terms\nDatenschutzrichtlinie: https://sudojo.com/en/privacy",
+    "shortDescription": "Beherrsche über 60 Lösungstechniken mit intelligenten Hinweisen, täglichen Herausforderungen und einer Gürtelstufen von Anfänger bis Experte.",
+    "searchTerms": "Sudoku;Rätsel;Gehirntraining;Logik;Techniken;Löser;Lernen;Strategie;Tages-Herausforderung;Zahlenrätsel",
+    "whatsNew": "Verbesserte Leistung auf dem Bildschirm mit den Technikdetails und kleinere Fehler behoben."
+  },
+  "privacyPolicy": {
+    "url": "https://Sudojo.com/privacy",
+    "lastUpdated": "2025-01-01",
+    "summary": {
+      "introduction": "Sudojo (\"wir\", \"unsere\" oder \"uns\") respektiert Ihre Privatsphäre und ist verpflichtet, Ihre persönlichen Daten zu schützen. Diese Datenschutzrichtlinie erklärt, wie wir Ihre Informationen sammeln, verwenden und schützen, wenn Sie unsere Anwendung nutzen.",
+      "informationWeCollect": {
+        "youProvide": [
+          "Kontoinformationen (E-Mail-Adresse, Anzeigename), wenn Sie ein Konto erstellen",
+          "Spielfortschritt, Statistiken und Daten zum Lösen von Rätseln",
+          "Benutzereinstellungen und Einstellungen (Thema, Sprache, Anzeigemodus)",
+          "Zahlungsinformationen werden über den Apple App Store, Google Spielen oder den Microsoft Store über RevenueCat verarbeitet"
+        ],
+        "automaticallyCollected": [
+          "Geräteinformationen (Modell, Betriebssystemversion, Bildschirmgröße)",
+          "App-Nutzungsmuster und Funktionsinteraktionen über Firebase Analytics",
+          "Absturzberichte und Leistungsdaten über Firebase Crashlytics",
+          "IP-Adresse für allgemeine Lage (Länderebene)"
+        ]
+      },
+      "howWeUse": [
+        "Bieten Sie die Sudoku-Lernerfahrung an und verbessern Sie sie",
+        "Synchronisiere deinen Fortschritt über Geräte",
+        "Abonnements verwalten und verarbeiten",
+        "Analysieren Sie Nutzungsverhalten, um Techniken und Rätsel zu verbessern",
+        "Senden Sie wichtige Service-Updates",
+        "Punkte, Abzeichen und Fortschritt im Level verfolgen"
+      ],
+      "sharing": "Wir verkaufen Ihre personenbezogenen Daten nicht. Wir geben Daten nur an Dienstleister (Firebase, RevenueCat) weiter, die zur Betriebsführung der App notwendig sind, wenn gesetzlich vorgeschrieben oder mit Ihrer Einwilligung.",
+      "security": "Wir verwenden Verschlüsselung im Transit (TLS) und im Ruhezustand, führen regelmäßige Sicherheitsüberprüfungen durch, setzen Zugriffssteuerungen ein und nutzen sichere Cloud-Infrastruktur.",
+      "retention": "Wir speichern Ihre Daten, solange Ihr Konto aktiv ist. Sie können jederzeit eine Löschung anfordern, indem Sie sich an privacy@Sudojo.com wenden.",
+      "rights": [
+        "Zugriff auf Ihre persönlichen Daten",
+        "Richtig ungenaue Daten",
+        "Datensicherung löschen",
+        "Exportiere deinen Fortschritt im Spiel",
+        "Austragen von Marketing-Kommunikationen"
+      ],
+      "children": "Unser Service ist für Benutzer aller Altersgruppen konzipiert. Wir sammeln bewusst keine persönlichen Daten von Kindern unter 13 Jahren, es sei denn, wir haben eine verifizierbare Zustimmung der Eltern. Benutzer unter 13 Jahren können die App nutzen, ohne ein Konto zu erstellen.",
+      "contact": "datenschutz@Sudojo.com"
+    }
+  },
+  "termsOfService": {
+    "url": "https://Sudojo.com/terms",
+    "lastUpdated": "2025-01-01",
+    "summary": {
+      "acceptance": "Durch den Zugriff auf oder die Verwendung von Sudojo erklären Sie sich mit diesen Allgemeinen Geschäftsbedingungen einverstanden.",
+      "serviceDescription": "Sudojo ist eine Sudoku-Lernanwendung mit schrittweiser Weiterbildung, täglichen Herausforderungen, fähigkeitsbasierten Schwierigkeitsstufen, mehr als 60 Lösungstechniken und kostenlosen sowie Premium-Abonnement-Tarifen.",
+      "accounts": "Sie müssen genaue Informationen bereitstellen, die Kontosicherheit gewährleisten, die Verantwortung für Aktivitäten unter Ihrem Konto übernehmen und uns über unbefugten Zugriff informieren.",
+      "acceptableUse": "Sie stimmen zu, keine Abonnements zu umgehen, Bots oder Automatisierung zu verwenden, die App zu reverse-engineern, Kontozugangsdaten zu teilen oder den Dienst zu stören.",
+      "subscriptions": "Premium-Funktionen werden monatlich berechnet. Abonnements verlängern sich automatisch, es sei denn, sie werden mindestens 24 Stunden vor Ablauf des aktuellen Zeitraums gekündigt. Rückerstattungen erfolgen gemäß der Rückerstattungsrichtlinie des jeweiligen App-Stores.",
+      "intellectualProperty": "Alle Inhalte, Funktionen, Rätsel, Techniken und das Design sind Eigentum von Sudobility und unterliegen Urheberrechten und Markenrecht.",
+      "limitationOfLiability": "Der Dienst wird \"wie besorgt\" ohne jegliche Garantien zur Verfügung gestellt. Wir übernehmen keine Haftung für indirekte oder Folgeschäden.",
+      "termination": "Wir können Konten wegen Verstößen gegen diese Bedingungen beenden. Benutzer können ihre Konten jederzeit löschen.",
+      "contact": "support@Sudojo.com"
+    }
+  },
+  "subscriptions": {
+    "blue_belt_monthly": {
+      "apple": {
+        "name": "Blaue Gürtel (monatlich)",
+        "description": "Schaltet die Schwierigkeitsstufen \"Schwer\", \"Intensiv\" und \"Experte\" frei. Enthält vollen Zugriff auf Tipps mit schrittweisen Erklärungen der Lösungstechniken. Synchronisiert den Fortschritt zwischen iPhone, iPad und Mac."
+      },
+      "google": {
+        "name": "Blaue Gürtel (monatlich)",
+        "description": "Schaltet die Schwierigkeitsstufen \"Schwer\", \"Intensiv\" und \"Experte\" frei. Enthält vollen Zugriff auf Hinweise mit Schritt-für-Schritt-Erklärungen der Techniken. Synchronisiert den Fortschritt über alle Ihre Geräte, einschließlich Android, iPhone, iPad und Mac."
+      }
+    },
+    "blue_belt_annual": {
+      "apple": {
+        "name": "Blaue Gürtel (jährlich)",
+        "description": "Schaltet die Schwierigkeitsstufen „Schwer“, „Intensiv“ und „Experte“ frei. Enthält volle Hinweismöglichkeit mit Schritt-für-Schritt-Erklärungen der Techniken. Synchronisiert den Fortschritt zwischen iPhone, iPad und Mac. Speichern Sie mit einem Jahresplan."
+      },
+      "google": {
+        "name": "Blaue Gürtel (jährlich)",
+        "description": "Schaltet die Schwierigkeitsstufen Schwierig, Intensiv und Experte frei. Enthält volle Hinweismöglichkeit mit Schritt-für-Schritt-Erklärungen der Techniken. Synchronisiert den Fortschritt über alle Ihre Geräte, einschließlich Android, iPhone, iPad und Mac. Speichern Sie mit einem Jahresplan."
+      }
+    },
+    "red_belt_monthly": {
+      "apple": {
+        "name": "Roter Gürtel (monatlich)",
+        "description": "Schaltet alle Schwierigkeitsstufen einschließlich Brutal und Brain Freeze frei. Vollzugriff auf alle Lösungstechniken und vollständige Hinweisleitungen. Synchronisieren des Fortschritts zwischen iPhone, iPad und Mac."
+      },
+      "google": {
+        "name": "Roter Gürtel (monatlich)",
+        "description": "Schaltet alle Schwierigkeitsstufen einschließlich Brutal und Brain Freeze frei. Vollzugriff auf alle Lösungstechniken und vollständige Hinweisleitungen. Synchronisieren des Fortschritts über alle Ihre Geräte, einschließlich Android, iPhone, iPad und Mac."
+      }
+    },
+    "red_belt_annual": {
+      "apple": {
+        "name": "Roter Gürtel (jährlich)",
+        "description": "Schaltet alle Schwierigkeitsstufen einschließlich Brutal und Brain Freeze frei. Vollzugriff auf alle Lösungstechniken und vollständige Hinweisleitungen. Synchronisieren des Fortschritts zwischen iPhone, iPad und Mac. Speichern mit einem Jahresplan."
+      },
+      "google": {
+        "name": "Roter Gürtel (jährlich)",
+        "description": "Schaltet alle Schwierigkeitsstufen einschließlich Brutal und Brain Freeze frei. Vollzugriff auf alle Lösungstechniken und vollständige Hinweisleitungen. Synchronisieren Sie Ihren Fortschritt über alle Ihre Geräte, einschließlich Android, iPhone, iPad und Mac. Speichern Sie mit einem Jahresplan."
+      }
+    }
+  }
+}

@@ -30,6 +30,46 @@ describe('GenerationOverlay', () => {
     expect(view.getByText(/resume when it finishes/i)).toBeTruthy();
   });
 
+  it('says a recording is being transcribed, when that is the job', () => {
+    // "Writing your music" over a recording somebody uploaded describes
+    // something that is not happening.
+    const view = renderWithApp(
+      <GenerationOverlay
+        visible
+        status="transcribing"
+        error={null}
+        onCancel={jest.fn()}
+      />,
+    );
+    expect(view.getByText('Transcribing the recording…')).toBeTruthy();
+    expect(view.queryByText('Writing your music')).toBeNull();
+  });
+
+  it('names the part a transcription is working on, and the separation before any', () => {
+    const separating = renderWithApp(
+      <GenerationOverlay
+        visible
+        status="transcribing"
+        error={null}
+        progress={{ stage: 'plan', label: 'Separation', done: 0, total: 8 }}
+        onCancel={jest.fn()}
+      />,
+    );
+    expect(separating.getByText(/^Separating 0 of 8/)).toBeTruthy();
+    separating.unmount();
+
+    const part = renderWithApp(
+      <GenerationOverlay
+        visible
+        status="transcribing"
+        error={null}
+        progress={{ stage: 'part', label: 'Vocals', done: 2, total: 8 }}
+        onCancel={jest.fn()}
+      />,
+    );
+    expect(part.getByText('Part 2 of 8: Vocals')).toBeTruthy();
+  });
+
   it("reports the stream's progress as a count the reader can follow", () => {
     const view = renderWithApp(
       <GenerationOverlay

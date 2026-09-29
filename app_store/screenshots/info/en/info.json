@@ -1,0 +1,124 @@
+{
+  "locale": "en",
+  "appleAppStore": {
+    "title": "Sudojo - Learn Sudoku Techniques",
+    "subtitle": "Master 60+ Solving Strategies",
+    "keywords": "sudoku,puzzle,brain,logic,techniques,solver,hints,learning,strategy,daily,challenge,training,number,grid,pencil marks",
+    "promotionalText": "Master Sudoku from beginner to expert with 60+ solving techniques and intelligent hints.",
+    "description": "Sudojo is the ultimate Sudoku learning platform that teaches you how to solve puzzles — not just gives you answers. Progress from beginner to expert through a structured belt system while mastering 60+ real solving techniques used by championship players.\n\nDAILY CHALLENGES\n• A fresh puzzle every day tailored to your skill level\n• Track your daily streak and compete with yourself\n• Share your completed puzzles with friends\n\nLEARN 60 SOLVING TECHNIQUES\n• Each technique includes step-by-step explanations and practice puzzles\n\nBasics: Full House, Hidden Single, Naked Single\nPairs & Tuples: Hidden Pair, Naked Pair, Locked Candidates, Hidden Triple, Naked Triple, Hidden Quad, Naked Quad\nFish: X-Wing, Swordfish, Jellyfish, Squirmbag\nFinned Fish: Finned X-Wing, Finned Swordfish, Finned Jellyfish, Finned Squirmbag\nSashimi Fish: Sashimi X-Wing, Sashimi Swordfish, Sashimi Jellyfish\nFranken Fish: Franken X-Wing, Franken Swordfish, Franken Jellyfish\nWings: XY-Wing, XYZ-Wing, WXYZ-Wing, VWXYZ-Wing, UVWXYZ-Wing, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Skyscraper, Two-String Kite, Empty Rectangle, Simple Coloring, W-Wing, Remote Pairs, Crane, Firework\nUnique Rectangles: Type 1, Type 2, Type 3, Type 4, Type 5, Hidden UR, Avoidable Rectangle\nAlmost Locked Sets: ALS, ALS-XZ, ALS Chain, Sue de Coq, Death Blossom\nChains: X-Cycles, Grouped X-Cycles, X-Chain, XY-Chain, AIC, Medusa Coloring, BUG+1, Forcing Chains, Forcing Net\n\nSMART HINT SYSTEM\n• Hints that teach you the technique, not just the answer\n• Visual highlighting shows exactly which cells and candidates matter\n• Step-by-step walkthrough of the solving logic\n• Learn the \"why\" behind every move\n\nBELT PROGRESSION SYSTEM\n• 12 belt levels from White Belt (beginner) to Black Belt (master)\n• Each belt introduces new techniques and harder puzzles\n• Earn points, unlock badges, and track your improvement\n• See your solving skills grow over time\n\n12 DIFFICULTY LEVELS\n• Beginner to Extreme — there's always a new challenge\n• Each level focuses on specific techniques\n• Free access to foundational levels\n• Premium unlocks advanced and expert difficulties\n\nMORE FEATURES\n• Enter custom puzzles manually or scan from paper\n• Multiple display modes: Numbers, Kanji (漢数字), or Emoji\n• Pencil marks with auto-candidate mode\n• Timer and error highlighting (optional)\n• Dark mode and 16 language options\n• Sync progress across devices with your account\n• Works on iPhone, iPad, and Mac\n\nFREE & PREMIUM\n• Play daily puzzles and beginner-to-challenging levels for free\n• Subscribe to unlock advanced levels, expert techniques, and full hint access\n• Blue Belt: Unlocks Difficult, Intense, and Expert levels\n• Red Belt: Unlocks all levels including Brutal and Brain Freeze\n\nWhether you're picking up Sudoku for the first time or you're an experienced solver looking to learn advanced techniques, Sudojo is your path to mastery.\n\nTerms of Use: https://sudojo.com/en/terms\nPrivacy Policy: https://sudojo.com/en/privacy",
+    "whatsNew": "Improved performance on technique details screen and fixed minor bugs.",
+    "supportUrl": "https://sudojo.com/support",
+    "marketingUrl": "https://sudojo.com/marketing"
+  },
+  "googlePlay": {
+    "title": "Sudojo: Sudoku Techniques",
+    "shortDescription": "Master 60+ Sudoku techniques with smart hints and daily challenges.",
+    "fullDescription": "Sudojo is the ultimate Sudoku learning platform that teaches you how to solve puzzles — not just gives you answers. Progress from beginner to expert through a structured belt system while mastering 60+ real solving techniques used by championship players.\n\nDAILY CHALLENGES\n• A fresh puzzle every day tailored to your skill level\n• Track your daily streak and compete with yourself\n• Share your completed puzzles with friends\n\nLEARN 60 SOLVING TECHNIQUES\n• Each technique includes step-by-step explanations and practice puzzles\n\nBasics: Full House, Hidden Single, Naked Single\nPairs & Tuples: Hidden Pair, Naked Pair, Locked Candidates, Hidden Triple, Naked Triple, Hidden Quad, Naked Quad\nFish: X-Wing, Swordfish, Jellyfish, Squirmbag\nFinned Fish: Finned X-Wing, Finned Swordfish, Finned Jellyfish, Finned Squirmbag\nSashimi Fish: Sashimi X-Wing, Sashimi Swordfish, Sashimi Jellyfish\nFranken Fish: Franken X-Wing, Franken Swordfish, Franken Jellyfish\nWings: XY-Wing, XYZ-Wing, WXYZ-Wing, VWXYZ-Wing, UVWXYZ-Wing, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Skyscraper, Two-String Kite, Empty Rectangle, Simple Coloring, W-Wing, Remote Pairs, Crane, Firework\nUnique Rectangles: Type 1, Type 2, Type 3, Type 4, Type 5, Hidden UR, Avoidable Rectangle\nAlmost Locked Sets: ALS, ALS-XZ, ALS Chain, Sue de Coq, Death Blossom\nChains: X-Cycles, Grouped X-Cycles, X-Chain, XY-Chain, AIC, Medusa Coloring, BUG+1, Forcing Chains, Forcing Net\n\nSMART HINT SYSTEM\n• Hints that teach you the technique, not just the answer\n• Visual highlighting shows exactly which cells and candidates matter\n• Step-by-step walkthrough of the solving logic\n• Learn the \"why\" behind every move\n\nBELT PROGRESSION SYSTEM\n• 12 belt levels from White Belt (beginner) to Black Belt (master)\n• Each belt introduces new techniques and harder puzzles\n• Earn points, unlock badges, and track your improvement\n\n12 DIFFICULTY LEVELS\n• Beginner to Extreme — there's always a new challenge\n• Each level focuses on specific techniques\n• Free access to foundational levels\n• Premium unlocks advanced and expert difficulties\n\nMORE FEATURES\n• Enter custom puzzles manually\n• Multiple display modes: Numbers, Kanji (漢数字), or Emoji\n• Pencil marks with auto-candidate mode\n• Timer and error highlighting (optional)\n• Dark mode and 16 language options\n• Sync progress across devices with your account\n\nFREE & PREMIUM\n• Play daily puzzles and beginner-to-challenging levels for free\n• Subscribe to unlock advanced levels, expert techniques, and full hint access\n• Blue Belt: Unlocks Difficult, Intense, and Expert levels\n• Red Belt: Unlocks all levels including Brutal and Brain Freeze\n\nWhether you're picking up Sudoku for the first time or you're an experienced solver looking to learn advanced techniques, Sudojo is your path to mastery.\n\nTerms of Use: https://sudojo.com/en/terms\nPrivacy Policy: https://sudojo.com/en/privacy",
+    "tags": ["Sudoku", "Puzzle", "Brain Training", "Logic", "Education"]
+  },
+  "microsoftStore": {
+    "productName": "Sudojo",
+    "description": "Sudojo is the ultimate Sudoku learning platform that teaches you how to solve puzzles — not just gives you answers. Progress from beginner to expert through a structured belt system while mastering 60+ real solving techniques used by championship players.\n\nDAILY CHALLENGES\n• A fresh puzzle every day tailored to your skill level\n• Track your daily streak and compete with yourself\n• Share your completed puzzles with friends\n\nLEARN 60 SOLVING TECHNIQUES\n• Each technique includes step-by-step explanations and practice puzzles\n\nBasics: Full House, Hidden Single, Naked Single\nPairs & Tuples: Hidden Pair, Naked Pair, Locked Candidates, Hidden Triple, Naked Triple, Hidden Quad, Naked Quad\nFish: X-Wing, Swordfish, Jellyfish, Squirmbag\nFinned Fish: Finned X-Wing, Finned Swordfish, Finned Jellyfish, Finned Squirmbag\nSashimi Fish: Sashimi X-Wing, Sashimi Swordfish, Sashimi Jellyfish\nFranken Fish: Franken X-Wing, Franken Swordfish, Franken Jellyfish\nWings: XY-Wing, XYZ-Wing, WXYZ-Wing, VWXYZ-Wing, UVWXYZ-Wing, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Skyscraper, Two-String Kite, Empty Rectangle, Simple Coloring, W-Wing, Remote Pairs, Crane, Firework\nUnique Rectangles: Type 1, Type 2, Type 3, Type 4, Type 5, Hidden UR, Avoidable Rectangle\nAlmost Locked Sets: ALS, ALS-XZ, ALS Chain, Sue de Coq, Death Blossom\nChains: X-Cycles, Grouped X-Cycles, X-Chain, XY-Chain, AIC, Medusa Coloring, BUG+1, Forcing Chains, Forcing Net\n\nSMART HINT SYSTEM\n• Hints that teach you the technique, not just the answer\n• Visual highlighting shows exactly which cells and candidates matter\n• Step-by-step walkthrough of the solving logic\n\nBELT PROGRESSION SYSTEM\n• 12 belt levels from White Belt (beginner) to Black Belt (master)\n• Each belt introduces new techniques and harder puzzles\n• Earn points, unlock badges, and track your improvement\n\n12 DIFFICULTY LEVELS\n• Beginner to Extreme — there's always a new challenge\n• Free access to foundational levels\n• Premium unlocks advanced and expert difficulties\n\nMORE FEATURES\n• Enter custom puzzles manually\n• Multiple display modes: Numbers, Kanji (漢数字), or Emoji\n• Pencil marks with auto-candidate mode\n• Dark mode and 16 language options\n• Sync progress across devices\n\nTerms of Use: https://sudojo.com/en/terms\nPrivacy Policy: https://sudojo.com/en/privacy",
+    "shortDescription": "Master 60+ Sudoku solving techniques with smart hints, daily challenges, and a belt progression from beginner to expert.",
+    "searchTerms": "sudoku;puzzle;brain training;logic;techniques;solver;learning;strategy;daily challenge;number puzzle",
+    "whatsNew": "Improved performance on technique details screen and fixed minor bugs."
+  },
+  "privacyPolicy": {
+    "url": "https://sudojo.com/privacy",
+    "lastUpdated": "2025-01-01",
+    "summary": {
+      "introduction": "Sudojo (\"we\", \"our\", or \"us\") respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our application.",
+      "informationWeCollect": {
+        "youProvide": [
+          "Account information (email address, display name) when you create an account",
+          "Game progress, statistics, and puzzle completion data",
+          "User preferences and settings (theme, language, display mode)",
+          "Payment information processed through Apple App Store, Google Play, or Microsoft Store via RevenueCat"
+        ],
+        "automaticallyCollected": [
+          "Device information (model, OS version, screen size)",
+          "App usage patterns and feature interactions via Firebase Analytics",
+          "Crash reports and performance data via Firebase Crashlytics",
+          "IP address for general location (country-level)"
+        ]
+      },
+      "howWeUse": [
+        "Provide and improve the Sudoku learning experience",
+        "Sync your progress across devices",
+        "Process and manage subscriptions",
+        "Analyze usage patterns to improve techniques and puzzles",
+        "Send important service updates",
+        "Track points, badges, and level progression"
+      ],
+      "sharing": "We do not sell your personal data. We share data only with service providers (Firebase, RevenueCat) necessary to operate the app, when required by law, or with your consent.",
+      "security": "We use encryption in transit (TLS) and at rest, conduct regular security assessments, employ access controls, and use secure cloud infrastructure.",
+      "retention": "We retain your information while your account is active. You can request deletion at any time by contacting privacy@sudojo.com.",
+      "rights": [
+        "Access your personal data",
+        "Correct inaccurate data",
+        "Request deletion of your data",
+        "Export your game progress",
+        "Opt out of marketing communications"
+      ],
+      "children": "Our service is designed for users of all ages. We do not knowingly collect personal information from children under 13 without verifiable parental consent. Users under 13 can use the app without creating an account.",
+      "contact": "privacy@sudojo.com"
+    }
+  },
+  "termsOfService": {
+    "url": "https://sudojo.com/terms",
+    "lastUpdated": "2025-01-01",
+    "summary": {
+      "acceptance": "By accessing or using Sudojo, you agree to be bound by these Terms of Service.",
+      "serviceDescription": "Sudojo is a Sudoku learning application offering progressive learning with daily challenges, skill-based difficulty levels, 60+ solving techniques, and free and premium subscription tiers.",
+      "accounts": "You must provide accurate information, maintain account security, accept responsibility for activity under your account, and notify us of unauthorized access.",
+      "acceptableUse": "You agree not to circumvent subscriptions, use bots or automation, reverse engineer the app, share account credentials, or disrupt the service.",
+      "subscriptions": "Premium features are billed on a recurring basis. Subscriptions auto-renew unless cancelled at least 24 hours before the end of the current period. Refunds follow the respective app store's refund policy.",
+      "intellectualProperty": "All content, features, puzzles, techniques, and design are owned by Sudobility and protected by copyright and trademark law.",
+      "limitationOfLiability": "The service is provided \"as is\" without warranties of any kind. We are not liable for indirect or consequential damages.",
+      "termination": "We may terminate accounts for violations of these terms. Users can delete their accounts at any time.",
+      "contact": "support@sudojo.com"
+    }
+  },
+  "subscriptions": {
+    "blue_belt_monthly": {
+      "apple": {
+        "name": "Blue Belt (Monthly)",
+        "description": "Unlocks Difficult, Intense, and Expert difficulty levels. Includes full hint access with step-by-step technique explanations. Sync progress across iPhone, iPad, and Mac."
+      },
+      "google": {
+        "name": "Blue Belt (Monthly)",
+        "description": "Unlocks Difficult, Intense, and Expert difficulty levels. Includes full hint access with step-by-step technique explanations. Sync progress across all your devices including Android, iPhone, iPad, and Mac."
+      }
+    },
+    "blue_belt_annual": {
+      "apple": {
+        "name": "Blue Belt (Annual)",
+        "description": "Unlocks Difficult, Intense, and Expert difficulty levels. Includes full hint access with step-by-step technique explanations. Sync progress across iPhone, iPad, and Mac. Save with an annual plan."
+      },
+      "google": {
+        "name": "Blue Belt (Annual)",
+        "description": "Unlocks Difficult, Intense, and Expert difficulty levels. Includes full hint access with step-by-step technique explanations. Sync progress across all your devices including Android, iPhone, iPad, and Mac. Save with an annual plan."
+      }
+    },
+    "red_belt_monthly": {
+      "apple": {
+        "name": "Red Belt (Monthly)",
+        "description": "Unlocks all difficulty levels including Brutal and Brain Freeze. Full access to every solving technique and complete hint walkthroughs. Sync progress across iPhone, iPad, and Mac."
+      },
+      "google": {
+        "name": "Red Belt (Monthly)",
+        "description": "Unlocks all difficulty levels including Brutal and Brain Freeze. Full access to every solving technique and complete hint walkthroughs. Sync progress across all your devices including Android, iPhone, iPad, and Mac."
+      }
+    },
+    "red_belt_annual": {
+      "apple": {
+        "name": "Red Belt (Annual)",
+        "description": "Unlocks all difficulty levels including Brutal and Brain Freeze. Full access to every solving technique and complete hint walkthroughs. Sync progress across iPhone, iPad, and Mac. Save with an annual plan."
+      },
+      "google": {
+        "name": "Red Belt (Annual)",
+        "description": "Unlocks all difficulty levels including Brutal and Brain Freeze. Full access to every solving technique and complete hint walkthroughs. Sync progress across all your devices including Android, iPhone, iPad, and Mac. Save with an annual plan."
+      }
+    }
+  }
+}
