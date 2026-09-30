@@ -46,7 +46,11 @@ import type { ScrollOffset } from './useScoreCanvas';
 import type { ScoreSelection } from './useScoreSelection';
 import { useContainerSize } from '@/features/layout/useContainerSize';
 import { classifyPress } from '@sudobility/music_editing';
-import type { LayoutMode, ScoreCanvasHit } from '@sudobility/music_types';
+import type {
+  LayoutMode,
+  ScoreCanvasHit,
+  TrackInfoMode,
+} from '@sudobility/music_types';
 
 export type ScrollingScoreProps = {
   score: Score;
@@ -69,16 +73,17 @@ export type ScrollingScoreProps = {
    */
   pitchDisplay?: PitchDisplay;
   /**
-   * Whether the canvas reserves and paints the track-info gutter. Default true.
+   * How much of the track-info gutter the canvas reserves and paints: the
+   * whole column, the instrument icon alone, or nothing. Default `full`.
    *
-   * The editor turns it off while the inspector column is open — the two carry
-   * the same facts about a track and there is not room for both beside a
-   * readable system. It is a *layout* option in `ScoreCanvas`, so the 220pt
-   * column goes back to the music rather than merely going unpainted, and the
-   * hit test, the content size, the caret's clip and the follow-scroll all move
-   * with it. The published view leaves it alone.
+   * The editor decides — from the reader's pref, and from whether the
+   * inspector column is open (see `trackInfoShown`). It is a *layout* option
+   * in `ScoreCanvas`, so the width a narrower mode gives up goes back to the
+   * music rather than merely going unpainted, and the hit test, the content
+   * size, the caret's clip and the follow-scroll all move with it. The
+   * published view leaves it alone.
    */
-  showTrackInfo?: boolean;
+  trackInfo?: TrackInfoMode;
   /**
    * A tap: what the canvas says is under it, and the tick at that point.
    *
@@ -141,7 +146,7 @@ export function ScrollingScore({
   trackIds,
   selection,
   pitchDisplay = 'concert',
-  showTrackInfo = true,
+  trackInfo = 'full',
   onPress,
   onLongPress,
   initialScroll,
@@ -195,7 +200,7 @@ export function ScrollingScore({
         zoom,
         layoutMode,
         theme: resolvedTheme,
-        showTrackInfo,
+        trackInfo,
         ...(trackIds ? { trackIds } : {}),
       });
     }
@@ -215,7 +220,7 @@ export function ScrollingScore({
     zoom,
     layoutMode,
     resolvedTheme,
-    showTrackInfo,
+    trackInfo,
     trackIds,
   ]);
 

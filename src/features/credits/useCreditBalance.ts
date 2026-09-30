@@ -19,9 +19,9 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { ConsumablesApiClient } from '@sudobility/consumables_client';
-import type { NetworkClient } from '@sudobility/types';
 import { CONSTANTS } from '@/config/constants';
 import { getNetworkClient } from '@/config/server';
+import { authenticated } from '@/features/account/useAccountClients';
 
 export type CreditBalance = {
   /** Null while unknown — which is not the same as zero. */
@@ -29,34 +29,6 @@ export type CreditBalance = {
   loading: boolean;
   refresh: () => void;
 };
-
-/** Attaches the bearer per request, reading it fresh each time. */
-function authenticated(
-  inner: NetworkClient,
-  getToken: () => Promise<string | null>,
-): NetworkClient {
-  const withAuth = async (
-    options?: Record<string, unknown>,
-  ): Promise<Record<string, unknown>> => {
-    const token = await getToken();
-    if (!token) return options ?? {};
-    const headers = {
-      ...((options?.headers as Record<string, string>) ?? {}),
-      Authorization: `Bearer ${token}`,
-    };
-    return { ...(options ?? {}), headers };
-  };
-  return {
-    get: async (url: string, options?: never) =>
-      inner.get(url, (await withAuth(options)) as never),
-    post: async (url: string, body?: unknown, options?: never) =>
-      inner.post(url, body, (await withAuth(options)) as never),
-    put: async (url: string, body?: unknown, options?: never) =>
-      inner.put(url, body, (await withAuth(options)) as never),
-    delete: async (url: string, options?: never) =>
-      inner.delete(url, (await withAuth(options)) as never),
-  } as NetworkClient;
-}
 
 export function useCreditBalance(
   getToken: () => Promise<string | null>,

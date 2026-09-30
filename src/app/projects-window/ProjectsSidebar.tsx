@@ -1,5 +1,5 @@
 /**
- * The desktop Projects window's left sidebar.
+ * The Projects split view's list — its primary panel.
  *
  * Connect and My Projects are the same slot, not two items: signed out, the
  * slot says Connect and opens the sign-in pane; signed in, it says My
@@ -8,93 +8,55 @@
  * who was looking at Connect the moment they finished signing in lands on
  * My Projects rather than a pane that no longer applies to them.
  */
-import { useState } from 'react';
-import { Pressable, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { MIN_TOUCH_TARGET, Text, cn } from '@sudobility/components-rn';
+import { SplitMenuList } from '@/components/layout/SplitViewContainer';
 import type { PaneKey } from './paneKey';
 
 export type ProjectsSidebarProps = {
-  selected: PaneKey;
+  /** Null where nothing is selected: the editor's popup, which shows no pane. */
+  selected: PaneKey | null;
   signedIn: boolean;
+  /** Whether to offer the documents open in the editor — see `paneKey.ts`. */
+  showOpen?: boolean;
   onSelect: (pane: PaneKey) => void;
+};
+
+/** What each pane is called in the list, and above the pane itself. */
+export function paneLabelKey(pane: PaneKey): string {
+  return PANE_LABEL[pane];
+}
+
+/** A record, so a pane added to the set fails to compile without a name. */
+const PANE_LABEL: Record<PaneKey, string> = {
+  connect: 'dashboard.connect',
+  myProjects: 'dashboard.myProjects',
+  open: 'dashboard.openDocuments',
+  new: 'newProject.title',
+  template: 'dashboard.newFromTemplateAction',
+  import: 'dashboard.import',
 };
 
 export function ProjectsSidebar({
   selected,
   signedIn,
+  showOpen = false,
   onSelect,
 }: ProjectsSidebarProps) {
   const { t } = useTranslation();
+  const panes: PaneKey[] = [
+    signedIn ? 'myProjects' : 'connect',
+    ...(showOpen ? (['open'] as const) : []),
+    'new',
+    'template',
+    'import',
+  ];
 
   return (
-    <View
-      className="border-border bg-card w-52 border-r py-2"
-      accessibilityRole="menu"
-      accessibilityLabel={t('nav.projects')}
-    >
-      <SidebarItem
-        label={signedIn ? t('dashboard.myProjects') : t('dashboard.connect')}
-        selected={selected === (signedIn ? 'myProjects' : 'connect')}
-        onPress={() => onSelect(signedIn ? 'myProjects' : 'connect')}
-      />
-      <SidebarItem
-        label={t('newProject.title')}
-        selected={selected === 'new'}
-        onPress={() => onSelect('new')}
-      />
-      <SidebarItem
-        label={t('dashboard.newFromTemplateAction')}
-        selected={selected === 'template'}
-        onPress={() => onSelect('template')}
-      />
-      <SidebarItem
-        label={t('dashboard.import')}
-        selected={selected === 'import'}
-        onPress={() => onSelect('import')}
-      />
-    </View>
-  );
-}
-
-function SidebarItem({
-  label,
-  selected,
-  onPress,
-}: {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  // Under the pointer, as the rows in the panes beside it are — see
-  // `PressableCard`. The selected item keeps its own tint either way.
-  const [hovered, setHovered] = useState(false);
-  return (
-    <Pressable
-      accessibilityRole="menuitem"
-      onHoverIn={() => setHovered(true)}
-      onHoverOut={() => setHovered(false)}
-      accessibilityLabel={label}
-      accessibilityState={{ selected }}
-      onPress={onPress}
-      // macOS has no synthesized-touch fallback for an assistive press, so a
-      // VoiceOver activation reaches a Pressable only through
-      // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
-      onAccessibilityTap={onPress}
-      className={cn(
-        'flex-row items-center px-4',
-        selected ? 'bg-primary/10' : hovered && 'bg-primary/5',
-      )}
-      style={{ minHeight: MIN_TOUCH_TARGET }}
-    >
-      <Text
-        className={cn(
-          'text-base',
-          selected ? 'text-primary font-medium' : 'text-foreground',
-        )}
-      >
-        {label}
-      </Text>
-    </Pressable>
+    <SplitMenuList
+      label={t('nav.projects')}
+      entries={panes.map(pane => ({ id: pane, label: t(PANE_LABEL[pane]) }))}
+      selected={selected}
+      onSelect={id => onSelect(id as PaneKey)}
+    />
   );
 }

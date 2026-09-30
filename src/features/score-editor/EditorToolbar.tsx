@@ -107,25 +107,28 @@ import { useNotationInk } from '@/components/icons/notation-ink';
 import { IconButton } from '@/components/layout/IconButton';
 import { ToolbarSelect } from '@/components/controls/ToolbarSelect';
 import type { ToolbarOption } from '@/components/controls/ToolbarSelect';
-import { TrackVisibilitySelect } from './TrackVisibilitySelect';
 import { ChoiceSheet } from './ChoiceSheet';
 import { GoToBarSheet } from './GoToBarSheet';
 import { InsertBarsSheet } from './InsertBarsSheet';
 import type { InsertBarsSheetResult } from './InsertBarsSheet';
 import type { ReactNode } from 'react';
 import type { MusicDocument } from '@/documents/document';
-import { devicePrefs } from '@/config/useDevicePrefs';
+import { devicePrefs, useDevicePrefs } from '@/config/useDevicePrefs';
 import {
   EDIT_MODE_OPTIONS,
   EDITOR_MORE_ACTIONS,
   EDITOR_VOICE_COUNT,
   QUANTIZE_GRIDS,
   QUANTIZE_GRID_SHORT,
+  TRACK_INFO_MODES,
+  TRACK_INFO_MODE_HINT_KEY,
+  TRACK_INFO_MODE_LABEL_KEY,
 } from '@sudobility/music_types';
 import type {
   AddTrackChoice,
   EditorMoreAction,
   QuantizeGrid,
+  TrackInfoMode,
 } from '@sudobility/music_types';
 import type { LayoutMode } from '@sudobility/music_types';
 
@@ -183,6 +186,7 @@ export function EditorToolbar({
   const zoom = useStore(store, s => s.zoom);
   const noteInput = useStore(store, s => s.noteInput);
   const pitchDisplay = useStore(store, s => s.pitchDisplay);
+  const trackInfo = useDevicePrefs(s => s.trackInfo);
   const activeVoiceIndex = useStore(store, s => s.activeVoiceIndex);
   const selectedNotes = useStore(store, selectSelectedNotes);
   const activeTrack = useStore(store, selectSelectedTrack);
@@ -338,11 +342,12 @@ export function EditorToolbar({
         className="flex-1"
         contentContainerClassName="items-center gap-1 px-2"
       >
-        {/* Tracks first: which track you are on decides where every other
-            control in this bar acts, so it reads left-to-right as "this track,
-            then what to do to it". */}
+        {/* Tracks first: adding a part, before anything that acts within one.
+            There is no track picker here. Tapping a staff makes its track the
+            active one, so a second way to say the same thing was a control the
+            width of a field on the widest bar in the app; which tracks are
+            drawn is on the inspector's Track tab (`VisibleTracksField`). */}
         <Group label={t('editor.tracks')}>
-          <TrackVisibilitySelect document={document} />
           {/*
             One control that asks, rather than two that act — the same two
             answers the web app's Add Track menu offers, in the same order.
@@ -732,6 +737,25 @@ export function EditorToolbar({
         </Group>
 
         {/*
+          How much of the track-info column the score gives up its width to.
+          Beside the layout, because it is the same kind of choice. A device
+          pref, so it is the same in the next project; the full column still
+          gives way to the inspector on a touch device (`trackInfoShown`).
+        */}
+        <Group label={t('editor.trackInfo')}>
+          {TRACK_INFO_MODES.map(mode => (
+            <GlyphChip
+              key={mode}
+              icon={TRACK_INFO_ICON[mode]}
+              label={t(TRACK_INFO_MODE_LABEL_KEY[mode])}
+              hint={t(TRACK_INFO_MODE_HINT_KEY[mode])}
+              selected={trackInfo === mode}
+              onPress={() => devicePrefs.getState().setTrackInfo(mode)}
+            />
+          ))}
+        </Group>
+
+        {/*
           The label names what tapping *does*, not the current state, which is
           what a button should say — so the two names are two states of one
           control, not two controls.
@@ -872,6 +896,16 @@ function Divider() {
 }
 
 /** A toolbar control showing one notation glyph. */
+/**
+ * The picture for each width of the track-info column. A `Record`, so a
+ * fourth mode fails to compile rather than drawing a chip with no glyph.
+ */
+const TRACK_INFO_ICON: Record<TrackInfoMode, NotationIconName> = {
+  full: 'TrackInfoFullIcon',
+  icon: 'TrackInfoIconIcon',
+  hidden: 'TrackInfoHiddenIcon',
+};
+
 function GlyphChip({
   icon,
   label,

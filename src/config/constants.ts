@@ -35,6 +35,13 @@ export const CONSTANTS = {
   GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID ?? '',
   GOOGLE_OAUTH_REVERSED_CLIENT_ID:
     process.env.GOOGLE_OAUTH_REVERSED_CLIENT_ID ?? '',
+  // Android's Google sign-in: the Firebase project's *web* client, which is
+  // what makes Google return an ID token there.
+  GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID ?? '',
+  // Android's Sign in with Apple, which is Apple's web flow: the Services ID
+  // and the redirect registered for it. iOS needs neither.
+  APPLE_SERVICE_ID: process.env.APPLE_SERVICE_ID ?? '',
+  APPLE_REDIRECT_URI: process.env.APPLE_REDIRECT_URI ?? '',
   /**
    * Branding. Named `VITE_*`, same as music_app's and svgr_app_rn's — a
    * bundler prefix that means nothing to Metro, kept anyway so one `.env`

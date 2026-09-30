@@ -98,9 +98,14 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+    // The Kotlin package the sources live in. Not the app's identity — that is
+    // `applicationId` below — so it stays what the sources say.
     namespace "com.moosiacrn"
     defaultConfig {
-        applicationId "com.moosiacrn"
+        // What the device, the store and Firebase know the app as:
+        // `google-services.json` registers this package, and Google sign-in
+        // is refused for any other.
+        applicationId "com.sudobility.moosiac"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

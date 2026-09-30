@@ -36,6 +36,15 @@ end
 target 'MoosiacRN' do
   config = use_native_modules!
 
+  # Google Sign-In brings `AppCheckCore`, a Swift pod, and a Swift pod built
+  # as a static library can only import what defines a module. These two do
+  # not by default, and `pod install` refuses the whole install over it
+  # ("cannot yet be integrated as static libraries"). Named one by one rather
+  # than `use_modular_headers!` for everything, which changes how every other
+  # pod here is built to fix two.
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

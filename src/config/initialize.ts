@@ -59,20 +59,31 @@ if (Platform.OS === 'macos') setNativeDialogsSupported(true);
 
 function createPlayer(soundfont: SoundfontOptions): IMusicPlayer {
   /*
-    Not iOS, for now. The vendored FluidSynth XCFramework (the official iOS
-    build) is compiled without libsndfile — its binary carries the string
-    "Unsupported wave format %u (without libsndfile)" and no `sf_open` or
+    The native synthesizer wherever there is one: macOS, Windows and iOS.
+    One soundfont loaded natively, off the JS thread, and notes scheduled
+    against the audio clock — where the sample engine reads, parses and
+    decodes 88 MP3 clips for every instrument in the score, in JavaScript,
+    when Play is first pressed.
+
+    iOS needed its own build of FluidSynth to be here. The XCFramework
+    FluidSynth publishes is compiled without libsndfile — its binary carries
+    the string "Unsupported wave format %u (without libsndfile)" and no
     Vorbis symbols — and `FluidR3Mono_GM.sf3` is Ogg-Vorbis-compressed, which
     only libsndfile can decode. So `fluid_synth_sfload` failed on every
     instrument load on iPhone and iPad ("Could not load the soundfont at
     …/MoosiacRN.app/FluidR3Mono_GM.sf3"), while macOS, linking Homebrew's
-    libsndfile-enabled fluidsynth, played the same file fine. iOS takes the
-    sample engine until either an SF3-capable FluidSynth is vendored (built
-    with libsndfile + ogg + vorbis for device and simulator) or an
-    uncompressed SF2 is bundled instead.
+    libsndfile-enabled fluidsynth, played the same file fine. The vendored
+    framework is now built here with libsndfile, Ogg and Vorbis in it:
+    `native/synth/scripts/build-fluidsynth-ios.sh`. Replacing it with the
+    official download again would bring the failure back.
+
+    Android has no native module (`nativeSynthApi.isSupported()` is false
+    there) and takes the sample engine.
   */
   const soundfontUri =
-    Platform.OS === 'macos' || Platform.OS === 'windows'
+    Platform.OS === 'macos' ||
+    Platform.OS === 'windows' ||
+    Platform.OS === 'ios'
       ? bundledSoundfontPath()
       : null;
   if (soundfontUri && nativeSynthApi.isSupported()) {

@@ -8,8 +8,8 @@
  * `onSaved`, wired at the composition root; reopening refreshes the entry here.
  */
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { MIN_TOUCH_TARGET } from '@sudobility/components-rn';
+import { View } from 'react-native';
+import { Button } from '@sudobility/components-rn';
 import { openFileInto } from '@/documents/document';
 import { forgetRecent, loadRecent } from '@/documents/recent-documents';
 import { recordRecent } from '@/documents/useRecentTracking';
@@ -44,34 +44,20 @@ export function RecentDocuments({ keyValue }: { keyValue: KeyValueStore }) {
 
   if (recent.length === 0) return null;
   return (
-    <View style={styles.wrap}>
-      {recent.map(entry => {
-        const activate = () => void open(entry);
-        return (
-          <Pressable
-            key={entry.uri}
-            accessibilityRole="button"
-            accessibilityLabel={entry.title}
-            onPress={activate}
-            // macOS has no synthesized-touch fallback for an assistive press,
-            // so a VoiceOver activation reaches a Pressable only through
-            // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
-            onAccessibilityTap={activate}
-            style={[
-              styles.row,
-              { minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' },
-            ]}
-          >
-            <Text style={styles.title}>{entry.title}</Text>
-          </Pressable>
-        );
-      })}
+    <View className="mt-5 items-center gap-1">
+      {recent.map(entry => (
+        // The library's quiet button: the theme's ink (this was a zinc
+        // literal, unreadable on a dark background), the minimum touch
+        // target, and the assistive press a Mac reaches a control by.
+        <Button
+          key={entry.uri}
+          variant="ghost"
+          accessibilityLabel={entry.title}
+          onPress={() => void open(entry)}
+        >
+          {entry.title}
+        </Button>
+      ))}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { marginTop: 20, gap: 4, alignItems: 'center' },
-  row: { paddingVertical: 8, paddingHorizontal: 16 },
-  title: { fontSize: 14, color: '#3f3f46' },
-});

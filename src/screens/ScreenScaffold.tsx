@@ -6,14 +6,22 @@
  * the same way in each, or it looks like a different failure every time.
  */
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Heading, Text, touchSlop } from '@sudobility/components-rn';
+import { Button, Heading, Text } from '@sudobility/components-rn';
 import { useSafeAreaInsets } from '@/platform/SafeArea';
 import { ScreenBackBar } from '@/components/layout/ScreenBackBar';
+import {
+  SCREEN_WIDTH_STYLE,
+  useContentPadding,
+  useEmbedded,
+} from '@/components/layout/EmbeddedScreen';
 
-/** The scaffold's own padding, in points — `p-4`, stated so a side inset can add to it. */
-const PADDING = 16;
+/**
+ * The scaffold's own padding as a screen, in points — `p-4`, stated so a side
+ * inset can add to it. As the detail of a split view it is the detail's.
+ */
+const SCREEN_PADDING = 16;
 
 export function ScreenScaffold({
   title,
@@ -25,14 +33,29 @@ export function ScreenScaffold({
   // The navigator owns the top inset. Only the content clears side cutouts;
   // the background and bottom still extend to the screen edges.
   const insets = useSafeAreaInsets();
+  // A pane beside a sidebar starts past the sidebar, which is what cleared
+  // the screen's left edge; clearing it again would indent the pane by a
+  // cutout it is nowhere near.
+  const embedded = useEmbedded();
+  const PADDING = useContentPadding(SCREEN_PADDING);
   return (
     <ScrollView
       className="bg-background flex-1"
+      /*
+        Clears the tab bar, and whatever else the system puts over the
+        screen's edges. Under the tabs a screen runs beneath the bar, and the
+        navigator only adjusts a scroll view it finds first in line under the
+        screen — which one under a header is not, so the last of a long page
+        was drawn behind the bar with no way to scroll it out.
+      */
+      contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{
+        // A pane is held to the detail's width by the split view it is in.
+        ...(embedded ? {} : SCREEN_WIDTH_STYLE),
         gap: PADDING,
         paddingTop: PADDING,
         paddingBottom: PADDING,
-        paddingLeft: PADDING + insets.left,
+        paddingLeft: PADDING + (embedded ? 0 : insets.left),
         paddingRight: PADDING + insets.right,
       }}
     >
@@ -74,17 +97,9 @@ export function SignInRequired({ onSignIn }: { onSignIn: () => void }) {
       <Text className="text-muted-foreground text-center">
         {t('library.authRequired')}
       </Text>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onSignIn}
-        // macOS has no synthesized-touch fallback for an assistive press, so a
-        // VoiceOver activation reaches a Pressable only through
-        // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
-        onAccessibilityTap={onSignIn}
-        hitSlop={touchSlop(0, 0)}
-      >
-        <Text className="text-primary">{t('nav.signIn')}</Text>
-      </Pressable>
+      <Button variant="link" textClassName="text-base" onPress={onSignIn}>
+        {t('nav.signIn')}
+      </Button>
     </View>
   );
 }

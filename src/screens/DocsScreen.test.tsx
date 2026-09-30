@@ -19,7 +19,6 @@
  * nothing. Resolving the key keeps the assertion about *which* copy is wired to
  * the topic — this component's job — without hard-coding English into the test.
  */
-import { jest } from '@jest/globals';
 import i18next from 'i18next';
 import { fireEvent } from '@testing-library/react-native';
 import { gmInstrumentRows } from '@sudobility/music_types';
@@ -27,16 +26,6 @@ import { renderWithApp } from '@/test/render';
 import { DocsScreen } from './DocsScreen';
 import { DOCS_GROUPS } from '@sudobility/music_types';
 import { DOCS_TOPICS, docsGroupLabelKey } from '@sudobility/music_lib';
-
-/*
-  The docs page cross-references the Shortcuts screen, which means it asks for a
-  navigation object. Stubbed rather than wrapped in a NavigationContainer: what
-  is under test is which topics render, not where a button goes — the same stub
-  `SettingsScreen.test.tsx` uses.
-*/
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: jest.fn() }),
-}));
 
 /** The visible string for a key; i18n is started by the first render. */
 const label = (key: string): string => i18next.t(key);

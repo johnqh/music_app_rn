@@ -19,9 +19,12 @@
  * Hidden below two documents, because a single tab is a label, not a choice.
  */
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { useStore } from 'zustand';
 import { useTranslation } from 'react-i18next';
+import { XMarkIcon } from 'react-native-heroicons/outline';
+import { MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
+import { IconButton } from '@/components/layout/IconButton';
 import { ConfirmSheet } from '@/components/controls/ConfirmSheet';
 import { useDocumentList, useDocuments } from '@/documents/DocumentsContext';
 import type { MusicDocument } from '@/documents/document';
@@ -41,7 +44,7 @@ export function DocumentTabs() {
   };
 
   return (
-    <View style={styles.bar}>
+    <View className="border-border bg-background border-b">
       <ScrollView horizontal showsHorizontalScrollIndicator={false}>
         {documents.map(document => (
           <DocumentTab
@@ -96,42 +99,28 @@ function DocumentTab({
       accessibilityState={{ selected: active }}
       onAccessibilityTap={onActivate}
       onPress={onActivate}
-      style={[styles.tab, active && styles.tabOn]}
+      // Whole literals, chosen between: a class assembled from parts is never
+      // generated. The colours are the theme's — they were zinc and white
+      // literals, so the strip stayed a light band across a dark editor.
+      className={active ? TAB_ON : TAB}
+      style={TAB_SIZE}
     >
-      <Text numberOfLines={1} style={styles.title}>
+      <Text numberOfLines={1} className="text-foreground shrink text-sm">
         {dirty ? `• ${title}` : title}
       </Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('document.closeDocument', { title })}
-        hitSlop={8}
+      <IconButton
+        label={t('document.closeDocument', { title })}
         onPress={onClose}
       >
-        <Text style={styles.close}>×</Text>
-      </Pressable>
+        <XMarkIcon size={CLOSE_SIZE} className="text-muted-foreground" />
+      </IconButton>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  bar: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#d4d4d8',
-    backgroundColor: '#fafafa',
-  },
-  tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    maxWidth: 220,
-  },
-  tabOn: {
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 2,
-    borderBottomColor: '#3f3f46',
-  },
-  title: { fontSize: 13, color: '#3f3f46', flexShrink: 1 },
-  close: { fontSize: 16, color: '#a1a1aa' },
-});
+const TAB = 'flex-row items-center gap-2 border-b-2 border-transparent px-3';
+const TAB_ON =
+  'bg-card border-foreground flex-row items-center gap-2 border-b-2 px-3';
+/** A tab is a touch target of its own, and no wider than a name needs. */
+const TAB_SIZE = { minHeight: MIN_TOUCH_TARGET, maxWidth: 220 } as const;
+const CLOSE_SIZE = 16;

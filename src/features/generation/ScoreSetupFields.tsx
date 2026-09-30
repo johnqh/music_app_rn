@@ -30,6 +30,11 @@ import {
 } from '@sudobility/music_client';
 import { publicServerContext } from '@/config/server';
 import {
+  FieldSlot,
+  SLOT_BUTTON_CLASS,
+  SLOT_SELECT_CLASS,
+} from '@/components/controls/FieldRow';
+import {
   DEFAULT_INSTRUMENT_VALUE,
   GENERATE_SCORE_COMPLEXITY_OPTIONS,
   GENERATE_SCORE_KEY_FIFTHS_OPTIONS,
@@ -333,9 +338,12 @@ export function ScoreSetupFields({
           {draft.ensemble.map(entry => {
             const locked = isNewProjectEntryLocked(draft, entry);
             return (
+              // The picker and the button that removes it, at one height:
+              // they came at 36 and 32 points.
               <View key={entry.id} className="flex-row items-center gap-2">
                 <View className="flex-1">
                   <Select
+                    className={SLOT_SELECT_CLASS}
                     value={entry.value}
                     accessibilityLabel={t('generateScore.instrumentation')}
                     options={INSTRUMENT_OPTIONS}
@@ -354,22 +362,24 @@ export function ScoreSetupFields({
                     {lockedLabel}
                   </Text>
                 ) : (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!canRemoveNewProjectEntry(draft, entry)}
-                    accessibilityLabel={t('generateScore.removeInstrument', {
-                      instrument:
-                        INSTRUMENT_OPTIONS.find(
-                          option => option.value === entry.value,
-                        )?.label ?? entry.value,
-                    })}
-                    onPress={() =>
-                      dispatch({ type: 'removeInstrument', id: entry.id })
-                    }
-                  >
-                    ✕
-                  </Button>
+                  <FieldSlot>
+                    <Button
+                      variant="ghost"
+                      className={SLOT_BUTTON_CLASS}
+                      disabled={!canRemoveNewProjectEntry(draft, entry)}
+                      accessibilityLabel={t('generateScore.removeInstrument', {
+                        instrument:
+                          INSTRUMENT_OPTIONS.find(
+                            option => option.value === entry.value,
+                          )?.label ?? entry.value,
+                      })}
+                      onPress={() =>
+                        dispatch({ type: 'removeInstrument', id: entry.id })
+                      }
+                    >
+                      ✕
+                    </Button>
+                  </FieldSlot>
                 )}
               </View>
             );

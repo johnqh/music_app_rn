@@ -9,7 +9,8 @@
  *
  * The web app's store page comes from `@sudobility/consumables_pages`, which
  * has no React Native port; purchasing therefore is not offered here rather
- * than half-offered. What is shown is the balance and the rate — and the
+ * than half-offered. What is shown is the balance, the rate and the coupon
+ * form, which is the one way to add credits from here — and the
  * balance really is shown now: this screen claimed it in its own doc while
  * rendering only the rate, so the one number somebody opens it for was the one
  * thing missing.
@@ -23,6 +24,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from 'react-native';
 import { Text } from '@sudobility/components-rn';
 import { useCreditBalance } from '@/features/credits/useCreditBalance';
+import { RedeemCouponForm } from './settings/RedeemCouponForm';
 import { useAuth } from '@/auth/AuthContext';
 import { getMusicClient } from '@/config/server';
 import type { RootStackParamList } from '@/app/Navigation';
@@ -32,7 +34,15 @@ import {
   SignInRequired,
 } from './ScreenScaffold';
 
-export function CreditsScreen() {
+export function CreditsScreen({
+  onSignIn,
+}: {
+  /**
+   * Where signing in happens, for a holder that has somewhere of its own —
+   * Settings shows its account pane. Otherwise the sign-in screen is pushed.
+   */
+  onSignIn?: () => void;
+} = {}) {
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
@@ -47,7 +57,9 @@ export function CreditsScreen() {
   if (!user) {
     return (
       <ScreenScaffold>
-        <SignInRequired onSignIn={() => navigation.navigate('SignIn')} />
+        <SignInRequired
+          onSignIn={onSignIn ?? (() => navigation.navigate('SignIn'))}
+        />
       </ScreenScaffold>
     );
   }
@@ -58,7 +70,10 @@ export function CreditsScreen() {
 function CreditsBody() {
   const { t } = useTranslation();
   const { user, getToken } = useAuth();
-  const { balance, loading } = useCreditBalance(getToken, user !== null);
+  const { balance, loading, refresh } = useCreditBalance(
+    getToken,
+    user !== null,
+  );
 
   return (
     <ScreenScaffold>
@@ -79,6 +94,9 @@ function CreditsBody() {
       <Text className="text-muted-foreground text-base">
         {t('credits.purchaseElsewhere')}
       </Text>
+      {/* The way to get more that this app does have, under the number it
+          changes — which is asked for again once a coupon has been spent. */}
+      <RedeemCouponForm onRedeemed={refresh} />
     </ScreenScaffold>
   );
 }

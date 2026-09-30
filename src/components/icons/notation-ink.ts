@@ -44,7 +44,7 @@ export type NotationInk = {
 };
 
 /** `"0 0% 45%"` — the shape every `@sudobility/design` colour token has. */
-function hslTripleToHex(triple: string): string {
+export function hslTripleToHex(triple: string): string {
   const [h = 0, s = 0, l = 0] = triple
     .split(/\s+/)
     .map(part => Number.parseFloat(part));

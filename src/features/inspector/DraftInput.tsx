@@ -24,6 +24,8 @@ export type DraftInputProps = {
   placeholder?: string;
   editable?: boolean;
   accessibilityLabel?: string;
+  /** For a caller that states the field's height; see `FieldSlot`. */
+  className?: string;
 };
 
 export function DraftInput({
@@ -32,6 +34,7 @@ export function DraftInput({
   placeholder,
   editable = true,
   accessibilityLabel,
+  className,
 }: DraftInputProps) {
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
@@ -48,6 +51,7 @@ export function DraftInput({
       editable={editable}
       {...(placeholder ? { placeholder } : {})}
       {...(accessibilityLabel ? { accessibilityLabel } : {})}
+      {...(className ? { className } : {})}
     />
   );
 }
@@ -63,6 +67,8 @@ export type NumberDraftInputProps = NumericDraftOptions & {
   mixedPlaceholder?: string;
   editable?: boolean;
   accessibilityLabel?: string;
+  /** For a row that states its height: see `FieldSlot`. */
+  className?: string;
 };
 
 /**
@@ -91,6 +97,7 @@ export function NumberDraftInput({
   min,
   max,
   integer,
+  className,
 }: NumberDraftInputProps) {
   const shown = value === null ? '' : String(value);
   const [draft, setDraft] = useState(shown);
@@ -121,6 +128,7 @@ export function NumberDraftInput({
         ? { placeholder: mixedPlaceholder }
         : {})}
       {...(accessibilityLabel ? { accessibilityLabel } : {})}
+      {...(className ? { className } : {})}
     />
   );
 }

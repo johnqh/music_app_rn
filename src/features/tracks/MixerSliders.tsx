@@ -23,9 +23,10 @@
  * "Volume" is a longer word than "Pan" and both rows were sizing to their own
  * text.
  */
-import { Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
 import { LevelSlider, PositionSlider } from '@/components/controls/LevelSlider';
+import { IconButton } from '@/components/layout/IconButton';
 /*
   `panReadout` and `volumeReadout` are music_types', not this app's — they sit
   with the other "say a stored value the way a musician says it" conversions in
@@ -140,30 +141,19 @@ export function PanSlider({
       />
       <Text className={ROW_READOUT_CLASS}>{panReadout(clamped)}</Text>
       {onReset ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={resetLabel}
-          accessibilityState={{ disabled: !canReset }}
-          disabled={!canReset}
-          onPress={onReset}
-          // macOS has no synthesized-touch fallback for an assistive press, so
-          // a VoiceOver activation reaches a Pressable only through
-          // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
-          // Withheld while disabled, the way `IconButton` does it: a disabled
-          // Pressable still receives an accessibility tap.
-          {...(canReset ? { onAccessibilityTap: onReset } : {})}
-          style={{
-            width: ROW_ACTION_WIDTH,
-            height: ROW_ACTION_WIDTH,
-            alignItems: 'center',
-            justifyContent: 'center',
-            opacity: canReset ? 1 : 0.4,
-          }}
+        // The app's icon button, in the column the volume row leaves empty:
+        // it brings the touch slop, the pressed answer and the assistive
+        // press (withheld while disabled) this used to write out by hand.
+        <View
+          className="items-center justify-center"
+          style={{ width: ROW_ACTION_WIDTH, height: ROW_ACTION_WIDTH }}
         >
-          {/* A reset arrow: ⌖ was the obvious "centre" mark and was
-              illegible at this size. */}
-          <Text className="text-muted-foreground text-base">↺</Text>
-        </Pressable>
+          <IconButton label={resetLabel} onPress={onReset} disabled={!canReset}>
+            {/* A reset arrow: ⌖ was the obvious "centre" mark and was
+                illegible at this size. */}
+            <Text className="text-muted-foreground text-base">↺</Text>
+          </IconButton>
+        </View>
       ) : (
         <View style={{ width: ROW_ACTION_WIDTH }} />
       )}

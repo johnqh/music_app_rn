@@ -35,9 +35,17 @@ type OfferedFormat = (typeof OFFERED)[number];
 export type ImportPaneProps = {
   /** A project landed — from a local import, or an audio upload starting. */
   onOpened: () => void;
+  /**
+   * Stands before a format is chosen, where one project is open at a time:
+   * asked *before* the file picker, since an answer of "no" after somebody
+   * has gone and found their file is the question asked too late.
+   */
+  guard?: (action: () => void) => void;
 };
 
-export function ImportPane({ onOpened }: ImportPaneProps) {
+const unguarded = (action: () => void) => action();
+
+export function ImportPane({ onOpened, guard = unguarded }: ImportPaneProps) {
   const { t } = useTranslation();
   const importer = useImport({ onImported: onOpened });
   const { run } = importer;
@@ -75,12 +83,13 @@ export function ImportPane({ onOpened }: ImportPaneProps) {
         data={OFFERED}
         keyExtractor={(item: OfferedFormat) => item.value}
         accessibilityLabel={t('dashboard.importFormat')}
-        contentContainerClassName="gap-2 p-4"
+        contentContainerClassName="gap-2 p-6"
         renderItem={({ item }: { item: OfferedFormat }) => {
-          const choose = () => {
-            if (item.value === 'audio') setAudioOpen(true);
-            else void run(item.value as ImportFormat);
-          };
+          const choose = () =>
+            guard(() => {
+              if (item.value === 'audio') setAudioOpen(true);
+              else void run(item.value as ImportFormat);
+            });
           return (
             <PressableCard label={t(item.labelKey)} onPress={choose}>
               <Text className="text-foreground font-medium">

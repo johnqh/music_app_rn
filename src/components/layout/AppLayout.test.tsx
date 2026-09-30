@@ -11,6 +11,7 @@ import { act, fireEvent } from '@testing-library/react-native';
 import { devicePrefs } from '@/config/useDevicePrefs';
 import { renderWithApp, testDocument } from '@/test/render';
 import * as menuCommands from '@/app/menu-commands';
+import * as nativeHeader from '@/app/native-header';
 
 /*
   The tab strip reads the open-document list from a provider this test has no
@@ -30,19 +31,20 @@ const mockScoreProps: {
   onPress?: (hit: unknown, pointTick: number | null) => void;
   onLongPress?: (hit: unknown) => void;
   /** Whether the canvas was asked to draw the track-info gutter. */
-  showTrackInfo?: boolean;
+  trackInfo?: string;
 } = {};
 jest.mock('@/features/score/ScrollingScore', () => ({
   ScrollingScore: (props: typeof mockScoreProps) => {
     mockScoreProps.onPress = props.onPress;
     mockScoreProps.onLongPress = props.onLongPress;
-    mockScoreProps.showTrackInfo = props.showTrackInfo;
+    mockScoreProps.trackInfo = props.trackInfo;
     return null;
   },
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { AppLayout } = require('./AppLayout') as typeof import('./AppLayout');
+const { AppLayout, trackInfoShown } =
+  require('./AppLayout') as typeof import('./AppLayout');
 
 describe('AppLayout desktop menu', () => {
   /*
@@ -73,8 +75,27 @@ describe('AppLayout desktop menu', () => {
     expect(view.queryByLabelText('Projects')).toBeNull();
   });
 
-  it('shows the title bar on a platform with no menu bar', () => {
+  it('hides the title bar where the native header carries its buttons instead', () => {
+    // iOS and Android: `useEditorHeader` hands the same controls to the
+    // navigator, and a second set in the body would duplicate them.
     jest.spyOn(menuCommands, 'hasMenuBar').mockReturnValue(false);
+    jest.spyOn(nativeHeader, 'hasNativeHeader').mockReturnValue(true);
+    const view = renderWithApp(
+      <AppLayout
+        document={testDocument()}
+        onSave={jest.fn()}
+        onExport={jest.fn()}
+        onSettings={jest.fn()}
+        onDocuments={jest.fn()}
+      />,
+    );
+    expect(view.queryByLabelText('Save now')).toBeNull();
+    expect(view.queryByLabelText('Projects')).toBeNull();
+  });
+
+  it('shows the title bar with neither a menu bar nor a native header', () => {
+    jest.spyOn(menuCommands, 'hasMenuBar').mockReturnValue(false);
+    jest.spyOn(nativeHeader, 'hasNativeHeader').mockReturnValue(false);
     const view = renderWithApp(
       <AppLayout
         document={testDocument()}
@@ -173,9 +194,15 @@ describe('AppLayout', () => {
     act(() => devicePrefs.getState().setKeyboardCollapsed(false));
   });
 
-  it('insets the top and protects section content from side cutouts', () => {
-    /* Backgrounds fill the width; no section adds a bottom inset. */
-    const view = renderWithApp(
+  function edgesOf(view: ReturnType<typeof renderWithApp>) {
+    return view
+      .UNSAFE_getAllByProps({})
+      .map(node => node.props.edges as string[] | undefined)
+      .filter(value => Array.isArray(value));
+  }
+
+  function layout() {
+    return renderWithApp(
       <AppLayout
         document={testDocument()}
         onSave={jest.fn()}
@@ -184,13 +211,27 @@ describe('AppLayout', () => {
         onDocuments={jest.fn()}
       />,
     );
-    const edges = view
-      .UNSAFE_getAllByProps({})
-      .map(node => node.props.edges as string[] | undefined)
-      .filter(value => Array.isArray(value));
+  }
+
+  it('insets the top and protects section content from side cutouts', () => {
+    /* Backgrounds fill the width; no section adds a bottom inset. */
+    jest.spyOn(nativeHeader, 'hasNativeHeader').mockReturnValue(false);
+    const edges = edgesOf(layout());
     expect(edges).toContainEqual(['top']);
     expect(edges).toContainEqual(['left', 'right']);
     expect(edges.every(value => !value?.includes('bottom'))).toBe(true);
+  });
+
+  it('leaves the top to the navigator where it draws the header', () => {
+    /*
+      The header has cleared the status bar already. Clearing it again put an
+      empty band the height of the status bar between the header and the
+      toolbar.
+    */
+    jest.spyOn(nativeHeader, 'hasNativeHeader').mockReturnValue(true);
+    const edges = edgesOf(layout());
+    expect(edges.some(value => value?.includes('top'))).toBe(false);
+    expect(edges).toContainEqual(['left', 'right']);
   });
 
   describe('touches on the score', () => {
@@ -322,13 +363,41 @@ describe('AppLayout inspector', () => {
     expect(wrapper).not.toContain('border-t');
   });
 
-  it('hides the track gutter while it is shown, and brings it back', () => {
+  it('hides the full track gutter while it is shown, and brings it back', () => {
+    act(() => devicePrefs.getState().setTrackInfo('full'));
     const view = render();
     // Unmeasured, so it opens closed: the gutter is what is on screen.
-    expect(mockScoreProps.showTrackInfo).toBe(true);
+    expect(mockScoreProps.trackInfo).toBe('full');
     fireEvent.press(view.getByLabelText('Toggle inspector panel'));
-    expect(mockScoreProps.showTrackInfo).toBe(false);
+    expect(mockScoreProps.trackInfo).toBe('hidden');
     fireEvent.press(view.getByLabelText('Toggle inspector panel'));
-    expect(mockScoreProps.showTrackInfo).toBe(true);
+    expect(mockScoreProps.trackInfo).toBe('full');
+  });
+
+  it('keeps a gutter narrowed to the icon beside the inspector', () => {
+    // 40 points, where the full column is 220: there is room for both.
+    act(() => devicePrefs.getState().setTrackInfo('icon'));
+    const view = render();
+    expect(mockScoreProps.trackInfo).toBe('icon');
+    fireEvent.press(view.getByLabelText('Toggle inspector panel'));
+    expect(mockScoreProps.trackInfo).toBe('icon');
+    act(() => devicePrefs.getState().setTrackInfo('full'));
+  });
+
+  it('draws no gutter for a reader who hid it, inspector or not', () => {
+    act(() => devicePrefs.getState().setTrackInfo('hidden'));
+    const view = render();
+    expect(mockScoreProps.trackInfo).toBe('hidden');
+    fireEvent.press(view.getByLabelText('Toggle inspector panel'));
+    expect(mockScoreProps.trackInfo).toBe('hidden');
+    act(() => devicePrefs.getState().setTrackInfo('full'));
+  });
+
+  it('trades only where the two cannot share the screen', () => {
+    expect(trackInfoShown('full', true, true)).toBe('hidden');
+    // macOS: a window wide enough for both.
+    expect(trackInfoShown('full', true, false)).toBe('full');
+    expect(trackInfoShown('icon', true, true)).toBe('icon');
+    expect(trackInfoShown('hidden', false, true)).toBe('hidden');
   });
 });

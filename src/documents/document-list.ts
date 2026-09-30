@@ -80,6 +80,16 @@ export type DocumentListOptions = {
    * not left locked as "playing" for when it comes back.
    */
   leaveFront?: (document: MusicDocument) => void;
+  /**
+   * Whether only one document is open at a time: opening one closes the rest.
+   *
+   * What iOS and Android do. There the editor is one screen with no tab
+   * strip, so a second open document would be one nobody could see, holding
+   * its work behind the one in front. Closed **without asking**, as `close`
+   * is — whoever opens a document asks first (`useSingleDocumentGuard`),
+   * because only they have a person to ask.
+   */
+  single?: boolean;
 };
 
 /** As much of the transport as leaving the front needs. */
@@ -234,11 +244,15 @@ export class DocumentList {
       this.changed();
       return existing;
     }
+    const replaced = this.options.single ? this.documents : [];
     this.documents = [...this.documents, document];
     const detach = this.options.attach?.(document);
     if (detach) this.detach.set(document.id, detach);
     this.requestedActiveId = document.id;
     this.changed();
+    // After the new one is in front, so that each close leaves the front
+    // where it is rather than handing it to a document about to close too.
+    for (const other of replaced) this.close(other.id);
     return document;
   }
 

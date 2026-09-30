@@ -14,10 +14,17 @@
  * is: a rendered test proves one screen is reachable, where this proves there
  * is no screen that is not.
  *
- * `Editor` is the stack's `initialRouteName`, so it is reachable by being where
- * the app starts; it is also navigated to from the dashboard, so it needs no
+ * `Editor` is the stack's `initialRouteName` on a desktop build and `Main` —
+ * the tabs — is on iOS and Android, so each is reachable by being where the
+ * app starts; the editor is also navigated to from Projects, so it needs no
  * exemption. Anything genuinely meant to be pushed only by a deep link would go
  * in `REACHED_BY_LINK` with a reason.
+ *
+ * **A tab is reachable by being a tab**: the bar that holds it is its door.
+ * What is checked for `MainTabs` is that there are five and that every one of
+ * them is also a screen of the desktop stack, which has no bar — the two
+ * arrangements are of one set of routes, and a tab the desktop never heard of
+ * would be a destination half the platforms cannot reach.
  */
 import { describe, expect, it } from 'vitest';
 import { globSync, readFileSync } from 'node:fs';
@@ -33,9 +40,13 @@ const REACHED_BY_LINK = new Set(['Published']);
 describe('navigator screens', () => {
   it('are all reachable', () => {
     const navigation = readFileSync('src/app/Navigation.tsx', 'utf8');
-    const declared = [...navigation.matchAll(/<Stack\.Screen\s+name="(\w+)"/g)]
-      .map(match => match[1]!)
-      .filter(name => !REACHED_BY_LINK.has(name));
+    const declared = [
+      ...new Set(
+        [...navigation.matchAll(/<Stack\.Screen\s+name="(\w+)"/g)].map(
+          match => match[1]!,
+        ),
+      ),
+    ].filter(name => !REACHED_BY_LINK.has(name));
     expect(declared.length).toBeGreaterThan(5);
 
     const sources = globSync('src/**/*.{ts,tsx}')
@@ -47,13 +58,39 @@ describe('navigator screens', () => {
       const initial = new RegExp(`initialRouteName=["']${name}["']`).test(
         navigation,
       );
-      // `navigate('X')` or `navigate('X', …)`, from anywhere in the app.
-      const navigated = new RegExp(`navigate\\(\\s*['"]${name}['"]`).test(
-        sources,
-      );
+      // `navigate('X')` or `navigate('X', …)`, from anywhere in the app — or
+      // `goToTab(navigation, 'X')`, which is how the five are reached from
+      // beside the tabs and is a plain `navigate` where there are none.
+      const navigated = new RegExp(
+        `(navigate\\(|goToTab\\(\\s*\\w+,)\\s*['"]${name}['"]`,
+      ).test(sources);
       return !initial && !navigated;
     });
 
     expect(unreachable).toEqual([]);
+  });
+
+  it('offers the same five under a tab bar as without one', () => {
+    const tabs = [
+      ...readFileSync('src/app/MainTabs.tsx', 'utf8').matchAll(
+        /<Tab\.Screen\s+name="(\w+)"/g,
+      ),
+    ].map(match => match[1]!);
+    expect(tabs).toEqual([
+      'Dashboard',
+      'Community',
+      'Docs',
+      'Resources',
+      'Settings',
+    ]);
+
+    const stack = new Set(
+      [
+        ...readFileSync('src/app/Navigation.tsx', 'utf8').matchAll(
+          /<Stack\.Screen\s+name="(\w+)"/g,
+        ),
+      ].map(match => match[1]!),
+    );
+    expect(tabs.filter(name => !stack.has(name))).toEqual([]);
   });
 });

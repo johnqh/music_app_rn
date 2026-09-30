@@ -27,9 +27,8 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
-import { hasMenuBar, useMenuCommand } from '@/app/menu-commands';
+import { useMenuCommand } from '@/app/menu-commands';
 import type { MenuCommand } from '@/app/menu-commands';
-import { showProjectsWindow } from '@/platform/projectsWindow';
 import {
   DOCUMENT_EXTENSION,
   DOCUMENT_EXTENSIONS,
@@ -50,7 +49,8 @@ import {
   ServerProjectCreationFeedback,
   useServerProjectCreation,
 } from '@/features/projects/useServerProjectCreation';
-import { navigationRef } from '@/app/Navigation';
+import { navigationRef, showEditor } from '@/app/Navigation';
+import { goToTab } from '@/app/tab-bar';
 import { useAuth } from '@/auth/AuthContext';
 import { useServerContext } from '@/config/useServerContext';
 
@@ -100,17 +100,10 @@ export function MenuFileCommands() {
       void (async () => {
         try {
           if (command === 'nav.projects') {
-            // A separate native window on desktop (`ProjectsWindow.tsx`),
-            // not a screen pushed onto this one — see `projectsWindow.ts`.
-            // Falls back to in-place navigation only where there is no menu
-            // bar to have asked from in the first place, which is dead code
-            // today (this listener only runs where `hasMenuBar()` is true)
-            // and kept only so a future caller cannot silently do nothing.
-            if (hasMenuBar()) showProjectsWindow();
-            else if (navigationRef.isReady())
-              navigationRef.navigate('Dashboard');
+            // The Projects tab of the one window the app has.
+            if (navigationRef.isReady()) goToTab(navigationRef, 'Dashboard');
           } else if (command === 'nav.settings') {
-            if (navigationRef.isReady()) navigationRef.navigate('Settings');
+            if (navigationRef.isReady()) goToTab(navigationRef, 'Settings');
           } else if (command === 'file.new') {
             setNewOpen(true);
           } else if (command === 'file.open') {
@@ -123,6 +116,7 @@ export function MenuFileCommands() {
             if (!uri) return;
             const opened = await openFileInto(list, services, uri);
             recordRecent(opened.store.getState());
+            showEditor();
           } else if (command === 'file.saveAs') {
             await saveAs();
           } else if (command === 'file.save') {
@@ -155,7 +149,10 @@ export function MenuFileCommands() {
   useOpenLink('documents', link => {
     if (link.kind !== 'document') return;
     openFileInto(list, services, link.path)
-      .then(opened => recordRecent(opened.store.getState()))
+      .then(opened => {
+        recordRecent(opened.store.getState());
+        showEditor();
+      })
       .catch((error: unknown) =>
         setFailure(error instanceof Error ? error.message : String(error)),
       );
@@ -180,6 +177,7 @@ export function MenuFileCommands() {
                 title: submission.title,
               }),
             );
+            showEditor();
             return;
           }
           void creation.create(submission).then(projectId => {

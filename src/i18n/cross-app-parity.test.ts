@@ -110,7 +110,6 @@ const WORDED_DIFFERENTLY: Record<string, string> = {
   // Navigation and settings copy, where the native app has a screen and the web
   // has a link in a bar.
   'auth.createAccount': 'screen title vs link',
-  'nav.docs': 'screen title vs link',
   'settings.themeSystem': 'screen row vs select option',
   'transport.position': 'screen row vs tooltip',
   'transport.speedMultiplier': 'screen row vs tooltip',

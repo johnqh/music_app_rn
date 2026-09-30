@@ -29,7 +29,12 @@ export type NotationIconProps = {
   name: NotationIconName;
   /** Matches the web's `ICON_GLYPH_CLASS`, which is 18px. */
   size?: number;
-  color?: string;
+  /**
+   * Required, and from the theme (`useNotationInk`). It had a default of
+   * black, which is the one colour guaranteed to vanish in dark mode — a
+   * glyph drawn without saying what in drew nothing anybody could see.
+   */
+  color: string;
 };
 
 const DEFAULT_SIZE = 18;
@@ -131,7 +136,7 @@ function renderShape(
 export const NotationIcon = memo(function NotationIcon({
   name,
   size = DEFAULT_SIZE,
-  color = '#000000',
+  color,
 }: NotationIconProps) {
   return (
     <Svg

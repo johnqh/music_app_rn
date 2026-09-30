@@ -20,20 +20,15 @@
  * transcribed server-side.
  */
 import { useCallback, useState } from 'react';
-import { FlatList, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '@/app/Navigation';
 import { useTranslation } from 'react-i18next';
-import {
-  Button,
-  MIN_TOUCH_TARGET,
-  Spinner,
-  Text,
-} from '@sudobility/components-rn';
+import { Button, Spinner, Text } from '@sudobility/components-rn';
+import { ProjectTiles } from '@/features/projects/ProjectTiles';
 import { useProjects } from '@sudobility/music_client';
 import type { NewProjectSubmission } from '@sudobility/music_lib';
-import type { ProjectSummary } from '@sudobility/music_types';
 import { useAuth } from '@/auth/AuthContext';
 import { getMusicClient } from '@/config/server';
 import type { NativeUploadFile } from '@sudobility/music_client';
@@ -194,11 +189,11 @@ function ProjectList({
   const projects = data ?? [];
   return (
     <View className="bg-background flex-1">
-      <FlatList<ProjectSummary>
-        data={projects}
-        keyExtractor={(p: ProjectSummary) => p.id}
-        contentContainerClassName="p-4 gap-2"
-        ListHeaderComponent={
+      <ProjectTiles
+        projects={projects}
+        context={context}
+        onOpen={onOpen}
+        header={
           <View className="gap-3 pb-2">
             <Button onPress={() => setNewProjectOpen(true)}>
               {t('dashboard.newProject')}
@@ -212,44 +207,6 @@ function ProjectList({
             <SyncToServerButton />
           </View>
         }
-        ListEmptyComponent={
-          <Text className="text-muted-foreground py-8 text-center">
-            {t('dashboard.empty')}
-          </Text>
-        }
-        renderItem={({ item }: { item: ProjectSummary }) => {
-          // A busy project opens like any other: generated or transcribed,
-          // its notes stream into the editor as they are written, and
-          // opening it is how you watch. The label says which is happening.
-          const activate = () => onOpen(item.id);
-          const statusLabel =
-            item.status === 'transcribing'
-              ? t('dashboard.transcribing')
-              : item.status === 'generating'
-              ? t('dashboard.generating')
-              : null;
-          return (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={item.name}
-              onPress={activate}
-              // macOS has no synthesized-touch fallback for an assistive press,
-              // so a VoiceOver activation reaches a Pressable only through
-              // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
-              onAccessibilityTap={activate}
-              className="border-border bg-card rounded-lg border p-3"
-              style={{ minHeight: MIN_TOUCH_TARGET }}
-            >
-              <Text className="text-foreground font-medium">{item.name}</Text>
-              <Text className="text-muted-foreground text-sm">
-                {new Date(item.updatedAt).toLocaleString()}
-              </Text>
-              {statusLabel ? (
-                <Text className="text-info mt-1 text-sm">{statusLabel}</Text>
-              ) : null}
-            </Pressable>
-          );
-        }}
       />
       <NewProjectSheet
         open={newProjectOpen}

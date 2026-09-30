@@ -32,6 +32,10 @@ const sources = files.filter(
  * app's own document, none of which is a rule about music.
  */
 const ALLOWED_NON_UI = new Set([
+  // The Resources screen's icons: a table of `require`s, which is how Metro
+  // is told an asset exists. Files on disk are the one part of that page a
+  // library cannot hold — the web app keeps its own table for the same reason.
+  'src/screens/resource-icons.ts',
   // The composition root: it constructs platform services rather than
   // implementing them, which is exactly this repo's job.
   'src/config/initialize.ts',
@@ -49,6 +53,23 @@ const ALLOWED_NON_UI = new Set([
   // listens to is declared in this app's own `AppDelegate.mm`, so there is
   // no other package that could own it.
   'src/app/menu-commands.ts',
+  // Whether the navigator draws a native header here — a fact about the
+  // platform, asked by the layout and by the editor's header alike. Platform
+  // glue like the menu bar above, and the same question from the other side:
+  // one says a menu bar carries the title bar's buttons, this says the
+  // navigation bar does.
+  'src/app/native-header.ts',
+  // Whether the app sits under a tab bar here, and how to reach a tab from
+  // beside the tabs. The same kind of fact as the two above — iOS and
+  // Android have a tab bar where macOS and Windows have a menu bar and a
+  // Projects window — and `goToTab` is arrangement over the navigator: it
+  // names a route, and holds no rule about anything.
+  'src/app/tab-bar.ts',
+  // Which documentation topics have a figure, and the files themselves. This
+  // app's own pictures of this app's own screens: the web's docs show the
+  // web's, so there is nothing here for a library to hold.
+  'src/features/docs/figures.ts',
+  'src/features/docs/figure-assets.ts',
   // What a `moosiac://open` link or a Finder open asks for: a path, checked
   // against the extensions the app reads. Arrangement over the document and
   // import tables, and the same kind of platform glue as the menu bar.

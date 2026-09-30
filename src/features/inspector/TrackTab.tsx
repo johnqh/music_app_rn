@@ -50,6 +50,7 @@ import { InstrumentIcon } from '@/components/icons/InstrumentIcon';
 import { useNotationInk } from '@/components/icons/notation-ink';
 import { Field, EmptyTab } from './Field';
 import { ReplaceButton } from './ReplaceButton';
+import { VisibleTracksField } from './VisibleTracksField';
 import type { ReplaceScope } from '@sudobility/music_types';
 import type { MusicDocument } from '@/documents/document';
 import type { TrackMixPatch } from '@sudobility/music_types';
@@ -313,6 +314,8 @@ export function TrackTab({
           accessibilityLabel={t('inspector.solo')}
         />
       </View>
+
+      <VisibleTracksField document={document} />
 
       {/*
         Deleting the part. `canDeleteTrack` is the store's own rule, asked

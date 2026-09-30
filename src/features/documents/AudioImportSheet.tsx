@@ -14,13 +14,17 @@
  * to decide in it: no tempo, no options, and the project that opens next is
  * where the result is watched arriving.
  *
- * Two things are still said, because each is the only word the reader gets.
- * That the recording is on its way, while it is: an upload takes seconds and
- * a screen that does nothing for that long reads as a tap that missed. And
- * that it cannot be done at all, *before* the picker rather than after it —
- * uploading a recording only to be told the server never could is the worst
- * order to learn that in, and needing to sign in is a different thing to be
- * told than needing a server.
+ * **The picker opens whatever the answer is going to be.** Every format on
+ * the Import list opens the file picker, and one that answered with a
+ * message instead read as the one that was broken. So a recording is chosen
+ * first even where it cannot be transcribed, and *then* the reader is told
+ * why — nothing has been uploaded at that point, so nothing has been wasted
+ * but a choice, and needing to sign in is a different thing to be told than
+ * needing a server.
+ *
+ * The other thing still said is that the recording is on its way, while it
+ * is: an upload takes seconds and a screen that does nothing for that long
+ * reads as a tap that missed.
  *
  * **The recording is uploaded by path, not by bytes.** React Native's `Blob`
  * cannot be constructed from an `ArrayBuffer`, so reading a recording in order
@@ -29,7 +33,7 @@
  * for exactly this: the browser passes its `File`, native passes
  * `{ uri, name, type }` and RN's networking layer streams it.
  */
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Spinner, Text } from '@sudobility/components-rn';
@@ -72,6 +76,8 @@ export function AudioImportSheet({
   onUpload,
 }: AudioImportSheetProps) {
   const { t } = useTranslation();
+  /** A recording was chosen where none can be sent: the reason is owed. */
+  const [refused, setRefused] = useState(false);
 
   const choose = async (): Promise<void> => {
     const picker = createFilePicker();
@@ -82,19 +88,20 @@ export function AudioImportSheet({
     const uri = await picker.pickFile(AUDIO_IMPORT_EXTENSIONS);
     // Chosen is sent. Cancelled closes the whole flow — there is nothing on
     // screen to leave open instead.
-    if (uri) onUpload(nativeUploadFor(uri));
-    else onClose();
+    if (!uri) onClose();
+    else if (available) onUpload(nativeUploadFor(uri));
+    else setRefused(true);
   };
 
   useEffect(() => {
-    // Not when unavailable: picking a file the server could never take is
-    // work with no purpose, and `available` is already known without one.
-    // Deliberately keyed on `open`/`available` alone: `choose` closes over
+    // Deliberately keyed on `open` alone: `choose` closes over
     // `onClose`/`onUpload`, which change identity every render on the
     // callers below, and listing them would fire the picker again on every
-    // render rather than once per open.
-    if (open && available) void choose();
-  }, [open, available]);
+    // render rather than once per open. Not on `available` either — it can
+    // settle while the picker is up, and that must not open a second one.
+    if (open) void choose();
+    else setRefused(false);
+  }, [open]);
 
   // The caller closes this when the upload lands or fails; nothing here can
   // be cancelled part-way, so while it is busy there is no way out offered.
@@ -102,7 +109,7 @@ export function AudioImportSheet({
 
   return (
     <FormModal
-      visible={open && (sending || !available)}
+      visible={open && (sending || refused)}
       title={t('importAudio.title')}
       onClose={sending ? () => undefined : onClose}
       actions={

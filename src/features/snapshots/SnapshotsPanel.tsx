@@ -28,6 +28,11 @@ import { Button, Spinner, Text } from '@sudobility/components-rn';
 import type { ProjectSnapshots } from '@sudobility/music_client';
 import { CreateSnapshotSheet, OpenSnapshotSheet } from './SnapshotSheets';
 import { DraftInput } from '@/features/inspector/DraftInput';
+import {
+  FieldSlot,
+  SLOT_BUTTON_CLASS,
+  SLOT_FIELD_CLASS,
+} from '@/components/controls/FieldRow';
 
 export type SnapshotsPanelProps = {
   /** `useProjectSnapshots` for this project. */
@@ -103,8 +108,9 @@ export function SnapshotsPanel({
                 title must never reach a public page. A blank one is refused
                 by the hook, which sends nothing.
               */}
-              <View className="flex-1">
+              <FieldSlot grow>
                 <DraftInput
+                  className={SLOT_FIELD_CLASS}
                   value={snapshot.publicName ?? snapshot.name}
                   accessibilityLabel={t('snapshot.publicNameFor', {
                     name: snapshot.name,
@@ -113,14 +119,17 @@ export function SnapshotsPanel({
                     run(() => snapshots.rename(snapshot.id, publicName))
                   }
                 />
-              </View>
-              <Button
-                variant="ghost"
-                disabled={busy}
-                onPress={() => run(() => snapshots.unpublish(snapshot.id))}
-              >
-                {t('snapshot.unpublish')}
-              </Button>
+              </FieldSlot>
+              <FieldSlot>
+                <Button
+                  variant="ghost"
+                  className={SLOT_BUTTON_CLASS}
+                  disabled={busy}
+                  onPress={() => run(() => snapshots.unpublish(snapshot.id))}
+                >
+                  {t('snapshot.unpublish')}
+                </Button>
+              </FieldSlot>
             </View>
           ))}
         </View>

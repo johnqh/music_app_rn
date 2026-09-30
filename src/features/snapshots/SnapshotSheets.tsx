@@ -149,7 +149,7 @@ export function CreateSnapshotSheet({
               shown before the tick rather than after it — and Create stays
               disabled until it is ticked.
             */}
-            <Text className="text-base text-amber-700">
+            <Text className="text-warning text-base">
               {t('snapshot.copyrightWarning')}
             </Text>
             <Toggle

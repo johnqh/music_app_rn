@@ -33,6 +33,7 @@ import type { TextInput } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Input, Text } from '@sudobility/components-rn';
 import type { NoteEvent } from '@sudobility/music_types';
+import { FieldSlot } from '@/components/controls/FieldRow';
 import type { EditingStoreApi } from '@sudobility/music_editing';
 import {
   applyLyricStep,
@@ -147,20 +148,24 @@ export function LyricEntryBar({
           total: notes.length,
         })}
       </Text>
-      <Input
-        ref={inputRef}
-        value={draft}
-        autoFocus
-        // A lyric is prose, so the keyboard should behave like prose — except
-        // for autocorrect, which rewrites the syllables of a hyphenated word.
-        autoCorrect={false}
-        autoCapitalize="none"
-        returnKeyType="done"
-        accessibilityLabel={t('editor.syllable')}
-        onChangeText={handleChange}
-        onSubmitEditing={() => perform('enter', draft)}
-        className="h-8 flex-1 px-2 text-base"
-      />
+      {/* The buttons beside it are 44 points tall and this was 32: one
+          height, stated, as everywhere a field has an action beside it. */}
+      <FieldSlot grow>
+        <Input
+          ref={inputRef}
+          value={draft}
+          autoFocus
+          // A lyric is prose, so the keyboard should behave like prose — except
+          // for autocorrect, which rewrites the syllables of a hyphenated word.
+          autoCorrect={false}
+          autoCapitalize="none"
+          returnKeyType="done"
+          accessibilityLabel={t('editor.syllable')}
+          onChangeText={handleChange}
+          onSubmitEditing={() => perform('enter', draft)}
+          className="h-full px-2 py-0 text-base"
+        />
+      </FieldSlot>
       <Button
         variant="ghost"
         onPress={() => perform('back', draft)}

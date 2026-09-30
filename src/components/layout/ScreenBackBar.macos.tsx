@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 import { MIN_TOUCH_TARGET, Text, touchSlop } from '@sudobility/components-rn';
 import { useNotationInk } from '@/components/icons/notation-ink';
+import { useEmbedded } from './EmbeddedScreen';
 
 /** Matches the title bar's glyph size. */
 const ICON_SIZE = 18;
@@ -34,7 +35,9 @@ export function ScreenBackBar() {
   // Literal, because an svg glyph never resolves a NativeWind class — the same
   // reason every notation glyph is handed one.
   const ink = useNotationInk();
-  if (!navigation.canGoBack()) return null;
+  // A pane of another screen leaves the way back to the screen that holds it.
+  const embedded = useEmbedded();
+  if (embedded || !navigation.canGoBack()) return null;
 
   return (
     <View className="flex-row">

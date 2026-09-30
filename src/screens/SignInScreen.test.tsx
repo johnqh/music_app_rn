@@ -15,6 +15,8 @@ const mockSignIn = jest.fn<() => Promise<void>>();
 const mockCreate = jest.fn<() => Promise<void>>();
 const mockGoogle = jest.fn<() => Promise<void>>();
 const mockGoogleAvailable = jest.fn<() => boolean>();
+const mockApple = jest.fn<() => Promise<void>>();
+const mockAppleAvailable = jest.fn<() => boolean>();
 
 jest.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({
@@ -24,6 +26,8 @@ jest.mock('@/auth/AuthContext', () => ({
     signUp: () => mockCreate(),
     signInGoogle: () => mockGoogle(),
     googleAvailable: mockGoogleAvailable(),
+    signInApple: () => mockApple(),
+    appleAvailable: mockAppleAvailable(),
     signOut: async () => {},
   }),
 }));
@@ -43,6 +47,10 @@ beforeEach(() => {
   mockGoogle.mockResolvedValue(undefined);
   mockGoogleAvailable.mockReset();
   mockGoogleAvailable.mockReturnValue(false);
+  mockApple.mockReset();
+  mockApple.mockResolvedValue(undefined);
+  mockAppleAvailable.mockReset();
+  mockAppleAvailable.mockReturnValue(false);
 });
 
 function fill(view: ReturnType<typeof renderWithApp>) {
@@ -51,6 +59,55 @@ function fill(view: ReturnType<typeof renderWithApp>) {
 }
 
 describe('SignInScreen', () => {
+  describe('Apple', () => {
+    it('is offered where it can be done, and signs in with it', async () => {
+      mockAppleAvailable.mockReturnValue(true);
+      const view = renderWithApp(<SignInScreen />);
+
+      await act(async () => {
+        fireEvent.press(
+          view.getByRole('button', { name: 'Continue with Apple' }),
+        );
+      });
+
+      expect(mockApple).toHaveBeenCalledTimes(1);
+      expect(mockGoogle).not.toHaveBeenCalled();
+      expect(mockSignIn).not.toHaveBeenCalled();
+    });
+
+    it('is not offered where it cannot be done', () => {
+      const view = renderWithApp(<SignInScreen />);
+      expect(view.queryByText('Continue with Apple')).toBeNull();
+    });
+
+    it('says why when it fails', async () => {
+      mockAppleAvailable.mockReturnValue(true);
+      mockApple.mockRejectedValue(new Error('No identity token from Apple'));
+      const view = renderWithApp(<SignInScreen />);
+
+      await act(async () => {
+        fireEvent.press(
+          view.getByRole('button', { name: 'Continue with Apple' }),
+        );
+      });
+
+      expect(view.getByText('No identity token from Apple')).toBeTruthy();
+    });
+
+    it('comes before Google, as it must where both are offered', () => {
+      mockAppleAvailable.mockReturnValue(true);
+      mockGoogleAvailable.mockReturnValue(true);
+      const view = renderWithApp(<SignInScreen />);
+      const labels = view
+        .getAllByRole('button')
+        .map(button => button.props.accessibilityLabel as string | undefined);
+      expect(labels.indexOf('Continue with Apple')).toBeGreaterThan(-1);
+      expect(labels.indexOf('Continue with Apple')).toBeLessThan(
+        labels.indexOf('Continue with Google'),
+      );
+    });
+  });
+
   describe('Google', () => {
     it('is offered where it can be done, and signs in with it', async () => {
       // An account made on the web with Google has no password: without

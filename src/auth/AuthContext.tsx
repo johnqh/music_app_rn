@@ -28,31 +28,167 @@ import {
   signInWithEmailAndPassword,
   signOut as firebaseSignOut,
 } from 'firebase/auth';
-import type { Auth, Persistence, User } from 'firebase/auth';
+import type { Auth, OAuthCredential, Persistence, User } from 'firebase/auth';
 import { Platform } from 'react-native';
-import { signInWithGoogleOAuthDesktop } from '@sudobility/auth_lib/oauth';
+import {
+  buildAppleCredential,
+  buildGoogleCredential,
+  signInWithGoogleOAuthDesktop,
+} from '@sudobility/auth_lib/oauth';
 import { WebAuth } from '@sudobility/building_blocks_rn';
 import { CONSTANTS } from '@/config/constants';
 
 /**
- * Whether Google sign-in can be offered here.
+ * Whether Google sign-in can be offered here, and how it is done.
  *
  * On the desktop it goes through the system browser — an
  * `ASWebAuthenticationSession` on macOS — by way of building_blocks_rn's
  * `WebAuth` and auth_lib's PKCE flow, the same pair every desktop app in the
- * family uses. A phone would need Google's native SDK, which this app does
- * not carry, so it is not offered there rather than offered and failing.
+ * family uses. `WebAuth` has no iOS or Android half, so a phone or tablet
+ * asks Google's own SDK (`@react-native-google-signin/google-signin`, the
+ * module `sudojo_app_rn` uses) for an ID token instead.
+ *
+ * Either way what comes back is a credential for **this** file's Firebase —
+ * the JS SDK. `sudojo_app_rn` runs `@react-native-firebase` on mobile; the
+ * native modules are the same two, but only for the token: taking its auth
+ * stack as well would be a second Firebase with a second session.
+ *
  * And it needs a client to sign in *with*: an unconfigured build shows no
- * button, exactly as one with no Firebase key shows no server.
+ * button, exactly as one with no Firebase key shows no server. iOS signs in
+ * with the iOS client, whose reversed form is also a URL scheme in
+ * `Info.plist`; Android is given the web client, which is what makes Google
+ * return an ID token there at all.
  */
-const DESKTOP = Platform.OS === 'macos' || Platform.OS === 'windows';
+// Asked each time rather than held: it costs nothing, and a test can then
+// stand on any platform without reloading the module.
+function isDesktop(): boolean {
+  return Platform.OS === 'macos' || Platform.OS === 'windows';
+}
 export function googleSignInAvailable(): boolean {
-  return (
-    DESKTOP &&
-    CONSTANTS.FIREBASE_API_KEY !== '' &&
-    CONSTANTS.GOOGLE_OAUTH_CLIENT_ID !== '' &&
-    CONSTANTS.GOOGLE_OAUTH_REVERSED_CLIENT_ID !== ''
-  );
+  if (CONSTANTS.FIREBASE_API_KEY === '') return false;
+  if (isDesktop()) {
+    return (
+      CONSTANTS.GOOGLE_OAUTH_CLIENT_ID !== '' &&
+      CONSTANTS.GOOGLE_OAUTH_REVERSED_CLIENT_ID !== ''
+    );
+  }
+  if (Platform.OS === 'ios') return CONSTANTS.GOOGLE_OAUTH_CLIENT_ID !== '';
+  if (Platform.OS === 'android') return CONSTANTS.GOOGLE_WEB_CLIENT_ID !== '';
+  return false;
+}
+
+/**
+ * Whether Sign in with Apple can be offered here.
+ *
+ * iOS has it built in. Android has no such thing, so there it is Apple's web
+ * flow and needs a Services ID and a redirect to name — without both, no
+ * button. The desktops do not offer it: macOS would need the entitlement on
+ * a build of its own, and Windows has no implementation.
+ */
+export function appleSignInAvailable(): boolean {
+  if (CONSTANTS.FIREBASE_API_KEY === '') return false;
+  if (Platform.OS === 'ios') return true;
+  if (Platform.OS === 'android') {
+    return (
+      CONSTANTS.APPLE_SERVICE_ID !== '' && CONSTANTS.APPLE_REDIRECT_URI !== ''
+    );
+  }
+  return false;
+}
+
+/** Google's credential, or null when the reader closed the sheet. */
+async function googleCredential(): Promise<OAuthCredential | null> {
+  if (isDesktop()) {
+    return signInWithGoogleOAuthDesktop(
+      {
+        clientId: CONSTANTS.GOOGLE_OAUTH_CLIENT_ID,
+        reversedClientId: CONSTANTS.GOOGLE_OAUTH_REVERSED_CLIENT_ID,
+      },
+      WebAuth,
+    );
+  }
+  /*
+    Asked for when needed, never at the top of the file: the module has no
+    macOS or Windows half, and a desktop build must be able to load this
+    file. `require`, not `import()` — Metro answers a dynamic import by
+    fetching a second bundle when the button is pressed, and here that fetch
+    fails with "Could not load bundle" and nothing signs in.
+  */
+  const { GoogleSignin } =
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin');
+  GoogleSignin.configure({
+    ...(CONSTANTS.GOOGLE_OAUTH_CLIENT_ID
+      ? { iosClientId: CONSTANTS.GOOGLE_OAUTH_CLIENT_ID }
+      : {}),
+    ...(CONSTANTS.GOOGLE_WEB_CLIENT_ID
+      ? { webClientId: CONSTANTS.GOOGLE_WEB_CLIENT_ID }
+      : {}),
+  });
+  await GoogleSignin.hasPlayServices();
+  const response = await GoogleSignin.signIn();
+  if (response.type === 'cancelled') return null;
+  const idToken = response.data?.idToken;
+  if (!idToken) throw new Error('No ID token from Google');
+  return buildGoogleCredential(idToken);
+}
+
+/** Apple's credential, or null when the reader closed the sheet. */
+async function appleCredential(): Promise<OAuthCredential | null> {
+  // `require` for the reason `googleCredential` gives.
+  const { appleAuth, appleAuthAndroid } =
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('@invertase/react-native-apple-authentication') as typeof import('@invertase/react-native-apple-authentication');
+  if (Platform.OS === 'android') {
+    if (!appleAuthAndroid.isSupported) {
+      throw new Error('Apple sign-in is not supported on this device');
+    }
+    appleAuthAndroid.configure({
+      clientId: CONSTANTS.APPLE_SERVICE_ID,
+      redirectUri: CONSTANTS.APPLE_REDIRECT_URI,
+      responseType: appleAuthAndroid.ResponseType.ALL,
+      scope: appleAuthAndroid.Scope.ALL,
+    });
+    try {
+      const response = await appleAuthAndroid.signIn();
+      if (!response.id_token) throw new Error('No identity token from Apple');
+      return buildAppleCredential({
+        idToken: response.id_token,
+        ...(response.nonce ? { rawNonce: response.nonce } : {}),
+      });
+    } catch (error) {
+      if (errorCode(error) === appleAuthAndroid.Error.SIGNIN_CANCELLED) {
+        return null;
+      }
+      throw error;
+    }
+  }
+  try {
+    const response = await appleAuth.performRequest({
+      requestedOperation: appleAuth.Operation.LOGIN,
+      requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+    });
+    if (!response.identityToken) {
+      throw new Error('No identity token from Apple');
+    }
+    return buildAppleCredential({
+      idToken: response.identityToken,
+      ...(response.nonce ? { rawNonce: response.nonce } : {}),
+    });
+  } catch (error) {
+    // Closing the sheet is an answer, not a failure to report.
+    if (errorCode(error) === appleAuth.Error.CANCELED) return null;
+    throw error;
+  }
+}
+
+/** What either Apple module puts on a rejection, where it puts anything. */
+function errorCode(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const code = (error as { code?: unknown; message?: unknown }).code;
+  if (typeof code === 'string') return code;
+  const message = (error as { message?: unknown }).message;
+  return typeof message === 'string' ? message : undefined;
 }
 
 export type AuthUser = {
@@ -85,6 +221,10 @@ export type AuthState = {
   signInGoogle: () => Promise<void>;
   /** Whether to offer it. See `googleSignInAvailable`. */
   googleAvailable: boolean;
+  /** Signs in with Apple, where `appleAvailable` says it can. */
+  signInApple: () => Promise<void>;
+  /** Whether to offer it. See `appleSignInAvailable`. */
+  appleAvailable: boolean;
   signOut: () => Promise<void>;
   /**
    * The current ID token, or null when signed out.
@@ -213,17 +353,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       signInGoogle: async () => {
         if (!auth) throw new Error('Sign-in is not configured in this build.');
-        const credential = await signInWithGoogleOAuthDesktop(
-          {
-            clientId: CONSTANTS.GOOGLE_OAUTH_CLIENT_ID,
-            reversedClientId: CONSTANTS.GOOGLE_OAUTH_REVERSED_CLIENT_ID,
-          },
-          WebAuth,
-        );
+        const credential = await googleCredential();
         // Null is the reader closing the sheet.
         if (credential) await signInWithCredential(auth, credential);
       },
       googleAvailable: googleSignInAvailable(),
+      signInApple: async () => {
+        if (!auth) throw new Error('Sign-in is not configured in this build.');
+        const credential = await appleCredential();
+        if (credential) await signInWithCredential(auth, credential);
+      },
+      appleAvailable: appleSignInAvailable(),
       signOut: async () => {
         if (auth) await firebaseSignOut(auth);
       },
@@ -251,6 +391,8 @@ export function useAuth(): AuthState {
       signUp: async () => undefined,
       signInGoogle: async () => undefined,
       googleAvailable: false,
+      signInApple: async () => undefined,
+      appleAvailable: false,
       signOut: async () => undefined,
       getToken: async () => null,
     }

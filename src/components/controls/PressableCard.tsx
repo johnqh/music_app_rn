@@ -15,7 +15,7 @@
  * phone sees the pressed state alone.
  */
 import { useState } from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { MIN_TOUCH_TARGET, cn } from '@sudobility/components-rn';
 
@@ -24,16 +24,24 @@ export type PressableCardProps = {
   label: string;
   onPress: () => void;
   children: ReactNode;
+  /**
+   * What can be done *to* the thing, under what choosing it does: a project's
+   * Duplicate and Delete. Inside the card's frame and outside its pressable
+   * part — a button inside a button is one a screen reader cannot reach, and
+   * a press on Delete must not also open the project.
+   */
+  footer?: ReactNode;
 };
 
 export function PressableCard({
   label,
   onPress,
   children,
+  footer,
 }: PressableCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
-  return (
+  const surface = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
@@ -53,16 +61,37 @@ export function PressableCard({
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       className={cn(
-        'rounded-lg border p-3',
+        footer ? 'p-3' : 'rounded-lg border p-3',
         pressed
           ? 'border-primary bg-primary/20'
           : hovered
           ? 'border-primary bg-primary/10'
+          : footer
+          ? 'bg-card'
           : 'border-border bg-card',
       )}
       style={{ minHeight: MIN_TOUCH_TARGET }}
     >
       {children}
     </Pressable>
+  );
+  if (!footer) return surface;
+  return (
+    // The frame is the card's, so the part that opens and the actions under
+    // it read as one thing; the hover tint stays on the part that is pressed.
+    // As tall as what it holds, and no `flex-1`: in a grid's row, whose
+    // height comes from its tiles, that is a height of nothing, and every
+    // row but the last drew as a line.
+    <View
+      className={cn(
+        'bg-card overflow-hidden rounded-lg border',
+        pressed || hovered ? 'border-primary' : 'border-border',
+      )}
+    >
+      {surface}
+      <View className="border-border flex-row items-center justify-end gap-1 border-t px-1">
+        {footer}
+      </View>
+    </View>
   );
 }

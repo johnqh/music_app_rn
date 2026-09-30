@@ -49,7 +49,7 @@ export function NewPane({
     <View className="flex-1">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="gap-3 p-4"
+        contentContainerClassName="gap-3 p-6"
         accessibilityLabel={t('newProject.title')}
       >
         <ScoreSetupFields
@@ -95,7 +95,7 @@ export function NewPane({
         scrollable content, never scrolling away with it). This inline pane
         has no `FormModal` to borrow that from, so it repeats the shape here.
       */}
-      <View className="border-border border-t p-4">
+      <View className="border-border border-t px-6 py-4">
         <Button
           onPress={handleCreate}
           disabled={!canCreate}

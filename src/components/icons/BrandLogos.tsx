@@ -12,7 +12,7 @@
  * their branding guidelines, and a "G" recoloured to suit a theme is no
  * longer their mark. So `GoogleLogo` takes no colour at all. Apple's mark is
  * a single shape in black or white, which is the placement's to choose —
- * white on a black button, black on a white one — so it takes one.
+ * white on a black button, black on a white one — so it takes a tone.
  */
 import Svg, { Path } from 'react-native-svg';
 
@@ -47,8 +47,12 @@ export function GoogleLogo({ size = DEFAULT_SIZE }: BrandLogoProps) {
   );
 }
 
+/** The two colours Apple's mark may be drawn in, and nothing between. */
+const APPLE_TONE = { black: '#000000', white: '#ffffff' } as const;
+
 /**
- * Apple's mark. `color` is black or white, chosen against what it sits on.
+ * Apple's mark. `tone` is black or white, chosen against what it sits on —
+ * named rather than passed as a colour, so the literal stays in this file.
  *
  * Drawn in a square although the mark itself is taller than it is wide
  * (814 by 1000): the box is what lines it up with the text beside it and
@@ -56,12 +60,12 @@ export function GoogleLogo({ size = DEFAULT_SIZE }: BrandLogoProps) {
  */
 export function AppleLogo({
   size = DEFAULT_SIZE,
-  color,
-}: BrandLogoProps & { color: '#000000' | '#ffffff' }) {
+  tone,
+}: BrandLogoProps & { tone: keyof typeof APPLE_TONE }) {
   return (
     <Svg width={size} height={size} viewBox="-93 0 1000 1000">
       <Path
-        fill={color}
+        fill={APPLE_TONE[tone]}
         d="M788.1 340.9c-5.8 4.5-108.2 62.2-108.2 190.5 0 148.4 130.3 200.9 134.2 202.2-.6 3.2-20.7 71.9-68.7 141.9-42.8 61.6-87.5 123.1-155.5 123.1s-85.5-39.5-164-39.5c-76.5 0-103.7 40.8-165.9 40.8s-105.6-57.8-155.5-127.4c-58.3-81.3-105.4-207.1-105.4-326.6C-0.9 502 46.9 381.1 130.8 315c58.3-46.2 128.3-73.3 194.6-73.3 64.3 0 120.5 43.4 184.7 43.4 62.2 0 112.3-46.2 190.2-46.2 24.2 0 52.5 4.5 77.8 14zM554.6 0c13 63.5-18.5 127-43.4 167.7C476.5 220.4 422.8 262 362.7 262c-2.6-12.3-4.5-25.3-4.5-38.3 0-61.6 23.4-127 68-172.7C467 8.4 528.8-4.5 554.6 0z"
       />
     </Svg>

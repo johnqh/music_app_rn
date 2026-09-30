@@ -1,31 +1,188 @@
 /**
- * Settings — theme, language, and who is signed in.
+ * Settings, as master and detail — the account first, then what the account
+ * holds, then what belongs to the device. The split view is
+ * `sudojo_app_rn`'s (`SplitViewContainer`): a list with its own navigation
+ * bar, and the chosen section beside it under a bar of its own.
  *
- * The web app's settings live in a title-bar menu and a `GlobalSettingsPage`;
- * on a phone a menu of that size wants a screen, which is the one place this
- * deliberately differs in *form* while keeping the same contents.
+ * **What is listed depends on who is signed in.** Signed out there is the
+ * account — which is then the sign-in form — and Appearance. Signed in there
+ * is everything the web dashboard offers, in its order: Credits (which holds
+ * the coupon form), Credit history, API keys, and Manage coupons for a site
+ * administrator. The account's sections are not listed for somebody with no
+ * account: each would be a page saying only "sign in", under the one entry
+ * that does exactly that.
+ *
+ * **Appearance is last**, as the one section that is about the app rather
+ * than the person.
+ *
+ * Docs, Resources and Community are tabs where there is a tab bar. Without
+ * one this screen is still the way to them, so they are listed after the
+ * sections and leave the screen rather than fill the pane.
  */
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { Button, Select, Text } from '@sudobility/components-rn';
-import { useAuth } from '@/auth/AuthContext';
+import { AppVersion, Select, Text } from '@sudobility/components-rn';
+import { version as appVersion } from '../../package.json';
+import { CONSTANTS } from '@/config/constants';
 import { useTheme } from '@/config/ThemeContext';
 import { devicePrefs } from '@/config/useDevicePrefs';
 import { THEME_MODE_OPTIONS } from '@sudobility/music_types';
 import type { ThemeMode } from '@sudobility/music_types';
 import { SUPPORTED_LANGUAGES } from '@/i18n';
-import type { RootStackParamList } from '@/app/Navigation';
+import { hasTabBar } from '@/app/tab-bar';
+import type { MainTabParamList } from '@/app/Navigation';
+import { ScreenBackBar } from '@/components/layout/ScreenBackBar';
+import {
+  SplitMenuList,
+  SplitPanel,
+  SplitViewContainer,
+} from '@/components/layout/SplitViewContainer';
+import { useAuth } from '@/auth/AuthContext';
+import { CreditsScreen } from './CreditsScreen';
 import { ScreenScaffold } from './ScreenScaffold';
+import { AccountSection } from './settings/AccountSection';
+import { ApiKeysSection } from './settings/ApiKeysSection';
+import { CreditHistorySection } from './settings/CreditHistorySection';
+import { ManageCouponsSection } from './settings/ManageCouponsSection';
 
-export function SettingsScreen() {
+/** The sections, in the order they are listed. */
+export const SETTINGS_SECTIONS = [
+  'account',
+  'credits',
+  'history',
+  'apiKeys',
+  'manageCoupons',
+  'appearance',
+] as const;
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+/** A record, so a section added to the list fails to compile without a name. */
+const SECTION_LABEL: Record<SettingsSection, string> = {
+  account: 'settings.account',
+  credits: 'nav.credits',
+  history: 'dashboard.creditHistory',
+  apiKeys: 'dashboard.apiKeys',
+  manageCoupons: 'dashboard.manageCoupons',
+  appearance: 'settings.page.appearanceLabel',
+};
+
+/** What is offered whoever is asking: the way in, and the device's own. */
+const FOR_EVERYONE: readonly SettingsSection[] = ['account', 'appearance'];
+/** What only a site administrator is offered. */
+const ADMIN_ONLY: readonly SettingsSection[] = ['manageCoupons'];
+
+/** The sections offered to this reader, in the listed order. */
+export function settingsSectionsFor(
+  signedIn: boolean,
+  siteAdmin: boolean,
+): SettingsSection[] {
+  return SETTINGS_SECTIONS.filter(section => {
+    if (FOR_EVERYONE.includes(section)) return true;
+    if (!signedIn) return false;
+    return siteAdmin || !ADMIN_ONLY.includes(section);
+  });
+}
+
+/** Where this screen leads when nothing else does — see the file comment. */
+const LINKS = [
+  { route: 'Docs', labelKey: 'nav.docs' },
+  { route: 'Resources', labelKey: 'nav.resources' },
+  { route: 'Community', labelKey: 'nav.community' },
+] as const;
+
+/**
+ * What the screen is handed by whichever navigator holds it — a tab under a
+ * tab bar, a stack screen without one. Taken as props rather than through
+ * `useNavigation()`, because the panels below are navigation trees of their
+ * own and that hook would answer theirs.
+ */
+export type SettingsScreenProps = {
+  navigation: { navigate: (route: 'Docs' | 'Resources' | 'Community') => void };
+  route: { params?: MainTabParamList['Settings'] };
+};
+
+export function SettingsScreen({ navigation, route }: SettingsScreenProps) {
+  const { t } = useTranslation();
+  const { user, siteAdmin } = useAuth();
+  const sections = settingsSectionsFor(user !== null, siteAdmin);
+  const [chosen, setChosen] = useState<SettingsSection>('account');
+  // What is shown is what is listed: signing out while Credits is showing
+  // takes Credits off the list, and the pane goes back to the first entry
+  // rather than showing a section the list no longer names.
+  const section = sections.includes(chosen) ? chosen : sections[0]!;
+
+  // A section asked for from outside the screen.
+  const requested = route.params?.section;
+  const requestedAt = route.params?.at;
+  useEffect(() => {
+    if (requested !== undefined) setChosen(requested);
+  }, [requested, requestedAt]);
+
+  const entries = [
+    ...sections.map(id => ({ id, label: t(SECTION_LABEL[id]) })),
+    ...(hasTabBar()
+      ? []
+      : LINKS.map(link => ({ id: link.route, label: t(link.labelKey) }))),
+  ];
+
+  const choose = (id: string) => {
+    const link = LINKS.find(candidate => candidate.route === id);
+    if (link) navigateTo(navigation, link.route);
+    else setChosen(id as SettingsSection);
+  };
+
+  return (
+    <View className="bg-background flex-1">
+      {/* The way back; nothing at all where the navigator draws its own. */}
+      <View className="px-4">
+        <ScreenBackBar />
+      </View>
+      <SplitViewContainer
+        primaryPanel={
+          <SplitPanel title={t('nav.settings')}>
+            <SplitMenuList
+              label={t('nav.settings')}
+              entries={entries}
+              selected={section}
+              onSelect={choose}
+            />
+          </SplitPanel>
+        }
+        secondaryPanel={
+          <SplitPanel secondary title={t(SECTION_LABEL[section])}>
+            {section === 'account' ? <AccountSection /> : null}
+            {section === 'credits' ? (
+              <CreditsScreen onSignIn={() => setChosen('account')} />
+            ) : null}
+            {section === 'history' ? <CreditHistorySection /> : null}
+            {section === 'apiKeys' ? <ApiKeysSection /> : null}
+            {section === 'manageCoupons' ? <ManageCouponsSection /> : null}
+            {section === 'appearance' ? <AppearanceSection /> : null}
+          </SplitPanel>
+        }
+      />
+    </View>
+  );
+}
+
+/*
+  One call per destination, each naming its route as a literal:
+  `screens-reachable.test.ts` finds a screen's way in by reading the source
+  for `navigate('Docs'`, and a route held in a variable is one it cannot see.
+*/
+function navigateTo(
+  navigation: SettingsScreenProps['navigation'],
+  route: (typeof LINKS)[number]['route'],
+): void {
+  if (route === 'Docs') navigation.navigate('Docs');
+  else if (route === 'Resources') navigation.navigate('Resources');
+  else navigation.navigate('Community');
+}
+
+function AppearanceSection() {
   const { t, i18n } = useTranslation();
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { user, signOut } = useAuth();
   const { mode, setMode } = useTheme();
-
   return (
     <ScreenScaffold>
       <Row label={t('settings.language')}>
@@ -64,70 +221,12 @@ export function SettingsScreen() {
         />
       </Row>
 
-      {/*
-        There is deliberately no developer-settings row here any more. It opened
-        a sheet of six toggles — `showIds`, `showTicks`,
-        `showMeasureBoundaries`, `showPlaybackScheduling`, `enableDiagnostics`
-        and `enableValidationWarnings` — that no package in the family read, so
-        every one of them did nothing; they are gone from `DevSettings`
-        upstream. The one setting left is `generationVariant`, and this app has
-        no control for it (the web's developer dialog does), so a sheet here
-        would open on nothing at all.
-      */}
-
-      <Row label={t('settings.account')}>
-        {user ? (
-          <View className="items-end gap-2">
-            <Text className="text-foreground text-base">
-              {user.email ?? user.uid}
-            </Text>
-            <Button size="sm" onPress={() => void signOut()}>
-              {t('nav.signOut')}
-            </Button>
-          </View>
-        ) : (
-          <Button size="sm" onPress={() => navigation.navigate('SignIn')}>
-            {t('nav.signIn')}
-          </Button>
-        )}
-      </Row>
-
-      <View className="gap-2 pt-4">
-        <Button variant="outline" onPress={() => navigation.navigate('Docs')}>
-          {t('nav.docs')}
-        </Button>
-        <Button
-          variant="outline"
-          onPress={() => navigation.navigate('Shortcuts')}
-        >
-          {t('editor.keyboardShortcuts')}
-        </Button>
-        {/*
-          Beside Docs rather than under Import: it answers "I have nothing to
-          open", which is a question about the app rather than a step in an
-          import.
-        */}
-        <Button
-          variant="outline"
-          onPress={() => navigation.navigate('Resources')}
-        >
-          {t('nav.resources')}
-        </Button>
-        <Button variant="outline" onPress={() => navigation.navigate('About')}>
-          {t('about.title')}
-        </Button>
-        <Button
-          variant="outline"
-          onPress={() => navigation.navigate('Community')}
-        >
-          {t('nav.community')}
-        </Button>
-        <Button
-          variant="outline"
-          onPress={() => navigation.navigate('Credits')}
-        >
-          {t('nav.credits')}
-        </Button>
+      {/* The build, which a bug report needs and nothing else states. Read
+          from `package.json`, which `push_all` bumps and syncs to the native
+          platform files — so there is one version, not a second one typed.
+          Here since the About screen went: it was the only place it showed. */}
+      <View className="pt-2">
+        <AppVersion appName={CONSTANTS.APP_NAME} version={appVersion} />
       </View>
     </ScreenScaffold>
   );

@@ -3,18 +3,18 @@
  * Connect item turns into once signed in (`ProjectsSidebar.tsx`).
  *
  * A trimmed `DashboardScreen`'s `ProjectList`: the same fetch
- * (`useProjects`) and the same row (name, updated time, and which job is
- * writing it when one is), without that screen's own New Project button and
+ * (`useProjects`) and the same grid of tiles (`ProjectTiles`: name, updated
+ * date, which job is writing it when one is, Duplicate and Delete), without
+ * that screen's own New Project button and
  * Import menu — this window's sidebar is where both of those live now, and
  * offering them a second time here would be the same entry point twice.
  */
-import { FlatList, Pressable, View } from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { MIN_TOUCH_TARGET, Spinner, Text } from '@sudobility/components-rn';
+import { Button, Spinner, Text } from '@sudobility/components-rn';
 import { useProjects } from '@sudobility/music_client';
-import type { ProjectSummary } from '@sudobility/music_types';
 import { useServerContext } from '@/config/useServerContext';
-import { PressableCard } from '@/components/controls/PressableCard';
+import { ProjectTiles } from '@/features/projects/ProjectTiles';
 import { ServerUnavailable } from '@/screens/ScreenScaffold';
 
 export type MyProjectsPaneProps = {
@@ -27,7 +27,7 @@ export function MyProjectsPane({ onOpen }: MyProjectsPaneProps) {
 
   if (!context) {
     return (
-      <View className="p-4">
+      <View className="p-6">
         <ServerUnavailable />
       </View>
     );
@@ -57,52 +57,18 @@ function ProjectListing({
     return (
       <View className="items-center gap-2 py-8">
         <Text className="text-destructive">{t('errors.loadProjects')}</Text>
-        <Pressable
-          accessibilityRole="button"
+        <Button
+          variant="link"
+          textClassName="text-base"
           onPress={() => void refetch()}
-          onAccessibilityTap={() => void refetch()}
-          style={{ minHeight: MIN_TOUCH_TARGET, justifyContent: 'center' }}
         >
-          <Text className="text-primary">{t('library.retry')}</Text>
-        </Pressable>
+          {t('library.retry')}
+        </Button>
       </View>
     );
   }
 
-  const projects = data ?? [];
   return (
-    <FlatList
-      data={projects}
-      keyExtractor={(p: ProjectSummary) => p.id}
-      accessibilityLabel={t('dashboard.myProjects')}
-      contentContainerClassName="p-4 gap-2"
-      ListEmptyComponent={
-        <Text className="text-muted-foreground py-8 text-center">
-          {t('dashboard.empty')}
-        </Text>
-      }
-      renderItem={({ item }: { item: ProjectSummary }) => {
-        // A busy project opens like any other, as in `DashboardScreen`'s
-        // list: its notes can be watched arriving, whichever job writes them.
-        const activate = () => onOpen(item.id);
-        const statusLabel =
-          item.status === 'transcribing'
-            ? t('dashboard.transcribing')
-            : item.status === 'generating'
-            ? t('dashboard.generating')
-            : null;
-        return (
-          <PressableCard label={item.name} onPress={activate}>
-            <Text className="text-foreground font-medium">{item.name}</Text>
-            <Text className="text-muted-foreground text-sm">
-              {new Date(item.updatedAt).toLocaleString()}
-            </Text>
-            {statusLabel ? (
-              <Text className="text-info mt-1 text-sm">{statusLabel}</Text>
-            ) : null}
-          </PressableCard>
-        );
-      }}
-    />
+    <ProjectTiles projects={data ?? []} context={context} onOpen={onOpen} />
   );
 }

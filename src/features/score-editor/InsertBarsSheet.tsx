@@ -72,6 +72,9 @@ export function InsertBarsSheet({
               accessibilityRole="radio"
               accessibilityState={{ selected: position === option }}
               onPress={() => setPosition(option)}
+              // macOS has no synthesized-touch fallback for an assistive
+              // press; without this the choice could be read and not made.
+              onAccessibilityTap={() => setPosition(option)}
             >
               <View
                 className={

@@ -11,6 +11,7 @@
  */
 import { jest } from '@jest/globals';
 import { act } from '@testing-library/react-native';
+import { StackActions } from '@react-navigation/native';
 import { DocumentList } from '@/documents/document-list';
 import { DocumentsProvider } from '@/documents/DocumentsContext';
 import { MusicPosition } from '@sudobility/music_types';
@@ -22,6 +23,7 @@ import type { MenuCommand } from '@/app/menu-commands';
 // no-out-of-scope-variable guard.
 let mockHandler: ((command: MenuCommand) => void) | null = null;
 const mockNavigate = jest.fn();
+const mockDispatch = jest.fn();
 
 jest.mock('@/app/menu-commands', () => ({
   ...(jest.requireActual('@/app/menu-commands') as object),
@@ -31,7 +33,11 @@ jest.mock('@/app/menu-commands', () => ({
 }));
 
 jest.mock('@/app/Navigation', () => ({
-  navigationRef: { isReady: () => true, navigate: mockNavigate },
+  navigationRef: {
+    isReady: () => true,
+    navigate: mockNavigate,
+    dispatch: mockDispatch,
+  },
 }));
 
 /*
@@ -75,24 +81,32 @@ function setup() {
 describe('MenuFileCommands nav commands', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    mockDispatch.mockClear();
     mockHandler = null;
   });
 
   it('opens the projects list on nav.projects', () => {
     setup();
     act(() => mockHandler!('nav.projects'));
-    expect(mockNavigate).toHaveBeenCalledWith('Dashboard');
+    // The test platform has a tab bar, so Projects is a tab: the tabs are
+    // returned to with that one chosen. `tab-bar.test.tsx` holds both forms.
+    expect(mockDispatch).toHaveBeenCalledWith(
+      StackActions.popTo('Main', { screen: 'Dashboard', params: undefined }),
+    );
   });
 
   it('opens Settings on nav.settings', () => {
     setup();
     act(() => mockHandler!('nav.settings'));
-    expect(mockNavigate).toHaveBeenCalledWith('Settings');
+    expect(mockDispatch).toHaveBeenCalledWith(
+      StackActions.popTo('Main', { screen: 'Settings', params: undefined }),
+    );
   });
 
   it('ignores every other command', () => {
     setup();
     act(() => mockHandler!('export.midi'));
     expect(mockNavigate).not.toHaveBeenCalled();
+    expect(mockDispatch).not.toHaveBeenCalled();
   });
 });

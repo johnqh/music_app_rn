@@ -54,7 +54,9 @@ describe('NotationIcon', () => {
   it('draws every shared glyph without throwing', () => {
     expect(ICON_NAMES.length).toBeGreaterThan(0);
     for (const name of ICON_NAMES) {
-      expect(() => renderWithApp(<NotationIcon name={name} />)).not.toThrow();
+      expect(() =>
+        renderWithApp(<NotationIcon name={name} color="black" />),
+      ).not.toThrow();
     }
   });
 

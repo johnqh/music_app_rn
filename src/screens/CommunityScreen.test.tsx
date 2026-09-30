@@ -8,6 +8,7 @@
  * set.
  */
 import { jest } from '@jest/globals';
+import { FlatList, StyleSheet } from 'react-native';
 import { act, fireEvent } from '@testing-library/react-native';
 import type { CommunityItem } from '@sudobility/music_types';
 import { renderWithApp } from '@/test/render';
@@ -18,7 +19,11 @@ const mockListCommunity = jest.fn<() => Promise<CommunityItem[]>>();
 // One client, as the real `getMusicClient` caches one: a fresh object per call
 // would re-run the screen's load effect on every render.
 jest.mock('@/config/server', () => {
-  const client = { listCommunity: () => mockListCommunity() };
+  const client = {
+    listCommunity: () => mockListCommunity(),
+    avatarUrl: (avatarId: string) =>
+      `https://api.test/public/avatars/${avatarId}`,
+  };
   return { getMusicClient: () => client };
 });
 jest.mock('@react-navigation/native', () => ({
@@ -31,6 +36,7 @@ function item(patch: Partial<CommunityItem>): CommunityItem {
     name: 'Snapshot name',
     publicName: 'Public title',
     publisherName: 'Ada',
+    publisherAvatarId: null,
     createdAt: '2026-09-01T00:00:00.000Z',
     ...patch,
   } as CommunityItem;
@@ -43,10 +49,53 @@ async function render() {
 }
 
 describe('CommunityScreen', () => {
+  it('holds its content to the width of a page, centred', async () => {
+    mockListCommunity.mockResolvedValue([item({})]);
+    const view = await render();
+    const list = view.getByTestId('community-tiles').findByType(FlatList);
+    expect(StyleSheet.flatten(list.props.contentContainerStyle)).toMatchObject({
+      width: '100%',
+      maxWidth: 1280,
+      alignSelf: 'center',
+    });
+  });
+
   it('titles a row with no public title by its name, not an empty line', async () => {
     mockListCommunity.mockResolvedValue([item({ publicName: '   ' })]);
     const view = await render();
     expect(view.getByText('Snapshot name')).toBeTruthy();
+  });
+
+  it('heads a tile with who shared it, and their initial for want of a picture', async () => {
+    mockListCommunity.mockResolvedValue([item({})]);
+    const view = await render();
+    expect(view.getByText('Ada')).toBeTruthy();
+    // Hidden from a screen reader, so from a query that reads as one does.
+    expect(view.getByText('A', { includeHiddenElements: true })).toBeTruthy();
+    expect(
+      view.queryByTestId('publisher-picture', { includeHiddenElements: true }),
+    ).toBeNull();
+    expect(view.getByLabelText('Public title, by Ada')).toBeTruthy();
+  });
+
+  it('shows their picture when they have one', async () => {
+    mockListCommunity.mockResolvedValue([item({ publisherAvatarId: 'av_1' })]);
+    const view = await render();
+    expect(
+      view.getByTestId('publisher-picture', { includeHiddenElements: true })
+        .props.source,
+    ).toEqual({
+      uri: 'https://api.test/public/avatars/av_1',
+    });
+  });
+
+  it('offers nothing to do to a shared score but open it', async () => {
+    // It is somebody else's: no Duplicate and no Delete, which the project
+    // tiles this one is drawn like both have.
+    mockListCommunity.mockResolvedValue([item({})]);
+    const view = await render();
+    expect(view.queryByLabelText(/duplicate/i)).toBeNull();
+    expect(view.queryByLabelText(/delete/i)).toBeNull();
   });
 
   it('says a search matched nothing, rather than that nothing exists', async () => {

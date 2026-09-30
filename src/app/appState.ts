@@ -13,6 +13,7 @@
  * document) runs exactly once regardless of which window happens to mount
  * first.
  */
+import { hasTabBar } from './tab-bar';
 import { newProjectScore } from '@sudobility/music_lib';
 import { getDeviceLocaleTags as getDeviceLanguageTags } from '@sudobility/building_blocks_rn';
 import { bindDevicePrefs, mirrorDevicePrefs } from '@sudobility/music_lib';
@@ -107,6 +108,9 @@ export function getSharedAppState(): SharedAppState {
     and are read straight off `devicePrefs`.
   */
   const documents = new DocumentList({
+    // One project at a time under a tab bar, where the editor has no tab
+    // strip to show a second one in.
+    single: hasTabBar(),
     attach: document => mirrorDevicePrefs(devicePrefs, document.store),
     /*
       A tab going behind another is **paused** — never stopped, which would
@@ -121,18 +125,25 @@ export function getSharedAppState(): SharedAppState {
   });
   // Something to look at on first launch. A real "new score" goes through the
   // same call, which is the point: an unsaved document is an ordinary one.
-  documents.open(
-    newDocument(documentServices, {
-      title: 'Untitled',
-      /*
-        The same score a "New Project" makes, from the same place: a piano
-        track and eight bars to write in. What a new project starts as is
-        music_lib's decision, so the two apps and the two ways in cannot
-        disagree — and so a blank page always has a track on it.
-      */
-      score: newProjectScore('Untitled'),
-    }),
-  );
+  //
+  // Only where the app opens on the editor. Under a tab bar it opens on
+  // Projects, where a document is something the reader asks for; one made
+  // unasked would sit behind the tabs as a second tab of every project they
+  // then opened.
+  if (!hasTabBar()) {
+    documents.open(
+      newDocument(documentServices, {
+        title: 'Untitled',
+        /*
+          The same score a "New Project" makes, from the same place: a piano
+          track and eight bars to write in. What a new project starts as is
+          music_lib's decision, so the two apps and the two ways in cannot
+          disagree — and so a blank page always has a track on it.
+        */
+        score: newProjectScore('Untitled'),
+      }),
+    );
+  }
 
   cached = { list: documents, services: documentServices };
   return cached;

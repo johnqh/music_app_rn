@@ -407,3 +407,54 @@ describe('leaving a playing tab', () => {
     expect(transport.stop).not.toHaveBeenCalled();
   });
 });
+
+describe('DocumentList, one document at a time', () => {
+  function single() {
+    const position = new MusicPosition();
+    const detached: string[] = [];
+    const list = new DocumentList({
+      single: true,
+      position: () => position,
+      attach: document => () => detached.push(document.id),
+    });
+    return { list, position, detached };
+  }
+
+  it('closes the document that was open when another opens', () => {
+    const { list, detached } = single();
+    const a = list.open(doc('A'));
+    const b = list.open(doc('B'));
+    expect(list.openDocuments.map(d => d.id)).toEqual([b.id]);
+    expect(list.activeId).toBe(b.id);
+    // Closed as `close` closes: detached, so nothing goes on writing to it.
+    expect(detached).toEqual([a.id]);
+  });
+
+  it('keeps the one already open when it is opened again', () => {
+    // Raising what is open is not opening something else, by either route:
+    // the same document handed back, or another copy of the same file.
+    const { list, detached } = single();
+    const song = list.open(
+      doc('Song', { kind: 'file', uri: 'file:///song.moo' }),
+    );
+    list.open(song);
+    list.open(doc('Song', { kind: 'file', uri: 'file:///song.moo' }));
+    expect(list.openDocuments.map(d => d.id)).toEqual([song.id]);
+    expect(detached).toEqual([]);
+  });
+
+  it("opens the new document at its own caret, not the closed one's", () => {
+    const { list, position } = single();
+    list.open(doc('A'));
+    position.moveTo(960);
+    list.open(doc('B'));
+    expect(position.tick).toBe(0);
+  });
+
+  it('still holds several where it was not asked to hold one', () => {
+    const { list } = listWithCaret();
+    list.open(doc('A'));
+    list.open(doc('B'));
+    expect(list.openDocuments).toHaveLength(2);
+  });
+});

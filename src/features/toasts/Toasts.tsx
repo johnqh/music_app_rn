@@ -80,6 +80,31 @@ const SEVERITY_CLASS: Record<Toast['severity'], string> = {
   info: 'bg-primary flex-row items-center gap-3 rounded-md px-4 py-3',
 };
 
+/*
+  The ink that goes with each surface. It was `primary-foreground` on all
+  four, which is right only by coincidence: on the warning surface in light
+  mode the theme's own pairing is `warning-foreground`, and a theme whose
+  warning is pale would have put white on it.
+*/
+const MESSAGE_CLASS: Record<Toast['severity'], string> = {
+  error: 'text-destructive-foreground flex-shrink text-sm',
+  warning: 'text-warning-foreground flex-shrink text-sm',
+  success: 'text-success-foreground flex-shrink text-sm',
+  info: 'text-primary-foreground flex-shrink text-sm',
+};
+const ACTION_CLASS: Record<Toast['severity'], string> = {
+  error: 'text-destructive-foreground text-sm font-semibold',
+  warning: 'text-warning-foreground text-sm font-semibold',
+  success: 'text-success-foreground text-sm font-semibold',
+  info: 'text-primary-foreground text-sm font-semibold',
+};
+const CLOSE_CLASS: Record<Toast['severity'], string> = {
+  error: 'text-destructive-foreground text-lg',
+  warning: 'text-warning-foreground text-lg',
+  success: 'text-success-foreground text-lg',
+  info: 'text-primary-foreground text-lg',
+};
+
 export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
   const { t } = useTranslation();
   const toasts = useSyncExternalStore(
@@ -103,6 +128,8 @@ export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
     current.action?.onClick();
     dismiss();
   };
+  const severity =
+    current.severity in SEVERITY_CLASS ? current.severity : 'info';
   const assertive =
     current.severity === 'error' || current.severity === 'warning';
 
@@ -114,11 +141,9 @@ export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
       <View
         accessibilityRole={assertive ? 'alert' : 'text'}
         accessibilityLiveRegion={assertive ? 'assertive' : 'polite'}
-        className={SEVERITY_CLASS[current.severity] ?? SEVERITY_CLASS.info}
+        className={SEVERITY_CLASS[severity]}
       >
-        <Text className="text-primary-foreground flex-shrink text-sm">
-          {current.message}
-        </Text>
+        <Text className={MESSAGE_CLASS[severity]}>{current.message}</Text>
         {current.action ? (
           <Pressable
             accessibilityRole="button"
@@ -129,7 +154,7 @@ export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
             // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
             onAccessibilityTap={runAction}
           >
-            <Text className="text-primary-foreground text-sm font-semibold">
+            <Text className={ACTION_CLASS[severity]}>
               {current.action.label}
             </Text>
           </Pressable>
@@ -141,7 +166,7 @@ export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
           onPress={dismiss}
           onAccessibilityTap={dismiss}
         >
-          <Text className="text-primary-foreground text-lg">×</Text>
+          <Text className={CLOSE_CLASS[severity]}>×</Text>
         </Pressable>
       </View>
     </View>

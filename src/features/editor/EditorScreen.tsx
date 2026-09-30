@@ -24,6 +24,10 @@ import { exportDocument } from '@/documents/export';
 import type { ExportFormat } from '@/documents/export';
 import { ExportSheet } from '@/features/documents/ExportSheet';
 import { useMenuCommand } from '@/app/menu-commands';
+import { useEditorHeader } from './useEditorHeader';
+import { ProjectsPopup } from './ProjectsPopup';
+import { ShortcutsSheet } from '@/features/shortcuts/ShortcutsSheet';
+import { goToTab, hasTabBar } from '@/app/tab-bar';
 import type { MenuCommand } from '@/app/menu-commands';
 import { canPrint, printScore } from '@/features/print/print-service';
 import { PrintSheet } from '@/features/print/PrintSheet';
@@ -446,6 +450,64 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     ),
   );
 
+  /*
+    Settings holds the theme, the language, the account, Credits, Shortcuts
+    and About. On iOS and Android it is a tab, behind the editor; on a
+    desktop build the title bar is gone (`hasMenuBar()`) and `nav.settings`
+    — the App menu's Preferences… on macOS, wired in `AppDelegate.mm` — is
+    the way there.
+  */
+  const onSettings = useCallback(
+    () => goToTab(navigation, 'Settings'),
+    [navigation],
+  );
+  /*
+    And the projects list: New Project, every import and the server
+    project list. Same split — this is iOS/Android's route, and a
+    desktop build reaches it through `nav.projects` in the File menu
+    instead, handled in `MenuFileCommands` rather than here because it
+    must work with no document open at all.
+  */
+  const onDocuments = useCallback(
+    () => goToTab(navigation, 'Dashboard'),
+    [navigation],
+  );
+  /*
+    The Projects sidebar, drawn over the score: what a split view offers once
+    its detail has the whole screen. Only under a tab bar — a desktop build
+    has its Projects window, and the editor there was never pushed from one.
+  */
+  const [masterOpen, setMasterOpen] = useState(false);
+  const onMaster = useCallback(() => setMasterOpen(open => !open), []);
+  const onSnapshots = useCallback(() => setSnapshotsOpen(true), []);
+  /*
+    The keyboard shortcuts, over the score they work in. They were a section
+    of Settings and a pushed screen, and either took the reader out of the
+    project to read about the keys that work in the project.
+  */
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const onShortcuts = useCallback(() => setShortcutsOpen(true), []);
+
+  /*
+    On iOS and Android the title bar is the navigator's header — the
+    navigation bar and the top app bar — so it is handed over here, and
+    `AppLayout` draws none of its own there.
+  */
+  useEditorHeader(
+    navigation,
+    {
+      document,
+      onSave,
+      onExport,
+      onSettings,
+      onDocuments,
+      onShortcuts,
+      ...(projectId ? { onSnapshots } : {}),
+      ...(canPrint() ? { onPrint, printing } : {}),
+    },
+    hasTabBar() ? onMaster : undefined,
+  );
+
   if (!score) return <EmptyState message={t('editor.noScore')} />;
   return (
     <AppLayout
@@ -454,22 +516,9 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       onLeaveScroll={onLeaveScroll}
       onSave={onSave}
       onExport={onExport}
-      /*
-        Settings holds the theme, the language, sign-in and the way to Docs,
-        Shortcuts, Resources, About and Credits. On iOS and Android this is
-        the only route there; on a desktop build the title bar is gone
-        (`hasMenuBar()`) and `nav.settings` — the App menu's Preferences… on
-        macOS, wired in `AppDelegate.mm` — is.
-      */
-      onSettings={() => navigation.navigate('Settings')}
-      /*
-        And the projects list: New Project, every import and the server
-        project list. Same split — this prop is iOS/Android's route, and a
-        desktop build reaches it through `nav.projects` in the File menu
-        instead, handled in `MenuFileCommands` rather than here because it
-        must work with no document open at all.
-      */
-      onDocuments={() => navigation.navigate('Dashboard')}
+      onSettings={onSettings}
+      onDocuments={onDocuments}
+      onShortcuts={onShortcuts}
       {...(canPrint() ? { onPrint, printing } : {})}
       {...(projectId
         ? {
@@ -497,7 +546,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
             },
           }
         : {})}
-      onSnapshots={projectId ? () => setSnapshotsOpen(true) : undefined}
+      onSnapshots={projectId ? onSnapshots : undefined}
       onReplace={projectId ? setReplaceScope : undefined}
       onGenerateTrack={projectId ? () => setGenerateTrackOpen(true) : undefined}
       onGenerateInsertedBars={projectId ? generateInsertedBars : undefined}
@@ -580,6 +629,10 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
               }
             }}
           />
+          <ShortcutsSheet
+            open={shortcutsOpen}
+            onClose={() => setShortcutsOpen(false)}
+          />
           <SnapshotsSheet
             open={snapshotsOpen}
             document={document}
@@ -596,8 +649,20 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
             `AppLayout` puts anything modal — inside the safe area, above the
             toolbars that would otherwise clip it — and it renders nothing at
             all until Back is pressed with work unwritten.
+
+            Only where the editor is the stack's first route, so that Back is
+            a quit. Under a tab bar Back leaves the editor for the tabs, the
+            documents stay open behind it, and the guard sits on the tabs
+            instead (`MainTabs`), which is where Back finishes the activity.
           */}
-          <UnsavedQuitGuard />
+          {hasTabBar() ? null : <UnsavedQuitGuard />}
+          <ProjectsPopup
+            open={masterOpen}
+            onClose={() => setMasterOpen(false)}
+            onSelect={pane =>
+              goToTab(navigation, 'Dashboard', { pane, at: Date.now() })
+            }
+          />
         </>
       }
     />

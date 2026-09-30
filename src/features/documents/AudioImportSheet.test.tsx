@@ -76,9 +76,46 @@ describe('AudioImportSheet', () => {
     expect(view.queryByText('Cancel')).toBeNull();
   });
 
+  it('opens the picker even where a recording cannot be sent', async () => {
+    // Every format on the Import list opens the picker. One that answered
+    // with a message instead read as the one that was broken.
+    const onUpload = jest.fn();
+    renderWithApp(
+      <AudioImportSheet
+        open
+        available={false}
+        onClose={jest.fn()}
+        onUpload={onUpload}
+      />,
+    );
+    await act(async () => undefined);
+    expect(mockPickFile).toHaveBeenCalledTimes(1);
+    expect(onUpload).not.toHaveBeenCalled();
+  });
+
+  it('says why not once a recording is chosen, and sends nothing', async () => {
+    mockPickFile.mockResolvedValue('/tmp/take-3.mp3');
+    const onUpload = jest.fn();
+    const view = renderWithApp(
+      <AudioImportSheet
+        open
+        available={false}
+        onClose={jest.fn()}
+        onUpload={onUpload}
+      />,
+    );
+    expect(
+      await view.findByText(
+        'Audio transcription is not available on this server.',
+      ),
+    ).toBeTruthy();
+    expect(onUpload).not.toHaveBeenCalled();
+  });
+
   it('says to sign in, rather than that the server cannot, when that is the reason', async () => {
     // Two ways to be without transcription, with different remedies. A
     // reader who only has to sign in must not be told the feature is absent.
+    mockPickFile.mockResolvedValue('/tmp/take-3.mp3');
     const view = renderWithApp(
       <AudioImportSheet
         open
@@ -96,20 +133,22 @@ describe('AudioImportSheet', () => {
     ).toBeNull();
   });
 
-  it('shows the unavailable message immediately, without touching the picker', async () => {
+  it('closes without a word when the picker is cancelled where it cannot be sent', async () => {
+    mockPickFile.mockResolvedValue(null);
+    const onClose = jest.fn();
     const view = renderWithApp(
       <AudioImportSheet
         open
         available={false}
-        onClose={jest.fn()}
+        onClose={onClose}
         onUpload={jest.fn()}
       />,
     );
     await act(async () => undefined);
-    expect(mockPickFile).not.toHaveBeenCalled();
+    expect(onClose).toHaveBeenCalledTimes(1);
     expect(
-      view.getByText('Audio transcription is not available on this server.'),
-    ).toBeTruthy();
+      view.queryByText('Audio transcription is not available on this server.'),
+    ).toBeNull();
   });
 
   it('does not reopen the picker on an unrelated re-render', async () => {

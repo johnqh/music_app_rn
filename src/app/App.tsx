@@ -27,9 +27,35 @@ import { WindowTitleSync } from '@/features/documents/WindowTitleSync';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PortalHost } from '@sudobility/components-rn';
 import { ThemeVarsProvider } from '@/components/ThemeVarsProvider';
-import { ThemeProvider } from '@/config/ThemeContext';
+import { ThemeProvider, useTheme } from '@/config/ThemeContext';
+import { useFormFactor } from '@sudobility/components-rn';
 import { AuthProvider } from '@/auth/AuthContext';
 import { Navigation } from './Navigation';
+
+/**
+ * The clock and the battery, in ink that shows on the app's own background.
+ *
+ * Stated, because the default is the system's guess: Android drew them light
+ * over this app's light background, where they could not be read. Inside
+ * `ThemeProvider`, since which ink shows depends on the scheme the reader
+ * chose, which is not always the device's.
+ */
+function ThemedStatusBar() {
+  const { resolved } = useTheme();
+  // A phone is held on its side here, and its short edge has no room for
+  // a status bar over a bar over the content: the bars go to the top edge.
+  const hidden = useFormFactor() === 'phone';
+  return (
+    <StatusBar
+      hidden={hidden}
+      // Under the window, not above it: hidden alone leaves Android laying
+      // the app out below the row the bar took, which is the gap this is
+      // here to close.
+      translucent={hidden}
+      barStyle={resolved === 'dark' ? 'light-content' : 'dark-content'}
+    />
+  );
+}
 
 export default function App() {
   // `getSharedAppState()` runs the real set-up exactly once, however many
@@ -55,11 +81,11 @@ export default function App() {
   return (
     <GestureRoot>
       <SafeAreaProvider>
-        <StatusBar hidden={false} />
         {/*
           Outside the vars provider, because it decides what those vars are.
         */}
         <ThemeProvider>
+          <ThemedStatusBar />
           <ThemeVarsProvider>
             <QueryClientProvider client={queryClient}>
               {/*

@@ -76,6 +76,11 @@ import type {
   Score,
 } from '@sudobility/music_types';
 import { DraftInput, NumberDraftInput } from './DraftInput';
+import {
+  FieldSlot,
+  SLOT_FIELD_CLASS,
+  SLOT_SELECT_CLASS,
+} from '@/components/controls/FieldRow';
 import { EmptyTab, Field } from './Field';
 import { ReplaceButton } from './ReplaceButton';
 import type { MusicDocument } from '@/documents/document';
@@ -151,9 +156,15 @@ export function MeasureTab({
         refuses it, so a free field would look live and then do nothing.
       */}
       <Field label={t('inspector.timeSignature')}>
+        {/*
+          One height for the two halves of one value. The field came at 33
+          points and the picker at 36, so the fraction read as two controls
+          that happened to be neighbours.
+        */}
         <View className="flex-row items-center gap-2">
-          <View className="flex-1">
+          <FieldSlot grow>
             <NumberDraftInput
+              className={SLOT_FIELD_CLASS}
               value={timeSig?.numerator ?? null}
               min={1}
               max={MAX_TIME_SIG_NUMERATOR}
@@ -168,10 +179,11 @@ export function MeasureTab({
                 })
               }
             />
-          </View>
+          </FieldSlot>
           <Text className="text-muted-foreground text-base">/</Text>
           <View className="flex-1">
             <Select
+              className={SLOT_SELECT_CLASS}
               value={timeSig ? String(timeSig.denominator) : ''}
               placeholder={t('inspector.mixed')}
               accessibilityLabel={t('inspector.timeSigDenominator')}

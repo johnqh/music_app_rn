@@ -43,6 +43,15 @@ module.exports = {
     'react-native-audio-api': { platforms: { windows: null } },
     'react-native-share': { platforms: { macos: null, windows: null } },
     '@react-native-community/slider': { platforms: { macos: null, windows: null } },
+    // Google's SDK is iOS and Android only; the desktops sign in through the
+    // system browser (`WebAuth`). Sign in with Apple is offered on iOS and
+    // Android only, so its module is left out of the desktop builds too.
+    '@react-native-google-signin/google-signin': {
+      platforms: { macos: null, windows: null },
+    },
+    '@invertase/react-native-apple-authentication': {
+      platforms: { macos: null, windows: null },
+    },
     // Windows resolves device-language.windows.ts and uses Intl directly.
     'react-native-localize': { platforms: { windows: null } },
   },

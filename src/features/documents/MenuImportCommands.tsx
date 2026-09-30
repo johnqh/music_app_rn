@@ -24,7 +24,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { getMusicClient } from '@/config/server';
 import { useServerContext } from '@/config/useServerContext';
 import { useTranslation } from 'react-i18next';
-import { navigationRef } from '@/app/Navigation';
+import { navigationRef, showEditor } from '@/app/Navigation';
 import {
   useDocumentList,
   useDocumentServices,
@@ -41,7 +41,8 @@ const IMPORT_FOR: Partial<Record<MenuCommand, ImportFormat>> = {
 };
 
 export function MenuImportCommands() {
-  const importer = useImport();
+  // What was imported is open; the editor is where it is looked at.
+  const importer = useImport({ onImported: showEditor });
   const { run, importFile } = importer;
   const { getToken, user } = useAuth();
   const { t } = useTranslation();

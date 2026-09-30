@@ -68,6 +68,8 @@ import { EditorToolbar } from '@/features/score-editor/EditorToolbar';
 import { LyricEntryBar } from '@/features/score-editor/LyricEntryBar';
 import { TitleBar } from './TitleBar';
 import { hasMenuBar } from '@/app/menu-commands';
+import { hasNativeHeader } from '@/app/native-header';
+import { hasTabBar } from '@/app/tab-bar';
 import { devicePrefs, useDevicePrefs } from '@/config/useDevicePrefs';
 import type { GenerationChoicesProps } from '@/features/generation/GenerationChoices';
 import type { ProjectOriginProps } from '@/features/generation/ProjectOriginPanel';
@@ -76,7 +78,11 @@ import { useContainerSize } from '@/features/layout/useContainerSize';
 import { inspectorOpensByDefault } from '@/features/layout/inspector-default';
 import type { ReactNode } from 'react';
 import type { MusicDocument } from '@/documents/document';
-import type { ScoreCanvasHit, LayoutMode } from '@sudobility/music_types';
+import type {
+  ScoreCanvasHit,
+  LayoutMode,
+  TrackInfoMode,
+} from '@sudobility/music_types';
 
 /**
  * On a touch device the inspector and the track gutter never share the screen.
@@ -88,12 +94,14 @@ import type { ScoreCanvasHit, LayoutMode } from '@sudobility/music_types';
  * does not close on a phone, and it does not close on a tablet either once the
  * reader has opened the panel they opened it to use.
  *
- * So they trade: inspector shown → no gutter, inspector hidden → gutter. What
+ * So they trade: inspector shown → no gutter, inspector hidden → gutter. (The
+ * gutter at its full width, that is. Narrowed to the instrument icon it is
+ * 40pt, which the arithmetic does close on, so that mode stays: see
+ * `trackInfoShown`.) What
  * the gutter was telling you is exactly what the inspector's Track tab tells
  * you — the name, the instrument, mute and solo — so nothing is lost while it
- * is off, and the active track is still changed from the toolbar's track
- * picker (`TrackVisibilitySelect`), which is not the gutter and never was the
- * only route.
+ * is off, and the active track is still changed by tapping a staff, which
+ * was never the gutter's job.
  *
  * **macOS keeps both**, which is why this is a platform question and not a
  * width one: the desktop window is large enough for a gutter, a panel and a
@@ -103,6 +111,23 @@ import type { ScoreCanvasHit, LayoutMode } from '@sudobility/music_types';
  */
 const TRADES_GUTTER_FOR_INSPECTOR = Platform.OS !== 'macos';
 
+/**
+ * How much of the track-info gutter the score draws, from what the reader
+ * chose and what else is on screen.
+ *
+ * The reader's choice, except that the full column gives way to the inspector
+ * where the two trade. The icon alone does not: it was the full column's
+ * width the trade was decided against, and a reader who narrowed the gutter
+ * to keep it has not asked for it to vanish when they open a panel.
+ */
+export function trackInfoShown(
+  chosen: TrackInfoMode,
+  inspectorVisible: boolean,
+  trades: boolean = TRADES_GUTTER_FOR_INSPECTOR,
+): TrackInfoMode {
+  return chosen === 'full' && trades && inspectorVisible ? 'hidden' : chosen;
+}
+
 export type AppLayoutProps = {
   document: MusicDocument;
   onSave: () => void;
@@ -111,6 +136,8 @@ export type AppLayoutProps = {
   onSettings: () => void;
   /** Opens the projects list — the only route to New Project and to imports. */
   onDocuments: () => void;
+  /** Shows the keyboard shortcuts. Absent where the holder has no sheet for them. */
+  onShortcuts?: () => void;
   /**
    * The export sheet, mounted here rather than built here.
    *
@@ -174,12 +201,17 @@ export type AppLayoutProps = {
   onLeaveScroll?: (offset: ScrollOffset) => void;
 };
 
+// Held, so the safe-area view is handed the same array on every render.
+const TOP_EDGE = ['top'] as const;
+const NO_EDGES = [] as const;
+
 export function AppLayout({
   document,
   onSave,
   onExport,
   onSettings,
   onDocuments,
+  onShortcuts,
   exportSheet,
   overlay,
   scoreReadOnly = false,
@@ -239,10 +271,13 @@ export function AppLayout({
   const [inspectorOpen, setInspectorOpen] = useState<boolean | null>(null);
   const inspectorVisible = inspectorOpen ?? roomForBoth;
   /*
-    The trade. On macOS both are drawn, so this is always true there; on touch
-    the gutter is the inspector's other half and only one of them is on screen.
+    The trade. On macOS both are drawn; on touch the full gutter is the
+    inspector's other half and only one of them is on screen.
   */
-  const showTrackInfo = !(TRADES_GUTTER_FOR_INSPECTOR && inspectorVisible);
+  const trackInfo = trackInfoShown(
+    useDevicePrefs(s => s.trackInfo),
+    inspectorVisible,
+  );
   const score = useStore(document.store, s => s.score);
   const sharedSelection = useSyncExternalStore(
     onChange => getMusicSelection().subscribe(onChange),
@@ -401,7 +436,9 @@ export function AppLayout({
     */
     <SafeAreaView
       className="bg-background flex-1"
-      edges={['top']}
+      // The navigator's header has already cleared the status bar where it
+      // draws one; clearing it again left an empty band under the header.
+      edges={hasNativeHeader() ? NO_EDGES : TOP_EDGE}
       onLayout={onLayout}
     >
       {/*
@@ -414,8 +451,12 @@ export function AppLayout({
         formats, Print is `file.print`, Snapshots is `file.snapshots`, and
         Projects/Settings are `nav.projects`/`nav.settings` — see
         `MenuFileCommands` and `EditorScreen` for where each lands.
+
+        Hidden on iOS and Android as well, where the same buttons are on the
+        navigator's header — the navigation bar and the top app bar — put
+        there by `useEditorHeader`. Drawn here they would be there twice.
       */}
-      {hasMenuBar() ? null : (
+      {hasMenuBar() || hasNativeHeader() ? null : (
         <SafeAreaView edges={['left', 'right']} className="bg-primary">
           <TitleBar
             document={document}
@@ -423,18 +464,22 @@ export function AppLayout({
             onExport={onExport}
             onSettings={onSettings}
             onDocuments={onDocuments}
+            {...(onShortcuts ? { onShortcuts } : {})}
             {...(onSnapshots ? { onSnapshots } : {})}
             {...(onPrint ? { onPrint } : {})}
             {...(printing === undefined ? {} : { printing })}
           />
         </SafeAreaView>
       )}
-      <SafeAreaView
-        edges={['left', 'right']}
-        style={{ backgroundColor: '#fafafa' }}
-      >
-        <DocumentTabs />
-      </SafeAreaView>
+      {/*
+        No tab strip under a tab bar: one project is open at a time there
+        (`DocumentList`'s `single`), so there is never a second tab to show.
+      */}
+      {hasTabBar() ? null : (
+        <SafeAreaView edges={['left', 'right']} className="bg-background">
+          <DocumentTabs />
+        </SafeAreaView>
+      )}
       <SafeAreaView
         edges={['left', 'right']}
         className="border-border bg-card border-b"
@@ -475,7 +520,7 @@ export function AppLayout({
                 zoom={zoom}
                 layoutMode={layoutMode}
                 pitchDisplay={pitchDisplay}
-                showTrackInfo={showTrackInfo}
+                trackInfo={trackInfo}
                 {...(scoreReadOnly
                   ? {}
                   : { onPress: onScorePress, onLongPress: onScoreLongPress })}

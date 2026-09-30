@@ -7,15 +7,9 @@
  * nothing is how work is lost.
  */
 import { useState } from 'react';
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { MIN_TOUCH_TARGET } from '@sudobility/components-rn';
+import { Button, Text } from '@sudobility/components-rn';
 import { newProjectScore } from '@sudobility/music_lib';
 import { exportDocument } from '@/documents/export';
 import type { ExportFormat } from '@/documents/export';
@@ -67,85 +61,51 @@ export function DocumentActions({
     list.open(newDocument(services, { score: newProjectScore(title), title }));
   }
 
-  const saveDisabled = !document || saving;
-
+  /*
+    The library's `Button`, which brings what these used to restate by hand:
+    the theme's surface and ink (they were zinc literals, so the row stayed
+    light in dark mode), the minimum touch target, the pressed answer, and
+    `onAccessibilityTap` withheld while disabled.
+  */
   return (
-    <View style={styles.bar}>
-      <Pressable
-        accessibilityRole="button"
+    <View className="flex-row items-center gap-2 px-3 py-2">
+      <Button
+        variant="secondary"
         accessibilityLabel={t('document.new')}
-        style={styles.button}
         onPress={create}
-        // macOS has no synthesized-touch fallback for an assistive press, so a
-        // VoiceOver activation reaches a Pressable only through
-        // `onAccessibilityTap` — `onPress` is a touch/mouse responder. Withheld
-        // while disabled, the way `IconButton` does it: a disabled Pressable
-        // still receives an accessibility tap.
-        onAccessibilityTap={create}
       >
-        <Text style={styles.label}>{t('document.new')}</Text>
-      </Pressable>
-      <Pressable
-        accessibilityRole="button"
+        {t('document.new')}
+      </Button>
+      <Button
+        variant="secondary"
         accessibilityLabel={t('editor.save')}
-        disabled={saveDisabled}
-        style={[styles.button, saveDisabled && styles.off]}
-        onPress={save}
-        {...(saveDisabled ? {} : { onAccessibilityTap: save })}
+        disabled={!document}
+        loading={saving}
+        onPress={() => void save()}
       >
-        {saving ? (
-          <ActivityIndicator size="small" />
-        ) : (
-          <Text style={styles.label}>{t('editor.save')}</Text>
-        )}
-      </Pressable>
+        {t('editor.save')}
+      </Button>
       {/* music_types' format list, the one the export sheet and the web's
           menu read, so this row cannot offer a different set. */}
-      {WRITABLE_EXPORT_FORMATS.map(({ id: format, labelKey }) => {
-        const activate = () => void exportAs(format);
-        return (
-          <Pressable
-            key={format}
-            accessibilityRole="button"
-            accessibilityLabel={t('document.exportAs', { format: t(labelKey) })}
-            disabled={!document}
-            style={[styles.button, !document && styles.off]}
-            onPress={activate}
-            {...(document ? { onAccessibilityTap: activate } : {})}
-          >
-            <Text style={styles.label}>{t(labelKey)}</Text>
-          </Pressable>
-        );
-      })}
+      {WRITABLE_EXPORT_FORMATS.map(({ id: format, labelKey }) => (
+        <Button
+          key={format}
+          variant="secondary"
+          accessibilityLabel={t('document.exportAs', { format: t(labelKey) })}
+          disabled={!document}
+          onPress={() => void exportAs(format)}
+        >
+          {t(labelKey)}
+        </Button>
+      ))}
       {error ? (
-        <Text style={styles.error} numberOfLines={1}>
+        <Text
+          className="text-destructive flex-shrink text-sm"
+          numberOfLines={1}
+        >
           {error}
         </Text>
       ) : null}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  button: {
-    paddingHorizontal: 14,
-    // Sized to the minimum touch target rather than to the text: 8pt of
-    // padding around a 16px label is 32pt tall, which is under both
-    // platforms' figure.
-    paddingVertical: 8,
-    minHeight: MIN_TOUCH_TARGET,
-    justifyContent: 'center',
-    borderRadius: 8,
-    backgroundColor: '#e4e4e7',
-  },
-  off: { opacity: 0.4 },
-  label: { fontSize: 14, fontWeight: '600', color: '#18181b' },
-  error: { color: '#b91c1c', fontSize: 12, flexShrink: 1 },
-});

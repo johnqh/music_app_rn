@@ -340,3 +340,30 @@ describe('EditorToolbar', () => {
     expect(getMusicPosition().reportedTick).toBe(second.startTick);
   });
 });
+
+describe('the track info column', () => {
+  afterEach(() => {
+    act(() => devicePrefs.getState().setTrackInfo('full'));
+  });
+
+  it('is offered at three widths, and says which is on', () => {
+    const { view } = setup();
+    const full = view.getByLabelText('Full track info');
+    const icon = view.getByLabelText('Instrument icons only');
+    const hidden = view.getByLabelText('Hide track info');
+
+    // The whole column until somebody says otherwise.
+    expect(full.props.accessibilityState?.selected).toBe(true);
+    expect(icon.props.accessibilityState?.selected).toBe(false);
+
+    fireEvent.press(icon);
+    expect(devicePrefs.getState().trackInfo).toBe('icon');
+    expect(
+      view.getByLabelText('Instrument icons only').props.accessibilityState
+        ?.selected,
+    ).toBe(true);
+
+    fireEvent.press(hidden);
+    expect(devicePrefs.getState().trackInfo).toBe('hidden');
+  });
+});

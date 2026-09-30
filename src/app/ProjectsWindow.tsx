@@ -37,6 +37,11 @@ import { DocumentsProvider } from '@/documents/DocumentsContext';
 import { ThemeVarsProvider } from '@/components/ThemeVarsProvider';
 import { ThemeProvider } from '@/config/ThemeContext';
 import { AuthProvider } from '@/auth/AuthContext';
+import { navigationRef } from './Navigation';
+import {
+  closeProjectsWindow,
+  focusMainWindow,
+} from '@/platform/projectsWindow';
 import { ProjectsSplitView } from './projects-window/ProjectsSplitView';
 
 type ProjectsRootStackParamList = {
@@ -44,6 +49,33 @@ type ProjectsRootStackParamList = {
 };
 
 const Stack = createAppStackNavigator<ProjectsRootStackParamList>();
+
+/**
+ * The split view, with what this window does once a project is open.
+ *
+ * **Dismissed by opening a project, never by anything drawn here**: the main
+ * window is focused (`focusMainWindow`) and this one dismissed
+ * (`closeProjectsWindow`) — the same two calls for every way in, so picking a
+ * project never leaves this window stranded open behind the editor.
+ */
+function ProjectsRoot() {
+  return (
+    <ProjectsSplitView
+      onProjectOpened={() => {
+        focusMainWindow();
+        closeProjectsWindow();
+      }}
+      onOpenCredits={() => {
+        // Credits lives in the main window's own navigator — there is no
+        // Credits pane here — so reaching it is the same handoff, minus the
+        // close: the reader came here to buy credits, not to finish picking
+        // a project.
+        focusMainWindow();
+        if (navigationRef.isReady()) navigationRef.navigate('Credits');
+      }}
+    />
+  );
+}
 
 export default function ProjectsWindow() {
   // Same call the main window makes (`App.tsx`); cached after whichever
@@ -61,10 +93,7 @@ export default function ProjectsWindow() {
                   <PortalHost>
                     <NavigationContainer>
                       <Stack.Navigator screenOptions={{ headerShown: false }}>
-                        <Stack.Screen
-                          name="Root"
-                          component={ProjectsSplitView}
-                        />
+                        <Stack.Screen name="Root" component={ProjectsRoot} />
                       </Stack.Navigator>
                     </NavigationContainer>
                   </PortalHost>

@@ -87,24 +87,17 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
   [super applicationDidFinishLaunching:notification];
 
   /*
-    Projects, not a blank Untitled document, is the first thing a reader
-    sees. `super`'s call above already created and showed `self.window` (the
-    editor) — it still exists, because "New" needs a window to open into and
-    a document to open one from Projects needs the shared list this same
-    process already built — it is just not the one in front. `showProjects
-    Window` runs the identical creation `MoosiacProjectsWindow.show()` (the
-    JS-reachable version, for File ▸ Projects) does, so launch and the menu
-    command can never drift into two ways of making this window.
-  */
-  /*
-    Hidden when closed, not destroyed — the promise the Projects window
-    already makes. The editor window holds the React tree every menu command
-    is answered by and every project opens into; released on close, the next
-    project chosen had no window to appear in.
+    One window. It opens on the Projects tab, which JavaScript chooses
+    (`Navigation.tsx`), so there is nothing to arrange here: `super`'s call
+    above created and showed `self.window`, and that is the window the app
+    has. Projects used to be a second window shown in front of this one,
+    which was hidden at launch.
+
+    Hidden when closed, not destroyed. The window holds the React tree every
+    menu command is answered by and every project opens into; released on
+    close, the next project chosen had no window to appear in.
   */
   self.window.releasedWhenClosed = NO;
-  [self.window orderOut:nil];
-  [MoosiacProjectsWindow showProjectsWindow];
 }
 
 /*
@@ -183,30 +176,25 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
 - (void)moosiacFilePrint:(id)sender { [self postMenuCommand:@"file.print"]; }
 - (void)moosiacFileSnapshots:(id)sender { [self postMenuCommand:@"file.snapshots"]; }
 /*
-  Shown here, natively, as well as announced to JavaScript.
-
-  Every other item is JavaScript's to act on, and this one used to be too:
-  the listener that turned `nav.projects` into a call back to
-  `MoosiacProjectsWindow.show` lives in the editor window's React tree. With
-  that window closed there was nobody listening, so with no window open at
-  all — exactly when a way to open one is wanted — File ▸ Projects… did
-  nothing. The window is AppKit's and so is the menu, and launch already
-  opens it this way. The command is still posted, so whatever JavaScript
-  does on it happens too; asking for a window already in front is a no-op.
+  The window is brought forward here, natively, as well as the command being
+  announced to JavaScript. With the window closed there is nothing on screen
+  for the Projects tab to appear in, and the listener that answers
+  `nav.projects` can only choose the tab — so with no window open, exactly
+  when a way to open one is wanted, File ▸ Projects… would do nothing.
+  Asking for a window already in front is a no-op.
 */
 - (void)moosiacNavProjects:(id)sender
 {
-  [MoosiacProjectsWindow showProjectsWindow];
+  [self.window makeKeyAndOrderFront:nil];
   [self postMenuCommand:@"nav.projects"];
 }
 
 /*
-  Clicking the Dock icon with nothing open: the same request, from the other
-  place a reader makes it.
+  Clicking the Dock icon with nothing open: the window, back again.
 */
 - (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)hasVisibleWindows
 {
-  if (!hasVisibleWindows) [MoosiacProjectsWindow showProjectsWindow];
+  if (!hasVisibleWindows) [self.window makeKeyAndOrderFront:nil];
   return YES;
 }
 - (void)moosiacNavSettings:(id)sender { [self postMenuCommand:@"nav.settings"]; }

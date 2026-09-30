@@ -26,7 +26,7 @@ export function TemplatePane({ onChoose }: TemplatePaneProps) {
       data={templates}
       keyExtractor={(template: ProjectTemplate) => template.id}
       accessibilityLabel={t('dashboard.newFromTemplateAction')}
-      contentContainerClassName="gap-2 p-4"
+      contentContainerClassName="gap-2 p-6"
       renderItem={({ item }: { item: ProjectTemplate }) => {
         const choose = () => onChoose(item);
         return (
