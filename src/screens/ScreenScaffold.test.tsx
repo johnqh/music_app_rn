@@ -25,6 +25,21 @@ jest.mock('react-native-safe-area-context', () => {
   >;
   return { ...actual, useSafeAreaInsets: () => insets };
 });
+/*
+  Which edges are cleared is the one rule's (`useSafeEdges`), stood in for
+  here as a phone held with its notch on the left: that side and no other.
+*/
+jest.mock('@/platform/safe-edges', () => {
+  const rule = jest.requireActual('@/platform/safe-edges-rule') as {
+    safeEdgesFor: (f: string, n: string) => Record<string, boolean>;
+    edgesAmong: (e: Record<string, boolean>, a: string[]) => string[];
+  };
+  const edges = rule.safeEdgesFor('phone', 'left');
+  return {
+    useSafeEdges: () => edges,
+    useSafeEdgeList: (among: string[]) => rule.edgesAmong(edges, among),
+  };
+});
 
 const { ScreenScaffold, ServerUnavailable, SignInRequired } =
   require('./ScreenScaffold') as typeof import('./ScreenScaffold');
@@ -73,7 +88,7 @@ describe('ScreenScaffold', () => {
 });
 
 describe('ScreenScaffold edge padding', () => {
-  it('adds side cutout insets without adding a bottom inset', () => {
+  it("pads the notch's side and no other, and never the bottom", () => {
     const view = renderWithApp(
       <ScreenScaffold title="Projects">
         <ServerUnavailable />
@@ -84,7 +99,8 @@ describe('ScreenScaffold edge padding', () => {
       scroller.props.contentContainerStyle as object,
     ) as Record<string, number>;
     expect(style.paddingLeft).toBe(16 + insets.left);
-    expect(style.paddingRight).toBe(16 + insets.right);
+    // The far side is used to the edge, whatever the platform insets it by.
+    expect(style.paddingRight).toBe(16);
     expect(style.paddingBottom).toBe(16);
   });
 });

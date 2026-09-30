@@ -10,6 +10,7 @@ import { ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Heading, Text } from '@sudobility/components-rn';
 import { useSafeAreaInsets } from '@/platform/SafeArea';
+import { useSafeEdges } from '@/platform/safe-edges';
 import { ScreenBackBar } from '@/components/layout/ScreenBackBar';
 import {
   SCREEN_WIDTH_STYLE,
@@ -33,9 +34,10 @@ export function ScreenScaffold({
   // The navigator owns the top inset. Only the content clears side cutouts;
   // the background and bottom still extend to the screen edges.
   const insets = useSafeAreaInsets();
-  // A pane beside a sidebar starts past the sidebar, which is what cleared
-  // the screen's left edge; clearing it again would indent the pane by a
-  // cutout it is nowhere near.
+  // Which sides to clear is the one rule's (`useSafeEdges`). A pane of a
+  // split view clears neither: the split view already has, and clearing
+  // them again would indent the pane by a notch it is nowhere near.
+  const edges = useSafeEdges();
   const embedded = useEmbedded();
   const PADDING = useContentPadding(SCREEN_PADDING);
   return (
@@ -55,8 +57,8 @@ export function ScreenScaffold({
         gap: PADDING,
         paddingTop: PADDING,
         paddingBottom: PADDING,
-        paddingLeft: PADDING + (embedded ? 0 : insets.left),
-        paddingRight: PADDING + insets.right,
+        paddingLeft: PADDING + (!embedded && edges.left ? insets.left : 0),
+        paddingRight: PADDING + (!embedded && edges.right ? insets.right : 0),
       }}
     >
       {/*

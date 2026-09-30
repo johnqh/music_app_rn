@@ -11,6 +11,8 @@ PODS:
     - PromisesObjC (~> 2.4)
     - PromisesSwift (~> 2.4)
     - RecaptchaInterop (~> 101.0)
+  - building_blocks_rn (0.0.77):
+    - React-Core
   - FBLazyVector (0.81.6)
   - GoogleSignIn (9.2.0):
     - AppAuth (~> 2.1)
@@ -2361,6 +2363,7 @@ PODS:
   - Yoga (0.0.0)
 
 DEPENDENCIES:
+  - "building_blocks_rn (from `../node_modules/@sudobility/building_blocks_rn`)"
   - FBLazyVector (from `../node_modules/react-native/Libraries/FBLazyVector`)
   - GoogleUtilities
   - hermes-engine (from `../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
@@ -2466,6 +2469,8 @@ SPEC REPOS:
     - RecaptchaInterop
 
 EXTERNAL SOURCES:
+  building_blocks_rn:
+    :path: "../node_modules/@sudobility/building_blocks_rn"
   FBLazyVector:
     :path: "../node_modules/react-native/Libraries/FBLazyVector"
   hermes-engine:
@@ -2647,6 +2652,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AppAuth: ef4da5a3fc2e10b90c09a0a94a9baeaedc0341d5
   AppCheckCore: be8fce5469f68d7f6a29aa94b25f097409ff7fdc
+  building_blocks_rn: 3d71b82dc45c040eac98d08806e30bb5896ab1ee
   FBLazyVector: 14ce6e3675cacb2683ad30272f04274a4ee5b67d
   GoogleSignIn: e449a40a92e9f2eea56e98b5214d13725dc5a00a
   GoogleUtilities: 4e0c2ad9fa0d0d18b5c4df8bf57b461cba35b0bb

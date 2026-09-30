@@ -8,7 +8,8 @@
 import { jest } from '@jest/globals';
 import { act, fireEvent } from '@testing-library/react-native';
 import { installTestAppServices } from '@/config/initialize';
-import type { IMusicPlayer } from '@sudobility/music_player';
+import { readinessOf } from '@sudobility/music_player/core';
+import type { IMusicPlayer, PlaybackReadiness } from '@sudobility/music_player';
 import type { PlaybackLoadState } from '@sudobility/music_types';
 import { selectMeasureRange } from '@sudobility/music_editing';
 import { renderWithApp, testDocument } from '@/test/render';
@@ -26,18 +27,23 @@ import { TransportBar } from './TransportBar';
 function loadingPlayer() {
   const listeners: ((s: PlaybackLoadState) => void)[] = [];
   const { calls, player } = recordingPlayer();
+  // Readiness follows what is emitted, as the real player's does: the Play
+  // button reads it (`usePlaybackReadiness`), not the store's load state.
+  const loading = {
+    ...player,
+    readiness: 'ready' as PlaybackReadiness,
+    onLoadState: (fn: (s: PlaybackLoadState) => void) => {
+      listeners.push(fn);
+      return () => {};
+    },
+  };
   return {
     calls,
     emit: (state: PlaybackLoadState) => {
+      loading.readiness = readinessOf(state);
       for (const fn of listeners) fn(state);
     },
-    player: {
-      ...player,
-      onLoadState: (fn: (s: PlaybackLoadState) => void) => {
-        listeners.push(fn);
-        return () => {};
-      },
-    } as unknown as IMusicPlayer,
+    player: loading as unknown as IMusicPlayer,
   };
 }
 
@@ -47,6 +53,8 @@ function recordingPlayer() {
   return {
     calls,
     player: {
+      readiness: 'ready',
+      prepare: async () => {},
       onSounding: () => unsubscribe,
       onPosition: () => unsubscribe,
       onTransport: () => unsubscribe,
@@ -134,9 +142,32 @@ describe('TransportBar', () => {
       const { view, emit } = setupLoading();
       act(() => emit({ status: 'loading', fraction: 0.45 }));
       expect(view.getByLabelText(/preparing instruments 45%/i)).toBeTruthy();
+      // The button says what it is doing, as the web's does, and refuses.
+      const button = view.getByLabelText(/^preparing instruments$/i);
+      expect(button.props.accessibilityState.disabled).toBe(true);
+      expect(view.queryByLabelText(/^play$/i)).toBeNull();
+    });
+
+    it('starts the engine the moment it is on screen', () => {
+      // On a screen opened cold nothing had touched the player, so the button
+      // sat enabled over an engine that had not begun to load.
+      const { calls, player, emit } = loadingPlayer();
+      (player as unknown as { readiness: string }).readiness = 'notReady';
+      let prepared = 0;
+      (player as unknown as { prepare: () => Promise<void> }).prepare =
+        async () => {
+          prepared += 1;
+        };
+      installTestAppServices({ player });
+      const view = renderWithApp(<Harness document={testDocument()} />);
+      expect(prepared).toBe(1);
       expect(
-        view.getByLabelText(/^play$/i).props.accessibilityState.disabled,
+        view.getByLabelText(/^preparing instruments$/i).props.accessibilityState
+          .disabled,
       ).toBe(true);
+      act(() => emit({ status: 'ready' }));
+      expect(view.getByLabelText(/^play$/i)).toBeTruthy();
+      expect(calls).toEqual(calls);
     });
 
     it('states the wait without a percentage when there is none', () => {
@@ -144,7 +175,7 @@ describe('TransportBar', () => {
       // that half would claim progress the engine has not made.
       const { view, emit } = setupLoading();
       act(() => emit({ status: 'loading', fraction: null }));
-      expect(view.getByLabelText(/preparing instruments$/i)).toBeTruthy();
+      expect(view.getAllByLabelText(/preparing instruments$/i).length).toBe(2);
     });
 
     it('says so when the instruments fail, and frees the button', () => {

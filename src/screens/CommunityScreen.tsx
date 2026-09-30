@@ -14,8 +14,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Button, SearchInput, Spinner, Text } from '@sudobility/components-rn';
 import { PressableCard } from '@/components/controls/PressableCard';
@@ -30,10 +28,12 @@ import {
   SCREEN_WIDTH_STYLE,
 } from '@/components/layout/EmbeddedScreen';
 import { getMusicClient } from '@/config/server';
-import type { RootStackParamList } from '@/app/Navigation';
 import type { CommunityItem } from '@sudobility/music_types';
 import { ScreenScaffold, ServerUnavailable } from './ScreenScaffold';
-import { TitledScreen } from '@/components/layout/SplitViewContainer';
+import {
+  SideClearance,
+  TitledScreen,
+} from '@/components/layout/SplitViewContainer';
 
 /** How wide the publisher's picture is drawn, in points. */
 const AVATAR_SIZE = 32;
@@ -88,19 +88,37 @@ function PublisherAvatar({
   );
 }
 
-export function CommunityScreen() {
+/**
+ * The app's navigator, as a prop from the screen's own navigator rather
+ * than from `useNavigation()`, as Docs and Settings take it. `TitledScreen`
+ * draws its bar with a navigator of its own, and inside it the hook answers
+ * that one — which has no `Published` to go to, so a tap on a shared score
+ * was refused with "NAVIGATE ... was not handled by any navigator".
+ */
+export type CommunityScreenProps = {
+  navigation: CommunityNavigation;
+};
+
+type CommunityNavigation = {
+  navigate: {
+    (route: 'Resources'): void;
+    (route: 'Published', params: { publicId: string }): void;
+  };
+};
+
+export function CommunityScreen({ navigation }: CommunityScreenProps) {
   const { t } = useTranslation();
   return (
     <TitledScreen title={t('nav.community')}>
-      <CommunityList />
+      <SideClearance>
+        <CommunityList navigation={navigation} />
+      </SideClearance>
     </TitledScreen>
   );
 }
 
-function CommunityList() {
+function CommunityList({ navigation }: { navigation: CommunityNavigation }) {
   const { t } = useTranslation();
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const client = getMusicClient();
   const [items, setItems] = useState<CommunityItem[] | null>(null);
   const [failed, setFailed] = useState(false);

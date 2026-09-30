@@ -25,13 +25,17 @@ import type { MusicDocument } from '@/documents/document';
 import { useSoundingTrackIds } from './useSoundingTrackIds';
 
 export type SpatialSectionProps = {
-  document: MusicDocument;
+  /**
+   * The store whose score is staged and whose arrangement is moved. A
+   * document's in the editor; a published page's own on that page, which
+   * has no document — a visitor listens in 3D to a score nobody here edits.
+   */
+  store: MusicDocument['store'];
 };
 
-export function SpatialSection({ document }: SpatialSectionProps) {
+export function SpatialSection({ store }: SpatialSectionProps) {
   const { t } = useTranslation();
   const ink = useNotationInk();
-  const store = document.store;
   const score = useStore(store, s => s.score);
   const locked = useStore(
     store,

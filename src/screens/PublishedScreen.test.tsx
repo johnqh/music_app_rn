@@ -22,6 +22,12 @@ import { PublishedScore } from './PublishedScreen';
 jest.mock('@/features/score/ScrollingScore', () => ({
   ScrollingScore: () => null,
 }));
+// The stack's bar, which the page fills with the score's name and Share.
+const mockSetOptions = jest.fn();
+jest.mock('@react-navigation/native', () => ({
+  ...(jest.requireActual('@react-navigation/native') as object),
+  useNavigation: () => ({ setOptions: mockSetOptions }),
+}));
 
 const snapshot: PublishedSnapshot = {
   publicId: 'pub-1',

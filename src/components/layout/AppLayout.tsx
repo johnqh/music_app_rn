@@ -30,6 +30,7 @@ import {
 } from '@sudobility/music_types';
 import type { NoteEvent } from '@sudobility/music_types';
 import { SafeAreaView, useSafeAreaInsets } from '@/platform/SafeArea';
+import { useSafeEdgeList } from '@/platform/safe-edges';
 import {
   useCallback,
   useEffect,
@@ -201,8 +202,12 @@ export type AppLayoutProps = {
   onLeaveScroll?: (offset: ScrollOffset) => void;
 };
 
-// Held, so the safe-area view is handed the same array on every render.
+// Held, so the safe-area views are handed the same arrays on every render.
+// Which of these edges actually gets cleared is the one rule's
+// (`useSafeEdges`): these say only what each view is responsible for.
 const TOP_EDGE = ['top'] as const;
+const SIDE_EDGES = ['left', 'right'] as const;
+const BOTTOM_ROW_EDGES = ['left', 'right', 'bottom'] as const;
 const NO_EDGES = [] as const;
 
 export function AppLayout({
@@ -240,6 +245,11 @@ export function AppLayout({
   */
   const { size, onLayout } = useContainerSize();
   const insets = useSafeAreaInsets();
+  // The navigator's header has already cleared the status bar where it
+  // draws one; clearing it again left an empty band under the header.
+  const topEdges = useSafeEdgeList(hasNativeHeader() ? NO_EDGES : TOP_EDGE);
+  const sideEdges = useSafeEdgeList(SIDE_EDGES);
+  const bottomEdges = useSafeEdgeList(BOTTOM_ROW_EDGES);
   /*
     A device pref, expanded by default and remembered, as on the web. It was a
     `useState(true)` here: collapsed on every launch and forgotten on every tab,
@@ -436,9 +446,7 @@ export function AppLayout({
     */
     <SafeAreaView
       className="bg-background flex-1"
-      // The navigator's header has already cleared the status bar where it
-      // draws one; clearing it again left an empty band under the header.
-      edges={hasNativeHeader() ? NO_EDGES : TOP_EDGE}
+      edges={topEdges}
       onLayout={onLayout}
     >
       {/*
@@ -457,7 +465,7 @@ export function AppLayout({
         there by `useEditorHeader`. Drawn here they would be there twice.
       */}
       {hasMenuBar() || hasNativeHeader() ? null : (
-        <SafeAreaView edges={['left', 'right']} className="bg-primary">
+        <SafeAreaView edges={sideEdges} className="bg-primary">
           <TitleBar
             document={document}
             onSave={onSave}
@@ -476,12 +484,12 @@ export function AppLayout({
         (`DocumentList`'s `single`), so there is never a second tab to show.
       */}
       {hasTabBar() ? null : (
-        <SafeAreaView edges={['left', 'right']} className="bg-background">
+        <SafeAreaView edges={sideEdges} className="bg-background">
           <DocumentTabs />
         </SafeAreaView>
       )}
       <SafeAreaView
-        edges={['left', 'right']}
+        edges={sideEdges}
         className="border-border bg-card border-b"
       >
         <EditorToolbar
@@ -495,10 +503,7 @@ export function AppLayout({
           onToggleInspector={() => setInspectorOpen(!inspectorVisible)}
         />
       </SafeAreaView>
-      <SafeAreaView
-        edges={['left', 'right']}
-        className="bg-background min-h-0 flex-1"
-      >
+      <SafeAreaView edges={sideEdges} className="bg-background min-h-0 flex-1">
         {/*
           Always a row: the inspector is a right-hand column wherever it is
           shown. This was two complete class strings chosen at render, never a
@@ -510,7 +515,7 @@ export function AppLayout({
         <View className="min-h-0 flex-1 flex-row">
           <View className="min-h-0 min-w-0 flex-1">
             {spatialActive ? (
-              <SpatialSection document={document} />
+              <SpatialSection store={document.store} />
             ) : (
               <ScrollingScore
                 score={score}
@@ -552,7 +557,7 @@ export function AppLayout({
         </View>
       </SafeAreaView>
 
-      <SafeAreaView edges={['left', 'right']} className="bg-card">
+      <SafeAreaView edges={sideEdges} className="bg-card">
         {/*
         Stated heights below the score; only the score absorbs what is left.
 
@@ -593,7 +598,7 @@ export function AppLayout({
         {overlay}
       </SafeAreaView>
       <SafeAreaView
-        edges={['left', 'right']}
+        edges={sideEdges}
         className="border-border bg-card border-t"
       >
         <TransportBar
@@ -609,11 +614,16 @@ export function AppLayout({
           }
         />
       </SafeAreaView>
-      <SafeAreaView edges={['left', 'right']} className="bg-card">
+      <SafeAreaView edges={sideEdges} className="bg-card">
         <KeyboardPanel document={document} collapsed={keyboardCollapsed} />
       </SafeAreaView>
+      {/*
+        The last row clears the bottom as well, where the rule says to (a
+        tablet): Android draws the app under its own navigation bar, and on
+        a tablet with the three-button bar the status bar was beneath it.
+      */}
       <SafeAreaView
-        edges={['left', 'right']}
+        edges={bottomEdges}
         className="border-border bg-card border-t"
       >
         <StatusBar document={document} />

@@ -26,9 +26,9 @@ jest.mock('@/config/server', () => {
   };
   return { getMusicClient: () => client };
 });
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: jest.fn() }),
-}));
+// The app's navigator is a prop, not a hook: the screen's bar is a navigator
+// of its own, and mocking the hook would take that one's header with it.
+const navigation = { navigate: jest.fn() } as never;
 
 function item(patch: Partial<CommunityItem>): CommunityItem {
   return {
@@ -43,7 +43,7 @@ function item(patch: Partial<CommunityItem>): CommunityItem {
 }
 
 async function render() {
-  const view = renderWithApp(<CommunityScreen />);
+  const view = renderWithApp(<CommunityScreen navigation={navigation} />);
   await act(async () => {});
   return view;
 }

@@ -18,6 +18,7 @@ import type { MusicIo } from '@sudobility/music_io';
 import {
   createMusicPlayer,
   initializeMusicPlayer,
+  resetMusicPlayer,
   MusicPlayer,
   NativeSynthBackend,
   SoundfontPlaybackEngine,
@@ -244,6 +245,12 @@ export function installTestAppServices(
     soundfont: {},
     ...overrides,
   };
+  // The singleton too, as start-up does: a Play button reads the player's
+  // readiness from there (`usePlaybackReadiness`), and a test that installs a
+  // player of its own means that one — so the last one wins here, where in
+  // the app the first does.
+  resetMusicPlayer();
+  initializeMusicPlayer(services.player);
   return services;
 }
 

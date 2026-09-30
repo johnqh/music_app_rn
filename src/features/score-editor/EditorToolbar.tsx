@@ -120,15 +120,11 @@ import {
   EDITOR_VOICE_COUNT,
   QUANTIZE_GRIDS,
   QUANTIZE_GRID_SHORT,
-  TRACK_INFO_MODES,
-  TRACK_INFO_MODE_HINT_KEY,
-  TRACK_INFO_MODE_LABEL_KEY,
 } from '@sudobility/music_types';
 import type {
   AddTrackChoice,
   EditorMoreAction,
   QuantizeGrid,
-  TrackInfoMode,
 } from '@sudobility/music_types';
 import type { LayoutMode } from '@sudobility/music_types';
 
@@ -737,23 +733,26 @@ export function EditorToolbar({
         </Group>
 
         {/*
-          How much of the track-info column the score gives up its width to.
-          Beside the layout, because it is the same kind of choice. A device
-          pref, so it is the same in the next project; the full column still
-          gives way to the inspector on a touch device (`trackInfoShown`).
+          The track-info column: the whole thing, or the instrument icons
+          alone — one control that switches between the two, as the pitch
+          switch below does; its label names what tapping does. A device
+          pref, so it is the same in the next project.
         */}
-        <Group label={t('editor.trackInfo')}>
-          {TRACK_INFO_MODES.map(mode => (
-            <GlyphChip
-              key={mode}
-              icon={TRACK_INFO_ICON[mode]}
-              label={t(TRACK_INFO_MODE_LABEL_KEY[mode])}
-              hint={t(TRACK_INFO_MODE_HINT_KEY[mode])}
-              selected={trackInfo === mode}
-              onPress={() => devicePrefs.getState().setTrackInfo(mode)}
-            />
-          ))}
-        </Group>
+        <GlyphChip
+          icon="TrackInfoIconIcon"
+          label={
+            trackInfo === 'icon'
+              ? t('editor.trackInfoFull')
+              : t('editor.trackInfoIcon')
+          }
+          hint={t('editor.trackInfoHint')}
+          selected={trackInfo === 'icon'}
+          onPress={() =>
+            devicePrefs
+              .getState()
+              .setTrackInfo(trackInfo === 'icon' ? 'full' : 'icon')
+          }
+        />
 
         {/*
           The label names what tapping *does*, not the current state, which is
@@ -896,16 +895,6 @@ function Divider() {
 }
 
 /** A toolbar control showing one notation glyph. */
-/**
- * The picture for each width of the track-info column. A `Record`, so a
- * fourth mode fails to compile rather than drawing a chip with no glyph.
- */
-const TRACK_INFO_ICON: Record<TrackInfoMode, NotationIconName> = {
-  full: 'TrackInfoFullIcon',
-  icon: 'TrackInfoIconIcon',
-  hidden: 'TrackInfoHiddenIcon',
-};
-
 function GlyphChip({
   icon,
   label,

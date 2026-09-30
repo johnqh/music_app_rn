@@ -346,24 +346,17 @@ describe('the track info column', () => {
     act(() => devicePrefs.getState().setTrackInfo('full'));
   });
 
-  it('is offered at three widths, and says which is on', () => {
+  it('switches between the whole column and the icons alone', () => {
     const { view } = setup();
-    const full = view.getByLabelText('Full track info');
-    const icon = view.getByLabelText('Instrument icons only');
-    const hidden = view.getByLabelText('Hide track info');
-
-    // The whole column until somebody says otherwise.
-    expect(full.props.accessibilityState?.selected).toBe(true);
-    expect(icon.props.accessibilityState?.selected).toBe(false);
-
-    fireEvent.press(icon);
+    // The whole column until somebody says otherwise; the label names what
+    // tapping does.
+    const toIcons = view.getByLabelText('Instrument icons only');
+    expect(toIcons.props.accessibilityState?.selected).toBe(false);
+    fireEvent.press(toIcons);
     expect(devicePrefs.getState().trackInfo).toBe('icon');
-    expect(
-      view.getByLabelText('Instrument icons only').props.accessibilityState
-        ?.selected,
-    ).toBe(true);
-
-    fireEvent.press(hidden);
-    expect(devicePrefs.getState().trackInfo).toBe('hidden');
+    const toFull = view.getByLabelText('Full track info');
+    expect(toFull.props.accessibilityState?.selected).toBe(true);
+    fireEvent.press(toFull);
+    expect(devicePrefs.getState().trackInfo).toBe('full');
   });
 });

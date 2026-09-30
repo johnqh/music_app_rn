@@ -17,6 +17,21 @@ import * as nativeHeader from '@/app/native-header';
   The tab strip reads the open-document list from a provider this test has no
   reason to stand up — it is a sibling of the rows under test, not part of them.
 */
+/*
+  Which edges are cleared is the one rule's (`useSafeEdges`), stood in for
+  here as a tablet: the top, never the sides or the bottom.
+*/
+jest.mock('@/platform/safe-edges', () => {
+  const rule = jest.requireActual('@/platform/safe-edges-rule') as {
+    safeEdgesFor: (f: string, n: null) => Record<string, boolean>;
+    edgesAmong: (e: Record<string, boolean>, a: string[]) => string[];
+  };
+  const edges = rule.safeEdgesFor('tablet', null);
+  return {
+    useSafeEdges: () => edges,
+    useSafeEdgeList: (among: string[]) => rule.edgesAmong(edges, among),
+  };
+});
 jest.mock('@/features/documents/DocumentTabs', () => ({
   DocumentTabs: () => null,
 }));
@@ -213,13 +228,15 @@ describe('AppLayout', () => {
     );
   }
 
-  it('insets the top and protects section content from side cutouts', () => {
-    /* Backgrounds fill the width; no section adds a bottom inset. */
+  it('clears the edges the rule names and no other: a tablet, its top and bottom', () => {
     jest.spyOn(nativeHeader, 'hasNativeHeader').mockReturnValue(false);
     const edges = edgesOf(layout());
     expect(edges).toContainEqual(['top']);
-    expect(edges).toContainEqual(['left', 'right']);
-    expect(edges.every(value => !value?.includes('bottom'))).toBe(true);
+    // The sides are asked for by every bar, and the rule says no to each.
+    expect(edges.every(value => !value?.includes('left'))).toBe(true);
+    // The bottom is asked for by the last row alone, and the rule says yes:
+    // Android draws the app under its own navigation bar.
+    expect(edges.some(value => value?.includes('bottom'))).toBe(true);
   });
 
   it('leaves the top to the navigator where it draws the header', () => {
@@ -231,7 +248,6 @@ describe('AppLayout', () => {
     jest.spyOn(nativeHeader, 'hasNativeHeader').mockReturnValue(true);
     const edges = edgesOf(layout());
     expect(edges.some(value => value?.includes('top'))).toBe(false);
-    expect(edges).toContainEqual(['left', 'right']);
   });
 
   describe('touches on the score', () => {

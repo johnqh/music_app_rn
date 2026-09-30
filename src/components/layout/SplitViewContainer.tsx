@@ -41,6 +41,12 @@ import {
 } from '@sudobility/components-rn';
 import { useNotationInk } from '@/components/icons/notation-ink';
 import { SafeAreaView, useSafeAreaInsets } from '@/platform/SafeArea';
+import { SafeAreaView as TabSafeAreaView } from 'react-native-screens/experimental';
+import { useSafeEdgeList, useSafeEdges } from '@/platform/safe-edges';
+
+const TOP = ['top'] as const;
+const NO_EDGES = [] as const;
+const SIDES = ['left', 'right'] as const;
 import {
   DETAIL_MAX_WIDTH,
   DETAIL_PADDING,
@@ -76,15 +82,43 @@ export function usePrimaryPanelWidth(): number {
  * view knows the tabs' own bar has that row.
  */
 function TopClearance({ children }: { children: ReactNode }) {
-  // A phone's status bar is hidden (`ThemedStatusBar`), and Android goes on
-  // reporting the room it took as inset: the bars start at the edge.
-  const phone = useFormFactor() === 'phone';
+  // The one rule (`useSafeEdges`): a tablet clears the status bar, a phone
+  // has none to clear — its bar is hidden, and Android goes on reporting
+  // the room it took as inset — and the bars start at the edge. Except
+  // under a top tab bar, whose native bar has cleared the status bar
+  // already: clearing it again put a band of nothing between the tabs and
+  // the panels, which a screen with no panels (Community) never had.
+  const wanted = useSafeEdgeList(TOP);
+  const edges = hasTopTabBar() ? NO_EDGES : wanted;
   return (
-    <SafeAreaView edges={phone ? [] : ['top']} className="bg-background flex-1">
+    <SafeAreaView edges={edges} className="bg-background flex-1">
       {children}
     </SafeAreaView>
   );
 }
+
+/**
+ * A panel's content held above a floating tab bar.
+ *
+ * A screen that is one scroll view gets that for free: iOS insets the first
+ * scroll view under a tab so its end scrolls up past the bar. A panel's
+ * scroller is behind a bar of its own and is not that view, so a list's last
+ * row and a form's Create button sat under the bar with no way to scroll
+ * them out. This is react-native-screens' own safe-area view, which knows
+ * the bar is there — `react-native-safe-area-context` reads the window's
+ * insets and does not. The panel's background and the divider beside it
+ * still run to the screen's edge; only the content stops.
+ *
+ * iOS only: on Android the whole screen is kept above the opaque bar
+ * (`MainTabs`), and on a desktop or under an iPad's top tab bar there is no
+ * bar along the bottom to clear.
+ */
+function AboveTabBar({ children }: { children: ReactNode }) {
+  if (Platform.OS !== 'ios' || hasTopTabBar()) return <>{children}</>;
+  return <TabSafeAreaView edges={BOTTOM_EDGE}>{children}</TabSafeAreaView>;
+}
+
+const BOTTOM_EDGE = { bottom: true } as const;
 
 /**
  * A screen that is not a split view, under a bar that names it: Community,
@@ -107,6 +141,19 @@ export function TitledScreen({
   );
 }
 
+/**
+ * A screen's content clear of the notch's side, whichever it is — the one
+ * rule (`useSafeEdges`) says which, if either.
+ */
+export function SideClearance({ children }: { children: ReactNode }) {
+  const edges = useSafeEdgeList(SIDES);
+  return (
+    <SafeAreaView edges={edges} className="flex-1">
+      {children}
+    </SafeAreaView>
+  );
+}
+
 export function SplitViewContainer({
   primaryPanel,
   secondaryPanel,
@@ -117,17 +164,22 @@ export function SplitViewContainer({
   secondaryPanel: ReactNode;
 }) {
   // The list is what meets the screen's left edge, so its panel is what
-  // widens to clear a cutout there.
+  // widens to clear a notch there; the detail meets the right edge, and
+  // pads for one there. Which is which, if either, is the one rule's.
   const insets = useSafeAreaInsets();
+  const edges = useSafeEdges();
   const primaryWidth = usePrimaryPanelWidth();
   return (
     <TopClearance>
       <View className="flex-1 flex-row">
-        <View style={{ width: primaryWidth + insets.left }}>
+        <View style={{ width: primaryWidth + (edges.left ? insets.left : 0) }}>
           {primaryPanel}
         </View>
         <View className="bg-border" style={styles.divider} />
-        <View className="min-w-0 flex-1">
+        <View
+          className="min-w-0 flex-1"
+          style={{ paddingRight: edges.right ? insets.right : 0 }}
+        >
           <EmbeddedScreen>{secondaryPanel}</EmbeddedScreen>
         </View>
       </View>
@@ -238,7 +290,9 @@ export function SplitPanel({
   if (hasPanelBar()) {
     return (
       <PanelBar title={title ?? ''}>
-        {secondary ? <DetailWidth>{children}</DetailWidth> : children}
+        <AboveTabBar>
+          {secondary ? <DetailWidth>{children}</DetailWidth> : children}
+        </AboveTabBar>
       </PanelBar>
     );
   }
@@ -297,12 +351,13 @@ export function SplitMenuList({
   onSelect: (id: string) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const edges = useSafeEdges();
   const ink = useNotationInk();
   return (
     <FlatList
       className="bg-background flex-1"
       accessibilityLabel={label}
-      contentContainerStyle={{ paddingLeft: insets.left }}
+      contentContainerStyle={{ paddingLeft: edges.left ? insets.left : 0 }}
       data={entries}
       // Every entry, from the first frame: the list is a menu of a couple of
       // dozen rows at most, and one drawn a screenful at a time has rows a

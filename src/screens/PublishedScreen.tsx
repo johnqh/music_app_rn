@@ -5,11 +5,18 @@
  * `ScrollingScore` the editor uses — read-only is the absence of an editing
  * surface, not a second renderer.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useStore } from 'zustand';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
+
 import { View } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { Spinner, Text } from '@sudobility/components-rn';
 import {
@@ -21,15 +28,22 @@ import {
 import type { PublishedSnapshot } from '@sudobility/music_types';
 import { getMusicClient } from '@/config/server';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
+import { TransportBar } from '@/features/transport/TransportBar';
+import { SpatialSection } from '@/features/spatial/SpatialSection';
+import { SafeAreaView } from '@/platform/SafeArea';
+import { useSafeEdgeList } from '@/platform/safe-edges';
 import type { RootStackParamList } from '@/app/Navigation';
 import { Share } from 'react-native';
-import { PauseIcon, PlayIcon, ShareIcon } from 'react-native-heroicons/solid';
+import { ShareIcon } from 'react-native-heroicons/solid';
 import { IconButton } from '@/components/layout/IconButton';
 import { createDocumentStore } from '@sudobility/music_lib';
 import { usePlayerBinding } from '@/features/transport/usePlayerBinding';
 import { appToasts } from '@/features/toasts/Toasts';
 import { CONSTANTS } from '@/config/constants';
 import { ScreenScaffold, ServerUnavailable } from './ScreenScaffold';
+
+const SIDE_EDGES = ['left', 'right'] as const;
+const BOTTOM_EDGES = ['left', 'right', 'bottom'] as const;
 
 export function PublishedScreen() {
   const route = useRoute<RouteProp<RootStackParamList, 'Published'>>();
@@ -126,52 +140,100 @@ export function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
     getMusicPositionSource().moveTo(0);
     return () => getMusicPositionSource().moveTo(editorCaret);
   }, [store]);
-  const playing = useStore(store, s => s.state) === 'playing';
-
-  return (
-    <View className="bg-background flex-1">
-      <View className="border-border flex-row items-center gap-2 border-b px-4 py-2">
-        <View className="flex-1">
-          <Text className="text-foreground font-medium">
+  const sideEdges = useSafeEdgeList(SIDE_EDGES);
+  const bottomEdges = useSafeEdgeList(BOTTOM_EDGES);
+  const [spatialActive, setSpatialActive] = useState(false);
+  const navigation =
+    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const share = useCallback(() => {
+    /*
+      The web page's own address, `<web>/<lang>/p/<id>` — the route a link
+      opens whichever app copied it. It used to be derived from the API's
+      host with no language segment, which matched no web route.
+    */
+    void Share.share({
+      title: communityItemTitle(snapshot),
+      message: publishedSnapshotUrl(
+        CONSTANTS.WEB_URL,
+        i18n.language.startsWith('zh') ? 'zh' : 'en',
+        snapshot.publicId,
+      ),
+    });
+  }, [snapshot, i18n.language]);
+  /*
+    The score's name and who shared it are the navigation bar's title, and
+    Share is its right-hand control — the bar the screen already has, rather
+    than a second row under it saying the same things. `useLayoutEffect`, as
+    the editor's header is filled, so the bar is never seen without them.
+  */
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <View className="max-w-72 items-center">
+          <Text className="text-foreground font-medium" numberOfLines={1}>
             {communityItemTitle(snapshot)}
           </Text>
-          <Text className="text-muted-foreground text-sm">
+          <Text className="text-muted-foreground text-sm" numberOfLines={1}>
             {t('community.sharedBy', { name: snapshot.publisherName })}
           </Text>
         </View>
-        <IconButton
-          label={playing ? t('transport.pause') : t('transport.play')}
-          onPress={() => void transport.togglePlay()}
-        >
-          {playing ? (
-            <PauseIcon size={18} className="text-foreground" />
-          ) : (
-            <PlayIcon size={18} className="text-foreground" />
-          )}
-        </IconButton>
-        <IconButton
-          label={t('published.share')}
-          onPress={() => {
-            /*
-              The web page's own address, `<web>/<lang>/p/<id>` — the route a
-              link opens whichever app copied it. It used to be derived from the
-              API's host with no language segment, which matched no web route.
-            */
-            void Share.share({
-              title: communityItemTitle(snapshot),
-              message: publishedSnapshotUrl(
-                CONSTANTS.WEB_URL,
-                i18n.language.startsWith('zh') ? 'zh' : 'en',
-                snapshot.publicId,
-              ),
-            });
-          }}
-        >
+      ),
+      headerRight: () => (
+        <IconButton label={t('published.share')} onPress={share}>
           <ShareIcon size={18} className="text-foreground" />
         </IconButton>
-      </View>
-      {/* No `onPress`: there is no caret to aim on a page you cannot edit. */}
-      <ScrollingScore score={snapshot.score} />
+      ),
+    });
+  }, [navigation, snapshot, share, t]);
+
+  return (
+    // The bars run to the screen's edges and their content clears the
+    // notch's side (`useSafeEdges`): each row is its own safe-area view
+    // with its own background, as the editor's rows are, so a bar's colour
+    // reaches the edge while what is on it does not sit under the island.
+    <View className="bg-background flex-1">
+      {/*
+        No `onPress`: there is no caret to aim on a page you cannot edit. The
+        gutter is the instrument icons alone, always: a visitor is here to
+        listen, and the column of names was a fifth of a phone's width taken
+        from the music they came for.
+      */}
+      <SafeAreaView edges={sideEdges} className="min-h-0 flex-1">
+        {spatialActive ? (
+          <SpatialSection store={store} />
+        ) : (
+          <ScrollingScore score={snapshot.score} trackInfo="icon" />
+        )}
+      </SafeAreaView>
+      {/*
+        The editor's own transport, whole — position, loop, metronome, speed,
+        volume — rather than a lone Play button in the title row, as on the
+        web. It plays this page's store through this page's binding, so a
+        project open behind this screen is never what is heard. Read-only:
+        the tempo is a readout, since nothing here may change the score. No
+        keyboard or 3D stage is offered because neither is mounted here.
+      */}
+      {/*
+        The bar clears the bottom as well, where the rule says to (a
+        tablet): Android draws the app under its own navigation bar, and on
+        a tablet with the three-button bar the transport was beneath it —
+        "I don't see the playback bar".
+      */}
+      <SafeAreaView
+        edges={bottomEdges}
+        className="border-border bg-card border-t"
+      >
+        <TransportBar
+          score={snapshot.score}
+          transport={transport}
+          store={store}
+          readOnly
+          // The 3D stage, as in the editor: listening in 3D is listening,
+          // which is what a visitor is here for.
+          spatialActive={spatialActive}
+          onToggleSpatial={() => setSpatialActive(active => !active)}
+        />
+      </SafeAreaView>
     </View>
   );
 }

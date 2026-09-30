@@ -187,6 +187,13 @@ const ALLOWED_NON_UI = new Set([
   // calls (`MoosiacWindowTitle`). Same shape as `projectsWindow.ts` above —
   // `menu-commands.ts`'s own comment explains why this cannot be a library.
   'src/platform/windowTitle.ts',
+  // Which edges of the screen a layout clears, as one rule every screen
+  // reads (`useSafeEdges`): about this app's devices — a phone on its side
+  // with its status bar hidden — not about music. Its Windows twin answers
+  // "none" without the hooks that platform cannot load.
+  'src/platform/safe-edges-rule.ts',
+  'src/platform/safe-edges.ts',
+  'src/platform/safe-edges.windows.ts',
 ]);
 
 describe('music_app_rn holds UI only', () => {

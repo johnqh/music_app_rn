@@ -116,6 +116,16 @@ function aboveTabBar({ children }: { children: ReactElement }) {
   return <TabSafeAreaView edges={BOTTOM_EDGE}>{children}</TabSafeAreaView>;
 }
 
+/**
+ * Only where the bar is opaque. On iOS the bar floats over the screen, and
+ * the screen runs to the bottom edge beneath it, as the platform's own
+ * screens do; stopping it at the bar's top edge left a band of nothing
+ * around a floating bar. On Android the bar is a solid strip, and whatever
+ * is behind it is simply not seen.
+ */
+const SCREEN_LAYOUT =
+  Platform.OS === 'android' ? { screenLayout: aboveTabBar } : {};
+
 export function MainTabs() {
   const { t } = useTranslation();
   return (
@@ -129,7 +139,7 @@ export function MainTabs() {
           button.
         */
         backBehavior="none"
-        screenLayout={aboveTabBar}
+        {...SCREEN_LAYOUT}
         screenOptions={{
           /*
             Where the tab bar is along the top (an iPad, from iPadOS 18) the

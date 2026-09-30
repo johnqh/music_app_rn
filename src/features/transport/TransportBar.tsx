@@ -39,7 +39,12 @@ import { View } from 'react-native';
 import { useStore } from 'zustand';
 
 import { useTranslation } from 'react-i18next';
-import { Input, Text } from '@sudobility/components-rn';
+import {
+  Input,
+  MIN_TOUCH_TARGET,
+  Spinner,
+  Text,
+} from '@sudobility/components-rn';
 import {
   ArrowPathRoundedSquareIcon,
   CubeTransparentIcon,
@@ -64,7 +69,9 @@ import { NotationIcon } from '@/components/icons/NotationIcon';
 import { useNotationInk } from '@/components/icons/notation-ink';
 import { LevelSlider } from '@/components/controls/LevelSlider';
 import { ToolbarSelect } from '@/components/controls/ToolbarSelect';
-import { SynthLoadIndicator, useSynthLoad } from './SynthLoadIndicator';
+import { SynthLoadIndicator } from './SynthLoadIndicator';
+import { getMusicPlayerIfInitialized } from '@sudobility/music_player/core';
+import { usePlaybackReadiness } from '@sudobility/music_player/react';
 import { IconButton } from '@/components/layout/IconButton';
 import { useOnPositionFrame, usePositionReadout } from './usePositionReadout';
 import type { PositionSource } from './usePositionReadout';
@@ -100,6 +107,14 @@ export type TransportBarProps = {
    * job is about to replace.
    */
   playDisabled?: boolean;
+  /**
+   * On a page nobody edits — a published score. The tempo is the one control
+   * on this bar that changes the *score* rather than the playback, so it is
+   * shown as a readout, not the button that opens a field; everything else
+   * (play, position, loop, metronome, speed, volume) is playback and stays.
+   * The web's bar has the same switch, for the same page.
+   */
+  readOnly?: boolean;
 };
 
 export function TransportBar({
@@ -111,6 +126,7 @@ export function TransportBar({
   spatialActive,
   onToggleSpatial,
   playDisabled = false,
+  readOnly = false,
 }: TransportBarProps) {
   const { t } = useTranslation();
   const ink = useNotationInk();
@@ -182,7 +198,6 @@ export function TransportBar({
         <NotationIcon name="PreviousMeasureIcon" color={ink.foreground} />
       </IconButton>
       <PlayPauseButton
-        store={store}
         playing={playing}
         disabled={playDisabled}
         onPress={() => void transport.togglePlay()}
@@ -240,7 +255,19 @@ export function TransportBar({
         text input in a bar of icon buttons reads as somewhere to type rather
         than as a readout.
       */}
-      {editingTempo ? (
+      {readOnly ? (
+        // No score edit reachable on a read-only host: a readout, not the
+        // button that opens the field below.
+        <View
+          accessibilityLabel={t('transport.tempoBpm')}
+          className="justify-center px-2"
+          style={{ minHeight: MIN_TOUCH_TARGET }}
+        >
+          <Text className="text-foreground text-sm tabular-nums">
+            {`${currentBpm} BPM`}
+          </Text>
+        </View>
+      ) : editingTempo ? (
         <Input
           keyboardType="number-pad"
           accessibilityLabel={t('transport.tempoBpm')}
@@ -379,29 +406,42 @@ export function TransportBar({
  * re-render every control in the row. Here it touches one button.
  */
 function PlayPauseButton({
-  store,
   playing,
   disabled = false,
   onPress,
 }: {
-  store: TransportStoreApi;
   playing: boolean;
   disabled?: boolean;
   onPress: () => void;
 }) {
   const { t } = useTranslation();
-  const load = useSynthLoad(store);
-  // Only the *first* load blocks: once the synth is up the engine reports
-  // `ready` and stays there, so this is disabled for seconds once per session
-  // rather than on every press.
-  const loading = load.status === 'loading';
+  /*
+    Whether the engine is up is the player's own readiness, read and driven
+    by music_player's `usePlaybackReadiness` — the same hook the web's Play
+    button uses — not the store's load state. The store only hears about a
+    load that something started, and on a screen opened cold nothing had:
+    the button sat enabled over an engine that had not begun, and the press
+    that should have played started the load instead. The hook starts it the
+    moment this button is on screen, so the spinner is the first thing shown
+    and Play the second, on every path in. Only the first bring-up blocks:
+    once up, the engine stays `ready` for the session.
+  */
+  const preparing =
+    usePlaybackReadiness(getMusicPlayerIfInitialized()) === 'preparing';
+  const label = preparing
+    ? t('transport.preparingUnknown')
+    : playing
+    ? t('transport.pause')
+    : t('transport.play');
   return (
     <IconButton
-      label={playing ? t('transport.pause') : t('transport.play')}
-      disabled={loading || disabled}
+      label={label}
+      disabled={preparing || disabled}
       onPress={onPress}
     >
-      {playing ? (
+      {preparing ? (
+        <Spinner />
+      ) : playing ? (
         <PauseIcon size={ICON_SIZE} className="text-foreground" />
       ) : (
         <PlayIcon size={ICON_SIZE} className="text-foreground" />

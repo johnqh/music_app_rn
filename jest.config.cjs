@@ -26,8 +26,10 @@ module.exports = {
     // `@react-native-documents/picker` ships ESM (`export { … } from`), like
     // every other package in this list — added when `MenuFileCommands.tsx`
     // got its first test and pulled it in through `file-picker.ts`, the first
-    // time anything under jest reached that import.
-    'node_modules/(?!(\\.bun/[^/]+/node_modules/)?(react-native|react-native-macos|@react-native|@react-native-community|@react-native-segmented-control|@react-native-documents|@react-navigation|nativewind|react-native-css-interop|react-native-reanimated|react-native-svg|react-native-heroicons|react-native-gesture-handler|react-native-safe-area-context|clsx|class-variance-authority|tailwind-merge|@testing-library|@sudobility|immer|zustand|nanoid|uuid|i18next|react-i18next|@moosiac)/)',
+    // time anything under jest reached that import. `react-native-in-app-review`
+    // is reached through `@sudobility/building_blocks_rn`'s barrel, which
+    // `safe-edges.ts` imports for `useNotchPosition`.
+    'node_modules/(?!(\\.bun/[^/]+/node_modules/)?(react-native|react-native-macos|@react-native|@react-native-community|@react-native-segmented-control|@react-native-documents|@react-navigation|nativewind|react-native-css-interop|react-native-reanimated|react-native-svg|react-native-heroicons|react-native-gesture-handler|react-native-safe-area-context|react-native-in-app-review|clsx|class-variance-authority|tailwind-merge|@testing-library|@sudobility|immer|zustand|nanoid|uuid|i18next|react-i18next|@moosiac)/)',
   ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
