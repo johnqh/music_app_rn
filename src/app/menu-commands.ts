@@ -11,13 +11,14 @@
  * whose selector nobody in the responder chain implements, and this is not an
  * `NSDocument` app, so nothing answered.
  *
- * Each platform owns its own menu — AppKit's storyboard on macOS, a `MenuBar`
- * in `MainPage.xaml` on Windows — and JavaScript owns what a command *does*, so
- * each platform's app shell answers a click and hands it to a small native
- * module named `MoosiacMenuBridge` (`AppDelegate.mm` on macOS,
- * `MenuBridgeModule` on Windows) that turns it into one JS event. This is the
- * JS end of that, and it does not care which native module answered — the two
- * are declared under the same RN module name for exactly that reason.
+ * Each platform owns its own menu — AppKit's storyboard on macOS, a Win32 menu
+ * bar in `windows/MoosiacRN/MoosiacRN.cpp` on Windows — and JavaScript owns
+ * what a command *does*, so each platform's app shell answers a click and
+ * hands it to a small native module named `MoosiacMenuBridge`
+ * (`AppDelegate.mm` on macOS, `MenuBridgeModule` on Windows) that turns it
+ * into one JS event. This is the JS end of that, and it does not care which
+ * native module answered — the two are declared under the same RN module
+ * name for exactly that reason.
  *
  * Absent on every other platform, and that is the whole guard: iOS, Android
  * and the tests have no such module, `emitter` stays null, and subscribing is

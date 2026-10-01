@@ -9,7 +9,8 @@ namespace winrt::MoosiacRN::implementation {
 /**
  * The Windows half of the File/Edit/Nav menu bridge — the counterpart of
  * macOS's `MoosiacMenuBridge` (`macos/music_app_rn-macOS/AppDelegate.mm`).
- * `MainPage`'s menu click handlers call the static `Emit`, never JS, and JS
+ * The menu bar in `MoosiacRN.cpp` (a Win32 `HMENU` and accelerator table on
+ * the main window) calls the static `Emit`, never JS, and JS
  * hears it as the same `menuCommand` event `src/app/menu-commands.ts` already
  * listens for — under this exact module name, so that one JS file serves both
  * desktop platforms without knowing which one it is running on.
@@ -35,7 +36,7 @@ struct MenuBridgeModule {
   std::function<void(React::JSValue const &)> OnMenuCommand;
 
   /**
-   * Posts a command to JS. Called from `MainPage`'s menu handlers, never
+   * Posts a command to JS. Called from `MoosiacRN.cpp`'s menu handler, never
    * from JS itself.
    *
    * Dropped rather than queued when nothing is listening yet (`OnMenuCommand`

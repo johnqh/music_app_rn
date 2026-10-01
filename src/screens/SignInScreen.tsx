@@ -6,15 +6,20 @@
  * navigator pushes, which adds the scaffold around it and a title that says
  * which of the two is being done.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, Text } from '@sudobility/components-rn';
 import type { LoginViewMode } from '@sudobility/components-rn';
 import { useAuth } from '@/auth/AuthContext';
 import { SignInView } from '@/features/account/SignInView';
 import { ScreenScaffold } from './ScreenScaffold';
+import { trackScreenView } from '@/analytics';
 
 export function SignInScreen() {
+  useEffect(() => {
+    trackScreenView('SignInScreen');
+  }, []);
+
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const [mode, setMode] = useState<LoginViewMode>('signIn');

@@ -111,6 +111,18 @@ const ALLOWED_NON_UI = new Set([
   // at, constructed rather than implemented.
   'src/config/constants.ts',
   'src/config/server.ts',
+  // Firebase, in the shape every RN app in the family has it: the env module,
+  // service start-up (a call into di_rn per mobile platform; on the desktops,
+  // di's Measurement Protocol analytics, built in `desktopAnalytics`), the
+  // analytics wrapper, and the site-admin hook beside the shared auth context.
+  // Wiring, not logic; the services are libraries'.
+  'src/config/env.ts',
+  'src/di/initializeServices.ts',
+  'src/di/desktopAnalytics.ts',
+  'src/di/initializeServices.ios.ts',
+  'src/di/initializeServices.android.ts',
+  'src/analytics.ts',
+  'src/auth/useSiteAdmin.ts',
   // The design theme: which @sudobility/design theme is active, and the CSS
   // variables NativeWind resolves semantic classes against. Presentation
   // configuration, and it must match the web app's.

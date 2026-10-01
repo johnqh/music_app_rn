@@ -16,10 +16,13 @@ const mockSetMode = jest.fn();
 const mockUser = jest.fn<() => unknown>();
 const mockAdmin = jest.fn<() => boolean>();
 
+// Administrator status is its own hook, beside the shared auth context.
+jest.mock('@/auth/useSiteAdmin', () => ({
+  useSiteAdmin: () => mockAdmin(),
+}));
 jest.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({
     user: mockUser(),
-    siteAdmin: mockAdmin(),
     signOut: async () => {},
     getToken: async () => null,
   }),

@@ -11,7 +11,7 @@ import { act, fireEvent } from '@testing-library/react-native';
 import { renderWithApp } from '@/test/render';
 
 const mockSignIn = jest.fn<() => Promise<void>>();
-/* The context calls it `signUp`; naming the mock otherwise leaves it undefined. */
+/* The context calls it `signUpWithEmail`; naming the mock otherwise leaves it undefined. */
 const mockCreate = jest.fn<() => Promise<void>>();
 const mockGoogle = jest.fn<() => Promise<void>>();
 const mockGoogleAvailable = jest.fn<() => boolean>();
@@ -22,14 +22,20 @@ jest.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({
     user: null,
     getToken: async () => null,
-    signIn: () => mockSignIn(),
-    signUp: () => mockCreate(),
-    signInGoogle: () => mockGoogle(),
-    googleAvailable: mockGoogleAvailable(),
-    signInApple: () => mockApple(),
-    appleAvailable: mockAppleAvailable(),
+    signInWithEmail: () => mockSignIn(),
+    signUpWithEmail: () => mockCreate(),
+    signInWithGoogle: () => mockGoogle(),
+    signInWithApple: () => mockApple(),
     signOut: async () => {},
   }),
+  // Module exports beside the shared context, read at render time — getters,
+  // so each test's mockReturnValue is what the screen sees.
+  get googleAvailable() {
+    return mockGoogleAvailable();
+  },
+  get appleAvailable() {
+    return mockAppleAvailable();
+  },
 }));
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),

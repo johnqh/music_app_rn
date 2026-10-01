@@ -41,11 +41,16 @@ import { usePlayerBinding } from '@/features/transport/usePlayerBinding';
 import { appToasts } from '@/features/toasts/Toasts';
 import { CONSTANTS } from '@/config/constants';
 import { ScreenScaffold, ServerUnavailable } from './ScreenScaffold';
+import { trackScreenView } from '@/analytics';
 
 const SIDE_EDGES = ['left', 'right'] as const;
 const BOTTOM_EDGES = ['left', 'right', 'bottom'] as const;
 
 export function PublishedScreen() {
+  useEffect(() => {
+    trackScreenView('PublishedScreen');
+  }, []);
+
   const route = useRoute<RouteProp<RootStackParamList, 'Published'>>();
   const client = getMusicClient();
   const [snapshot, setSnapshot] = useState<PublishedSnapshot | null>(null);

@@ -25,6 +25,7 @@ import {
   useDocumentServices,
 } from '@/documents/DocumentsContext';
 import { getAppServices, libraryCopy } from '@/config/initialize';
+import { trackButtonClick, trackError, trackEvent } from '@/analytics';
 import { MidiImportSheet } from './MidiImportSheet';
 
 /**
@@ -101,8 +102,13 @@ export function useImport(options: UseImportOptions = {}) {
           midiOptions,
         );
         if (result.warnings.length > 0) setWarnings(result.warnings);
+        trackEvent('import_complete', { format });
         onImported?.();
       } catch (error) {
+        trackError(
+          error instanceof Error ? error.message : String(error),
+          'import_failed',
+        );
         setFailure(describeFailure(error, t));
       }
     },
@@ -129,7 +135,9 @@ export function useImport(options: UseImportOptions = {}) {
         }
         await finish(format, uri);
       } catch (error) {
-        setFailure(error instanceof Error ? error.message : String(error));
+        const message = error instanceof Error ? error.message : String(error);
+        trackError(message, 'import_failed');
+        setFailure(message);
       }
     },
     [finish],
@@ -146,6 +154,7 @@ export function useImport(options: UseImportOptions = {}) {
         const uri = await picker.pickFile(IMPORT_EXTENSIONS[format]);
         // Cancelling is an ordinary outcome, not a failure to report.
         if (!uri) return;
+        trackButtonClick('import', { format });
         await importFile(format, uri);
       } catch (error) {
         setFailure(error instanceof Error ? error.message : String(error));

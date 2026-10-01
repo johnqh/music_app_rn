@@ -8,7 +8,7 @@
  * store (a per-document one, not a singleton), which client, and how to tell
  * whether anybody is looking.
  */
-import { useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { AppState } from 'react-native';
 import { useProjectGeneration } from '@sudobility/music_client';
 import type {
@@ -20,6 +20,7 @@ import type {
 import { InsufficientCreditsError } from '@sudobility/music_client';
 import { getMusicClient } from '@/config/server';
 import { useAuth } from '@/auth/AuthContext';
+import { trackButtonClick, trackError, trackEvent } from '@/analytics';
 import type { MusicDocument } from '@/documents/document';
 
 /**
@@ -125,7 +126,7 @@ export function useDocumentGeneration(
     return baseUrl ? { baseUrl } : undefined;
   }, [configured]);
 
-  return useProjectGeneration(configured ? projectId : null, {
+  const generation = useProjectGeneration(configured ? projectId : null, {
     store: document.store,
     client,
     getToken,
@@ -145,9 +146,57 @@ export function useDocumentGeneration(
       the class itself.
     */
     onStartError: error => {
-      if (!(error instanceof InsufficientCreditsError)) return false;
+      if (!(error instanceof InsufficientCreditsError)) {
+        trackError(
+          error instanceof Error ? error.message : String(error),
+          'generation_start_failed',
+        );
+        return false;
+      }
+      trackEvent('generation_insufficient_credits');
       options.onInsufficientCredits?.();
       return true;
     },
   });
+
+  return useTrackedGeneration(generation);
+}
+
+/**
+ * `generation`, reported to analytics: each start and cancel as it is pressed,
+ * and the outcome read off the hook's own state — busy to ready with no
+ * error is `generation_complete`, a new error is a failure. Read off the
+ * state rather than a callback because a job can finish through the live
+ * stream or through the poll, and the state is what both arrive at.
+ */
+function useTrackedGeneration(
+  generation: ProjectGeneration,
+): ProjectGeneration {
+  const { start: rawStart, cancel: rawCancel, generating, error } = generation;
+  const wasGenerating = useRef(generating);
+  useEffect(() => {
+    if (wasGenerating.current && !generating && !error) {
+      trackEvent('generation_complete');
+    }
+    wasGenerating.current = generating;
+  }, [generating, error]);
+  useEffect(() => {
+    if (error) trackError(error, 'generation_failed');
+  }, [error]);
+
+  const start = useCallback<ProjectGeneration['start']>(
+    (kind, request) => {
+      trackButtonClick('generate', { kind });
+      return rawStart(kind, request);
+    },
+    [rawStart],
+  );
+  const cancel = useCallback(() => {
+    trackButtonClick('generation_cancel');
+    return rawCancel();
+  }, [rawCancel]);
+  return useMemo(
+    () => ({ ...generation, start, cancel }),
+    [generation, start, cancel],
+  );
 }

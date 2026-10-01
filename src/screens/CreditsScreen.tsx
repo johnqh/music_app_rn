@@ -18,6 +18,7 @@
  * The balance comes from `ConsumablesApiClient`, which needs no purchase SDK —
  * see `useCreditBalance`.
  */
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -33,6 +34,7 @@ import {
   ServerUnavailable,
   SignInRequired,
 } from './ScreenScaffold';
+import { trackScreenView } from '@/analytics';
 
 export function CreditsScreen({
   onSignIn,
@@ -43,6 +45,10 @@ export function CreditsScreen({
    */
   onSignIn?: () => void;
 } = {}) {
+  useEffect(() => {
+    trackScreenView('CreditsScreen');
+  }, []);
+
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();

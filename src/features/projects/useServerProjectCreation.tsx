@@ -32,6 +32,7 @@ import {
 import { isOutOfCredits } from '@sudobility/music_lib';
 import type { NewProjectSubmission } from '@sudobility/music_lib';
 import { useAuth } from '@/auth/AuthContext';
+import { useSiteAdmin } from '@/auth/useSiteAdmin';
 import { getMusicClient } from '@/config/server';
 import { CreditPaywallSheet } from '@/features/credits/CreditPaywallSheet';
 import { useCreditBalance } from '@/features/credits/useCreditBalance';
@@ -53,7 +54,8 @@ export type ServerProjectCreation = {
 };
 
 export function useServerProjectCreation(): ServerProjectCreation {
-  const { user, getToken, siteAdmin } = useAuth();
+  const { user, getToken } = useAuth();
+  const siteAdmin = useSiteAdmin();
   const { balance, refresh } = useCreditBalance(getToken, user !== null);
   const outOfCredits = isOutOfCredits(balance, siteAdmin);
   const [creating, setCreating] = useState(false);

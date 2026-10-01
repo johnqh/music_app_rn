@@ -30,6 +30,7 @@ import { ShortcutsSheet } from '@/features/shortcuts/ShortcutsSheet';
 import { goToTab, hasTabBar } from '@/app/tab-bar';
 import type { MenuCommand } from '@/app/menu-commands';
 import { canPrint, printScore } from '@/features/print/print-service';
+import { trackButtonClick, trackEvent, trackScreenView } from '@/analytics';
 import { PrintSheet } from '@/features/print/PrintSheet';
 import type { PrintPlanOptions } from '@sudobility/music_drawing';
 import { ReplaceMusicSheet } from '@/features/generation/ReplaceMusicSheet';
@@ -63,6 +64,7 @@ import { getAppServices } from '@/config/initialize';
 import { getMusicClient } from '@/config/server';
 import { useServerContext } from '@/config/useServerContext';
 import { useAuth } from '@/auth/AuthContext';
+import { useSiteAdmin } from '@/auth/useSiteAdmin';
 import {
   useActiveDocument,
   useDocumentList,
@@ -77,6 +79,10 @@ import type { ExportScope } from '@sudobility/music_types';
 const keyValue = createKeyValueStore();
 
 export function EditorScreen() {
+  useEffect(() => {
+    trackScreenView('EditorScreen');
+  }, []);
+
   const { t } = useTranslation();
   const document = useActiveDocument();
   const list = useDocumentList();
@@ -154,7 +160,8 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     (offset: ScrollOffset) => list.bankScroll(document.id, offset),
     [list, document],
   );
-  const { user, getToken, siteAdmin } = useAuth();
+  const { user, getToken } = useAuth();
+  const siteAdmin = useSiteAdmin();
   const serverContext = useServerContext();
   const score = useStore(document.store, s => s.score);
   const origin = useStore(document.store, s => s.origin);
@@ -172,6 +179,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
    * save panel to raise). A failure is reported by the store's own toast.
    */
   const onSave = useCallback(() => {
+    trackButtonClick('save');
     const state = document.store.getState();
     void (async () => {
       if (state.origin.kind !== 'unsaved') {
@@ -327,6 +335,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
    */
   const writeExport = useCallback(
     (format: ExportFormat, scope: ExportScope = 'all') => {
+      trackButtonClick('export', { format, scope });
       void exportDocument(
         document,
         getAppServices().io,
@@ -337,7 +346,9 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
           return { samples: audio.samples, sampleRate: audio.sampleRate };
         },
         scope,
-      ).catch(error => reportError(error, { context: 'export' }));
+      )
+        .then(() => trackEvent('export_complete', { format, scope }))
+        .catch(error => reportError(error, { context: 'export' }));
     },
     [document],
   );
@@ -396,6 +407,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     (options: PrintPlanOptions) => {
       setPrintOpen(false);
       setPrinting(true);
+      trackButtonClick('print');
       void printScore(score!, options)
         .catch(error => reportError(error, { context: 'print' }))
         .finally(() => setPrinting(false));

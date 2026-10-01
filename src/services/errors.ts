@@ -17,6 +17,7 @@
 import type { AppErrorCode, AppErrorOptions } from '@sudobility/music_types';
 import { libraryMessage } from '@sudobility/music_lib-core';
 import type { DocumentStore } from '../store/document-store';
+import { trackError } from '../analytics';
 
 /** A taxonomized application error (spec §28). Thrown by call sites that already know *why* an operation failed and want the UI to show something clearer than a raw `Error.message`. */
 export class AppError extends Error {
@@ -76,7 +77,8 @@ export function setErrorLogging(enabled: boolean): void {
 }
 
 /**
- * Reports `err` to the user (a toast, via `store.pushToast`) and, in
+ * Reports `err` to the user (a toast, via `store.pushToast`), to analytics
+ * (`trackError`, coded by the `AppError` code or else the context), and, in
  * development only, to the console with full technical detail (spec §28).
  * Safe to call for any thrown value, not just `AppError`.
  */
@@ -100,6 +102,13 @@ export function reportError(
         }
       : {}),
   });
+
+  trackError(
+    detail,
+    err instanceof AppError
+      ? err.code
+      : `${options.context ?? 'unknown'}_failed`,
+  );
 
   if (logTechnicalDetail) {
     console.debug('[Moosiac error]', options.context ?? '(no context)', err);

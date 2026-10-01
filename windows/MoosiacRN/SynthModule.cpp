@@ -1,10 +1,10 @@
 #include "pch.h"
 #include "SynthModule.h"
+#include "MoosiacRN.h"
 
 #include <mmdeviceapi.h>
 #include <audioclient.h>
 #include <ksmedia.h>
-#include <winrt/Windows.ApplicationModel.h>
 #include <wrl/client.h>
 
 #include <algorithm>
@@ -276,8 +276,7 @@ struct WindowsSynthState {
 bool SynthModule::isSupported() noexcept { return true; }
 
 std::string SynthModule::bundledSoundfontPath() noexcept {
-  return winrt::to_string(
-      winrt::Windows::ApplicationModel::Package::Current().InstalledLocation().Path()) +
+  return winrt::to_string(::MoosiacApp::AppDirectory()) +
       "\\soundfont\\FluidR3Mono_GM.sf3";
 }
 

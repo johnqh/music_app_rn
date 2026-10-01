@@ -8,22 +8,24 @@ namespace winrt::MoosiacRN::implementation {
 
 /**
  * A *separate* native window for the desktop Projects screen — the Windows
- * half of `MoosiacProjectsWindow`. `AppDelegate.mm`'s macOS half is the far
- * more thoroughly verified sibling; read its file comment first for the
- * design (one bridge, two root views; created once and reused; opened
- * non-modally so the editor stays interactive).
+ * half of `MoosiacProjectsWindow`. `AppDelegate.mm`'s macOS half is the more
+ * thoroughly verified sibling; read its file comment first for the design
+ * (one bridge, two root views; created once and reused; opened non-modally so
+ * the editor stays interactive).
  *
- * **This is the least-verified native code in this whole session — read
- * before trusting it.** Classic UWP's only sanctioned way to a genuinely
- * separate, independently movable, non-modal top-level window is
- * `CoreApplication::CreateNewView`, which runs the new window on its *own*
- * thread with its own dispatcher — a real architectural difference from
- * macOS's same-thread `NSWindow`, not just a different API for the same
- * shape. Every cross-window call (`focusMain` reaching back to the main
- * view, `show`'s reuse path reaching the already-open Projects view) has to
- * be correct about which thread it runs on, and none of it has been built,
- * launched, or clicked once. Test on an actual Windows machine before
- * relying on it.
+ * The window is a second `ReactNativeWindow` rendering the `MoosiacProjects`
+ * component on the *same* `ReactNativeHost` as the editor, so both windows
+ * share one JS runtime. Every window of a Composition app lives on the one UI
+ * thread, so each method posts to the UI dispatcher and none of them has to
+ * reason about which thread a window belongs to.
+ *
+ * It is created on the first `show()` and then kept: the native close button
+ * and `close()` both *hide* it, as macOS's `releasedWhenClosed = NO` does, so
+ * a half-typed sign-in field or a scroll position survives reopening it.
+ *
+ * NOTE: written against the react-native-windows 0.81 Composition API but not
+ * built or run here — there is no Windows toolchain in this environment.
+ * Build and click-test on a Windows machine before relying on it.
  */
 REACT_MODULE(MoosiacProjectsWindow)
 struct WindowManagerModule {
@@ -38,6 +40,16 @@ struct WindowManagerModule {
 
   REACT_METHOD(close)
   void close() noexcept;
+
+  /**
+   * Destroys the Projects window, if one was made. Called by the app shell
+   * when the editor window closes: the editor is the window whose closing
+   * quits the app, and a hidden Projects window must not outlive it.
+   */
+  static void Shutdown() noexcept;
+
+ private:
+  winrt::Microsoft::ReactNative::ReactContext m_context;
 };
 
 } // namespace winrt::MoosiacRN::implementation

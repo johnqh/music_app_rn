@@ -1,81 +1,89 @@
 #include "pch.h"
 #include "WindowManagerModule.h"
-#include "ProjectsPage.h"
+#include "MoosiacRN.h"
 
-#include <winrt/Windows.ApplicationModel.Core.h>
-#include <winrt/Windows.UI.Core.h>
-#include <winrt/Windows.UI.ViewManagement.h>
+#include <ReactCoreInjection.h>
 
-using namespace winrt::Windows::ApplicationModel::Core;
-using namespace winrt::Windows::UI::Core;
-using namespace winrt::Windows::UI::ViewManagement;
-using namespace xaml;
-using namespace xaml::Controls;
+#include <utility>
+
+using namespace winrt::Microsoft::ReactNative;
+using namespace winrt::Microsoft::UI::Windowing;
 
 namespace winrt::MoosiacRN::implementation {
 
-// The main window's own ApplicationView id, captured once — every module's
-// Initialize runs on the main view's thread the first time the app starts,
-// since the Projects view does not exist yet to have initialized one of
-// its own.
-static int32_t sMainViewId = 0;
-static bool sHaveMainViewId = false;
+namespace {
 
-// 0 until the Projects window has been created once; classic UWP has no
-// cross-thread pointer back into a secondary CoreApplicationView's own
-// state, so a view id plus ApplicationViewSwitcher — not a stored
-// reference — is the sanctioned way to address one from elsewhere.
-static int32_t sProjectsViewId = 0;
+// Created on the first `show()` and kept until the editor closes. UI thread
+// only, like everything that touches it.
+ReactNativeWindow g_projectsWindow{nullptr};
+winrt::event_token g_closingToken{};
 
-void WindowManagerModule::Initialize(
-    winrt::Microsoft::ReactNative::ReactContext const & /*context*/) noexcept {
-  if (!sHaveMainViewId) {
-    sMainViewId = ApplicationView::GetForCurrentView().Id();
-    sHaveMainViewId = true;
-  }
+HWND HwndOf(ReactNativeWindow const &window) noexcept {
+  if (!window) return nullptr;
+  return winrt::Microsoft::UI::GetWindowFromWindowId(window.AppWindow().Id());
+}
+
+void CreateProjectsWindow() {
+  auto mainWindow = ::MoosiacApp::MainWindow();
+  auto host = ::MoosiacApp::Host();
+  if (!mainWindow || !host) return;
+
+  // The editor's compositor: one compositor per UI thread.
+  auto window = ReactNativeWindow::CreateFromCompositor(mainWindow.ReactNativeIsland().Compositor());
+  window.ResizePolicy(ContentSizePolicy::ResizeContentToParentWindow);
+
+  auto appWindow = window.AppWindow();
+  appWindow.Title(L"Projects");
+  appWindow.Resize({960, 680});
+
+  // The native close button hides rather than destroys, the same as
+  // `close()` — see the header.
+  g_closingToken = appWindow.Closing([](AppWindow const &sender, AppWindowClosingEventArgs const &args) {
+    args.Cancel(true);
+    sender.Hide();
+  });
+
+  ReactViewOptions options;
+  options.ComponentName(L"MoosiacProjects");
+  window.ReactNativeIsland().ReactViewHost(ReactCoreInjection::MakeViewHost(host, options));
+
+  g_projectsWindow = window;
+}
+
+} // namespace
+
+void WindowManagerModule::Initialize(ReactContext const &context) noexcept {
+  m_context = context;
 }
 
 void WindowManagerModule::show() noexcept {
-  if (sProjectsViewId != 0) {
-    // Already created — bring the existing one forward, never a second
-    // copy, the same rule `AppDelegate.mm`'s `showProjectsWindow` follows.
-    ApplicationViewSwitcher::SwitchAsync(sProjectsViewId);
-    return;
-  }
-
-  CoreApplicationView newView = CoreApplication::CreateNewView();
-  // A freshly created view's content must be built on *its own* dispatcher
-  // thread, not the caller's — CoreApplicationView's documented contract.
-  newView.Dispatcher().RunAsync(CoreDispatcherPriority::Normal, [] {
-    Frame rootFrame;
-    rootFrame.Navigate(xaml_typename<MoosiacRN::ProjectsPage>(), nullptr);
-    Window::Current().Content(rootFrame);
-    Window::Current().Activate();
-
-    sProjectsViewId = ApplicationView::GetForCurrentView().Id();
-    ApplicationViewSwitcher::TryShowAsStandaloneAsync(sProjectsViewId);
+  m_context.UIDispatcher().Post([] {
+    // Created once, then brought forward — never a second copy, the same
+    // rule `AppDelegate.mm`'s `showProjectsWindow` follows.
+    if (!g_projectsWindow) CreateProjectsWindow();
+    if (!g_projectsWindow) return;
+    g_projectsWindow.AppWindow().Show();
+    ::MoosiacApp::BringToFront(HwndOf(g_projectsWindow));
   });
 }
 
 void WindowManagerModule::focusMain() noexcept {
-  ApplicationViewSwitcher::SwitchAsync(sMainViewId);
+  m_context.UIDispatcher().Post([] { ::MoosiacApp::BringToFront(HwndOf(::MoosiacApp::MainWindow())); });
 }
 
 void WindowManagerModule::close() noexcept {
-  // Consolidates (closes) *this* view — safe to call from the Projects
-  // view's own thread, which is the only thread `close()` is ever called
-  // from (New/Template/Import landing a project, all JS running inside
-  // this window's own root).
-  //
-  // Unlike macOS's `orderOut:` + `releasedWhenClosed = NO`, this does not
-  // keep the window alive for a fast, state-preserving reuse — classic UWP
-  // has no "hide but keep alive" for a secondary CoreApplicationView, only
-  // "close it". `show()`'s next call creates a fresh one from scratch,
-  // which means a half-typed sign-in field or a scroll position is lost on
-  // Windows in a way it is not on macOS. A real capability gap, not an
-  // oversight — flagged here rather than left silently different.
-  sProjectsViewId = 0;
-  ApplicationView::GetForCurrentView().TryConsolidateAsync();
+  m_context.UIDispatcher().Post([] {
+    if (g_projectsWindow) g_projectsWindow.AppWindow().Hide();
+  });
+}
+
+void WindowManagerModule::Shutdown() noexcept {
+  if (!g_projectsWindow) return;
+  auto window = std::exchange(g_projectsWindow, nullptr);
+  window.AppWindow().Closing(g_closingToken);
+  // Detaches the React root, then destroys the AppWindow.
+  window.ReactNativeIsland().ReactViewHost(nullptr);
+  window.Close();
 }
 
 } // namespace winrt::MoosiacRN::implementation

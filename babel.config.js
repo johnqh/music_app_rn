@@ -17,6 +17,7 @@ require('dotenv').config({
   quiet: true,
 });
 
+
 /**
  * Every name `src/config/constants.ts` reads. Listed, not everything in the
  * environment: whatever is inlined ships inside the app, and a shell's
@@ -25,13 +26,23 @@ require('dotenv').config({
 const INLINED_ENV = [
   'MUSIC_API_URL',
   'MUSIC_WEB_URL',
+  // Firebase for the desktops' web apps (iOS and Android read their Google
+  // services files instead): shared, then each desktop's own.
   'FIREBASE_API_KEY',
   'FIREBASE_AUTH_DOMAIN',
   'FIREBASE_PROJECT_ID',
+  'FIREBASE_STORAGE_BUCKET',
+  'FIREBASE_MESSAGING_SENDER_ID',
+  'FIREBASE_APP_ID_MACOS',
+  'FIREBASE_MEASUREMENT_ID_MACOS',
+  'FIREBASE_APP_ID_WINDOWS',
+  'FIREBASE_MEASUREMENT_ID_WINDOWS',
+  'GA4_API_SECRET_MACOS',
+  'GA4_API_SECRET_WINDOWS',
+  'GOOGLE_OAUTH_CLIENT_ID_MACOS',
+  'GOOGLE_OAUTH_CLIENT_ID_WINDOWS',
+  'GOOGLE_OAUTH_CLIENT_SECRET_WINDOWS',
   'FIREBASE_PROXY',
-  'GOOGLE_OAUTH_CLIENT_ID',
-  'GOOGLE_OAUTH_REVERSED_CLIENT_ID',
-  'GOOGLE_WEB_CLIENT_ID',
   'APPLE_SERVICE_ID',
   'APPLE_REDIRECT_URI',
   'VITE_APP_NAME',
@@ -39,6 +50,17 @@ const INLINED_ENV = [
   'VITE_COMPANY_NAME',
   'VITE_SUPPORT_EMAIL',
 ];
+
+/*
+  A blank value is no value. `.env.example` lists every name with an empty
+  right-hand side and promises "a value left blank means not configured" —
+  but inlined as written, `NAME=` becomes `""`, which defeats every
+  `?? default` in the code that reads it. Unset, it inlines as `undefined`
+  and the default applies.
+*/
+for (const name of INLINED_ENV) {
+  if (process.env[name] === '') delete process.env[name];
+}
 
 module.exports = function (api) {
   /*

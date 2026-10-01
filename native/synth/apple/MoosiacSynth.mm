@@ -16,7 +16,15 @@
 #import "MoosiacSynth.h"
 
 #import <Foundation/Foundation.h>
+// iOS: the vendored FluidSynth.xcframework, reached as a framework now that
+// the podspec no longer lists its headers as the pod's own (they clashed
+// between the device and simulator slices once pods became frameworks).
+// macOS: Homebrew's libfluidsynth on the pod's HEADER_SEARCH_PATHS.
+#if __has_include(<FluidSynth/fluidsynth.h>)
+#include <FluidSynth/fluidsynth.h>
+#else
 #include <fluidsynth.h>
+#endif
 
 #include <mutex>
 #include <vector>

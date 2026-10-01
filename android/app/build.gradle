@@ -1,6 +1,8 @@
 apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
+apply plugin: "com.google.gms.google-services"
+apply plugin: "com.google.firebase.crashlytics"
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -104,12 +106,15 @@ android {
     defaultConfig {
         // What the device, the store and Firebase know the app as:
         // `google-services.json` registers this package, and Google sign-in
-        // is refused for any other.
+        // is refused for any other. The file configures native Firebase —
+        // analytics, crashlytics, messaging, remote config — through the
+        // google-services plugin; auth runs on Firebase's JS SDK and is
+        // configured from `.env`.
         applicationId "com.sudobility.moosiac"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0.0"
+        versionName "1.0.1"
     }
     signingConfigs {
         debug {

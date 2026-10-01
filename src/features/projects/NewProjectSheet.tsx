@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { FormModal, Switch, Text } from '@sudobility/components-rn';
 import type { NewProjectSubmission } from '@sudobility/music_lib';
 import { ScoreSetupFields } from '@/features/generation/ScoreSetupFields';
+import { trackButtonClick } from '@/analytics';
 import { useNewProjectForm } from './useNewProjectForm';
 
 export type NewProjectSheetProps = {
@@ -80,7 +81,10 @@ export function NewProjectSheet({
         { label: t('common.cancel'), onPress: onClose, variant: 'ghost' },
         {
           label: t('dashboard.create'),
-          onPress: handleCreate,
+          onPress: () => {
+            trackButtonClick('create_project', { generate: generating });
+            handleCreate();
+          },
           disabled: !canCreate,
           loading: submitting,
         },

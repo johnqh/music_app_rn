@@ -34,11 +34,66 @@
  * so autolinking already leaves it out of the macOS Pods. What that *does* mean
  * is that the navigator has to be JS-backed on the Mac — see `Navigation.tsx`.
  */
+const path = require('path');
+
+/**
+ * Disable a native Firebase package on macOS and Windows while keeping the
+ * package's own iOS and Android settings. Autolinking merges this file over
+ * the library's config shallowly: a bare `platforms: { macos: null }` REPLACES
+ * the library's `platforms`, dropping settings it declares for Android —
+ * since react-native-firebase 26 that includes `cmakeListsPath`, without
+ * which the Android build fails in CMake with "not an existing directory".
+ * Returns a one-entry object so it can be spread into `dependencies`.
+ */
+function nativeFirebaseOnMobileOnly(packageName) {
+  // Loaded by file path: the package's `exports` map does not expose this file.
+  const packageDir = path.join(__dirname, 'node_modules', packageName);
+  const library = require(path.join(packageDir, 'react-native.config.js'));
+  const platforms = library.dependency?.platforms ?? {};
+  // Spreading is not enough on its own: the CLI joins a LIBRARY's
+  // `cmakeListsPath` to its `sourceDir`, but takes a user-supplied one as
+  // written, so the relative path the library declares reached Gradle bare
+  // (`add_subdirectory("./src/.../generated/jni/")` — "not an existing
+  // directory"). Resolved here against the package's `android/` instead.
+  const android = platforms.android
+    ? {
+        ...platforms.android,
+        ...(platforms.android.cmakeListsPath
+          ? {
+              cmakeListsPath: path.join(
+                packageDir,
+                platforms.android.sourceDir ?? 'android',
+                platforms.android.cmakeListsPath,
+              ),
+            }
+          : {}),
+      }
+    : undefined;
+  return {
+    [packageName]: {
+      platforms: {
+        ...platforms,
+        ...(android ? { android } : {}),
+        macos: null,
+        windows: null,
+      },
+    },
+  };
+}
+
 module.exports = {
   dependencies: {
     '@react-native-documents/picker': {
       platforms: { macos: null, windows: null },
     },
+    // Native Firebase is iOS and Android only; the desktops run Firebase's
+    // JS SDK and have no analytics. Spread, not replaced — see the note above
+    // on what a bare `platforms` map does to a package's Android settings.
+    ...nativeFirebaseOnMobileOnly('@react-native-firebase/app'),
+    ...nativeFirebaseOnMobileOnly('@react-native-firebase/analytics'),
+    ...nativeFirebaseOnMobileOnly('@react-native-firebase/crashlytics'),
+    ...nativeFirebaseOnMobileOnly('@react-native-firebase/messaging'),
+    ...nativeFirebaseOnMobileOnly('@react-native-firebase/remote-config'),
     '@shopify/react-native-skia': { platforms: { windows: null } },
     'react-native-audio-api': { platforms: { windows: null } },
     'react-native-share': { platforms: { macos: null, windows: null } },

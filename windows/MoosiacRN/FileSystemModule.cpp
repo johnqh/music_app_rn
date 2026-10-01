@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "FileSystemModule.h"
 #include "FileSystemUtils.h"
+#include "MoosiacRN.h"
 
-#include <winrt/Windows.ApplicationModel.h>
 #include <winrt/Windows.Storage.h>
 
 #include <filesystem>
@@ -20,8 +20,9 @@ void FileSystemModule::getDocumentDirectoryPath(
 
 void FileSystemModule::getMainBundlePath(
     React::ReactPromise<std::string> result) noexcept {
-  result.Resolve(winrt::to_string(
-      winrt::Windows::ApplicationModel::Package::Current().InstalledLocation().Path()));
+  // The executable's folder, where the project's Content files are deployed
+  // — not the package root (see MoosiacRN.h).
+  result.Resolve(winrt::to_string(::MoosiacApp::AppDirectory()));
 }
 
 void FileSystemModule::readFile(

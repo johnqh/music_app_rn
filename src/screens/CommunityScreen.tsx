@@ -34,6 +34,7 @@ import {
   SideClearance,
   TitledScreen,
 } from '@/components/layout/SplitViewContainer';
+import { trackScreenView } from '@/analytics';
 
 /** How wide the publisher's picture is drawn, in points. */
 const AVATAR_SIZE = 32;
@@ -107,6 +108,10 @@ type CommunityNavigation = {
 };
 
 export function CommunityScreen({ navigation }: CommunityScreenProps) {
+  useEffect(() => {
+    trackScreenView('CommunityScreen');
+  }, []);
+
   const { t } = useTranslation();
   return (
     <TitledScreen title={t('nav.community')}>

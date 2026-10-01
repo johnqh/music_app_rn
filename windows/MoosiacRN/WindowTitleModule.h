@@ -7,25 +7,28 @@
 namespace winrt::MoosiacRN::implementation {
 
 /**
- * Sets the window's title bar text from JavaScript — the Windows half of
- * `MoosiacWindowTitle`. `AppDelegate.mm` (macOS) is the other half, and
+ * Sets the editor window's title bar text from JavaScript — the Windows half
+ * of `MoosiacWindowTitle`. `AppDelegate.mm` (macOS) is the other half, and
  * `src/platform/windowTitle.ts` is the one JS call site both answer to —
  * `WindowTitleSync.tsx` calls it with `${CONSTANTS.APP_NAME} - ${document
- * title}` every time the active document or its title changes, now that
- * neither desktop platform's own title bar carries it any more.
+ * title}` every time the active document or its title changes.
  *
- * `ApplicationView::Title` is UWP's API for this — `Window::Current()` used
- * elsewhere in this project (`App.cpp`) is what confirms this app is UWP-
- * windowed rather than an unpackaged WinAppSDK one, where the title would
- * instead be a plain property on a `Microsoft::UI::Xaml::Window`.
+ * The title is the main `AppWindow`'s (`MoosiacRN.cpp`), set on the UI
+ * thread. Only the editor window: the Projects window keeps its own title.
  *
- * NOTE: written against documented UWP/RNW APIs but not built or run here —
- * see `MenuBridgeModule.h`'s identical caveat. Verify on a Windows machine.
+ * NOTE: not built or run here — there is no Windows toolchain in this
+ * environment. Verify on a Windows machine.
  */
 REACT_MODULE(MoosiacWindowTitle)
 struct WindowTitleModule {
+  REACT_INIT(Initialize)
+  void Initialize(winrt::Microsoft::ReactNative::ReactContext const &context) noexcept;
+
   REACT_METHOD(setTitle)
   void setTitle(std::string title) noexcept;
+
+ private:
+  winrt::Microsoft::ReactNative::ReactContext m_context;
 };
 
 } // namespace winrt::MoosiacRN::implementation

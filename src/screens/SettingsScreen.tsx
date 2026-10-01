@@ -39,12 +39,14 @@ import {
   SplitViewContainer,
 } from '@/components/layout/SplitViewContainer';
 import { useAuth } from '@/auth/AuthContext';
+import { useSiteAdmin } from '@/auth/useSiteAdmin';
 import { CreditsScreen } from './CreditsScreen';
 import { ScreenScaffold } from './ScreenScaffold';
 import { AccountSection } from './settings/AccountSection';
 import { ApiKeysSection } from './settings/ApiKeysSection';
 import { CreditHistorySection } from './settings/CreditHistorySection';
 import { ManageCouponsSection } from './settings/ManageCouponsSection';
+import { trackScreenView } from '@/analytics';
 
 /** The sections, in the order they are listed. */
 export const SETTINGS_SECTIONS = [
@@ -103,8 +105,13 @@ export type SettingsScreenProps = {
 };
 
 export function SettingsScreen({ navigation, route }: SettingsScreenProps) {
+  useEffect(() => {
+    trackScreenView('SettingsScreen');
+  }, []);
+
   const { t } = useTranslation();
-  const { user, siteAdmin } = useAuth();
+  const { user } = useAuth();
+  const siteAdmin = useSiteAdmin();
   const sections = settingsSectionsFor(user !== null, siteAdmin);
   const [chosen, setChosen] = useState<SettingsSection>('account');
   // What is shown is what is listed: signing out while Credits is showing

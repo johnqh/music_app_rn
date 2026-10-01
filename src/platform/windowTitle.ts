@@ -18,8 +18,8 @@
  * document changes. `applyAppName` is the opposite: the app's own name does
  * not change mid-session, so it is called once, at start-up (`App.tsx`).
  * Windows has no `setAppName` to call — its menu bar is authored here, in
- * `MainPage.xaml`, with no Xcode-style template to have baked a codebase
- * name into; the macOS storyboard's "About/Hide/Quit music_app_rn" and
+ * `windows/MoosiacRN/MoosiacRN.cpp`, with no Xcode-style template to have
+ * baked a codebase name into; the macOS storyboard's "About/Hide/Quit music_app_rn" and
  * "music_app_rn Help" are what this exists to fix, and Windows never had
  * the equivalent to begin with.
  */

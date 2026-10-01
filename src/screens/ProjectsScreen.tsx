@@ -6,13 +6,19 @@
  * opened project pushes the editor above the tabs, which is what takes the
  * tab bar and the sidebar off the screen and gives the score all of it.
  */
+import { useEffect } from 'react';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainTabParamList, RootStackParamList } from '@/app/Navigation';
 import { ProjectsSplitView } from '@/app/projects-window/ProjectsSplitView';
+import { trackScreenView } from '@/analytics';
 
 export function ProjectsScreen() {
+  useEffect(() => {
+    trackScreenView('ProjectsScreen');
+  }, []);
+
   const navigation =
     useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<RouteProp<MainTabParamList, 'Dashboard'>>();

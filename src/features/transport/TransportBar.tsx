@@ -73,6 +73,7 @@ import { SynthLoadIndicator } from './SynthLoadIndicator';
 import { getMusicPlayerIfInitialized } from '@sudobility/music_player/core';
 import { usePlaybackReadiness } from '@sudobility/music_player/react';
 import { IconButton } from '@/components/layout/IconButton';
+import { trackButtonClick } from '@/analytics';
 import { useOnPositionFrame, usePositionReadout } from './usePositionReadout';
 import type { PositionSource } from './usePositionReadout';
 import type { TransportBinding, TransportStoreApi } from './usePlayerBinding';
@@ -200,7 +201,10 @@ export function TransportBar({
       <PlayPauseButton
         playing={playing}
         disabled={playDisabled}
-        onPress={() => void transport.togglePlay()}
+        onPress={() => {
+          trackButtonClick(playing ? 'pause' : 'play');
+          void transport.togglePlay();
+        }}
       />
       <IconButton label={t('transport.stop')} onPress={transport.stop}>
         <StopIcon size={ICON_SIZE} className="text-foreground" />

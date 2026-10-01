@@ -27,7 +27,7 @@
  * pointed at other people's servers, which would tell each of them who is
  * reading this screen. A site with no icon gets its initial in the same chip.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Image, Linking, Pressable, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -38,12 +38,17 @@ import { RESOURCE_GROUPS, hostOf, monogramFor } from '@sudobility/music_lib';
 import type { Resource } from '@sudobility/music_types';
 import { TILE_GAP, tileGrid } from '@/features/projects/ProjectTiles';
 import { iconFor } from './resource-icons';
+import { trackScreenView } from '@/analytics';
 
 /** The chip the mark sits in, and the mark inside it: the web's `h-9` and `h-6`. */
 const CHIP_SIZE = 36;
 const ICON_SIZE = 24;
 
 export function ResourcesScreen() {
+  useEffect(() => {
+    trackScreenView('ResourcesScreen');
+  }, []);
+
   const { t } = useTranslation();
   /*
     How many across comes from the width this is given, never the window's —

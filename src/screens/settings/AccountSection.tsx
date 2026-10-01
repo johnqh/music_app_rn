@@ -15,6 +15,7 @@ import { Image, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Text } from '@sudobility/components-rn';
 import { FieldRow } from '@/components/controls/FieldRow';
+import { trackButtonClick } from '@/analytics';
 import {
   useDeleteAvatar,
   useProfile,
@@ -69,7 +70,14 @@ function Identity() {
       <Text className="text-foreground flex-1 text-base" numberOfLines={1}>
         {user?.email ?? user?.uid ?? ''}
       </Text>
-      <Button size="sm" variant="outline" onPress={() => void signOut()}>
+      <Button
+        size="sm"
+        variant="outline"
+        onPress={() => {
+          trackButtonClick('sign_out');
+          void signOut();
+        }}
+      >
         {t('nav.signOut')}
       </Button>
     </View>

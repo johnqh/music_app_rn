@@ -15,7 +15,14 @@ Pod::Spec.new do |s|
   # itself is linked differs below.
   s.platforms    = { :osx => '14.0', :ios => '15.0' }
   s.source       = { :path => '.' }
-  s.source_files = 'apple/**/*.{h,m,mm}'
+  # `apple/` and nothing below it: `apple/**` would also match the 36 headers
+  # inside the vendored FluidSynth.xcframework, which as a static library is
+  # harmless and as a framework is fatal — CocoaPods copies every matched
+  # header as a public header of MoosiacSynth.framework, and the device and
+  # simulator slices carry the same names, so Xcode stops with "Multiple
+  # commands produce .../Headers/fluidsynth.h". The wrapper is the two files
+  # in `apple/` itself; the xcframework is vendored below, headers included.
+  s.source_files = 'apple/*.{h,m,mm}'
   # The font the web plays, bundled: pressing Play needs no network.
   s.resources    = ['resources/FluidR3Mono_GM.sf3', 'resources/FluidR3Mono_License.md']
 

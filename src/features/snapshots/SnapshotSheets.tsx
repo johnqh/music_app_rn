@@ -28,6 +28,7 @@ import {
   suggestedPublicName,
 } from '@sudobility/music_client';
 import { LIVE_NODE_ID } from '@sudobility/music_types';
+import { trackButtonClick } from '@/analytics';
 import type { TreeNode } from '@sudobility/music_types';
 
 export type CreateSnapshotSheetProps = {
@@ -97,12 +98,14 @@ export function CreateSnapshotSheet({
         {
           label: t('snapshot.createTitle'),
           disabled: !canCreate,
-          onPress: () =>
+          onPress: () => {
+            trackButtonClick('create_snapshot', { publish });
             onCreate(
               name.trim(),
               publish ? publisherName.trim() : undefined,
               publish ? publicName.trim() : undefined,
-            ),
+            );
+          },
         },
       ]}
     >

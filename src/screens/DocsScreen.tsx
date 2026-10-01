@@ -15,7 +15,7 @@
  * A topic about the interface opens with a figure of the element it is about
  * (`features/docs/figures.ts`) — the element, not the screen it sits on.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { ScreenBackBar } from '@/components/layout/ScreenBackBar';
@@ -34,8 +34,13 @@ import { ShortcutsSheet } from '@/features/shortcuts/ShortcutsSheet';
 import { DOCS_GROUPS } from '@sudobility/music_types';
 import type { DocsGroup } from '@sudobility/music_types';
 import { DOCS_TOPICS, docsGroupLabelKey } from '@sudobility/music_lib';
+import { trackScreenView } from '@/analytics';
 
 export function DocsScreen() {
+  useEffect(() => {
+    trackScreenView('DocsScreen');
+  }, []);
+
   const { t } = useTranslation();
   const [topicId, setTopicId] = useState<string>(DOCS_TOPICS[0]?.id ?? '');
   const [shortcutsOpen, setShortcutsOpen] = useState(false);

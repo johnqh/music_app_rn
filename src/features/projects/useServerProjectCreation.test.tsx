@@ -18,10 +18,13 @@ const mockCreate = jest.fn<(...args: unknown[]) => Promise<{ id: string }>>();
 const mockAuth = { siteAdmin: false };
 const mockBalance: { balance: number | null } = { balance: 5 };
 
+// Administrator status is its own hook, beside the shared auth context.
+jest.mock('@/auth/useSiteAdmin', () => ({
+  useSiteAdmin: () => mockAuth.siteAdmin,
+}));
 jest.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({
     user: { uid: 'u' },
-    siteAdmin: mockAuth.siteAdmin,
     getToken: async () => 'token',
   }),
 }));

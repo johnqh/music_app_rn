@@ -8,8 +8,8 @@
  * defaults stand, so a developer checkout runs against a local API with no
  * setup, and a shipped build is told where to point.
  *
- * An absent Firebase key is not an error: it means this build is local-only,
- * which is a supported state. See `AuthContext`.
+ * Firebase and sign-in configuration is `env.ts`, in the shape every app in
+ * the family has it.
  */
 export const CONSTANTS = {
   API_URL: process.env.MUSIC_API_URL ?? 'http://localhost:8032',
@@ -19,29 +19,6 @@ export const CONSTANTS = {
    * dev server's port by default.
    */
   WEB_URL: process.env.MUSIC_WEB_URL ?? 'http://localhost:5039',
-  FIREBASE_API_KEY: process.env.FIREBASE_API_KEY ?? '',
-  FIREBASE_AUTH_DOMAIN: process.env.FIREBASE_AUTH_DOMAIN ?? '',
-  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ?? '',
-  /**
-   * The Google OAuth client the desktop sign-in goes through, and its
-   * reversed form, which is the URL scheme Google redirects back to.
-   *
-   * Both from the Firebase project's iOS-type client in Google Cloud Console
-   * (`CLIENT_ID` and `REVERSED_CLIENT_ID` in `GoogleService-Info.plist`). A
-   * public client: the flow is authorization-code with PKCE, so there is no
-   * secret to hold. Absent, Google sign-in is simply not offered — the same
-   * rule the Firebase key itself follows.
-   */
-  GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID ?? '',
-  GOOGLE_OAUTH_REVERSED_CLIENT_ID:
-    process.env.GOOGLE_OAUTH_REVERSED_CLIENT_ID ?? '',
-  // Android's Google sign-in: the Firebase project's *web* client, which is
-  // what makes Google return an ID token there.
-  GOOGLE_WEB_CLIENT_ID: process.env.GOOGLE_WEB_CLIENT_ID ?? '',
-  // Android's Sign in with Apple, which is Apple's web flow: the Services ID
-  // and the redirect registered for it. iOS needs neither.
-  APPLE_SERVICE_ID: process.env.APPLE_SERVICE_ID ?? '',
-  APPLE_REDIRECT_URI: process.env.APPLE_REDIRECT_URI ?? '',
   /**
    * Branding. Named `VITE_*`, same as music_app's and svgr_app_rn's — a
    * bundler prefix that means nothing to Metro, kept anyway so one `.env`

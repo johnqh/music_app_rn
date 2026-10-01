@@ -31,3 +31,6 @@ app_store/.metro.pid
 app_store/.metro.log
 app_store/.env
 app_store/.keys/
+
+# Per-user Xcode state
+xcuserdata/

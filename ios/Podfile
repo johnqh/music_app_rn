@@ -27,11 +27,17 @@ ENV['RCT_USE_PREBUILT_RNCORE'] ||= '1'
 
 prepare_react_native_project!
 
-linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => linkage.to_sym
-end
+# react-native-firebase 26 resolves Firebase through Swift Package Manager by
+# default, which only works with dynamic pod linkage. This project cannot use
+# dynamic linkage: React comes from the prebuilt core above, so pods built as
+# dynamic frameworks fail to link, and CocoaPods rejects dynamic Firebase pods
+# that depend on the static React pods. Keep Firebase on CocoaPods instead —
+# it installs the same Firebase SDK version — and build every pod as a static
+# framework, which is what Firebase's own pods require. Same arrangement as
+# sudojo_app_rn.
+$RNFirebaseDisableSPM = true
+
+use_frameworks! :linkage => :static
 
 target 'MoosiacRN' do
   config = use_native_modules!
@@ -87,6 +93,18 @@ target 'MoosiacRN' do
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |build_config|
         build_config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      end
+    end
+
+    # React Native Firebase imports React-Core's non-modular headers. With
+    # static frameworks, Xcode rejects those imports from a module, so the
+    # RNFB targets are built without module generation.
+    installer.pods_project.targets.each do |target|
+      next unless target.name.start_with?('RNFB')
+      target.build_configurations.each do |config|
+        config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        config.build_settings['CLANG_ENABLE_MODULES'] = 'NO'
+        config.build_settings['DEFINES_MODULE'] = 'NO'
       end
     end
 
