@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1140"
+   LastUpgradeVersion = "2700"
    version = "1.3">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "514201482437B4B30078DB4F"
-               BuildableName = "music_app_rn.app"
-               BlueprintName = "music_app_rn-macOS"
-               ReferencedContainer = "container:music_app_rn.xcodeproj">
+               BuildableName = "Moosiac.app"
+               BlueprintName = "MoosiacRN-macOS"
+               ReferencedContainer = "container:MoosiacRN.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "514201482437B4B30078DB4F"
-            BuildableName = "music_app_rn.app"
-            BlueprintName = "music_app_rn-macOS"
-            ReferencedContainer = "container:music_app_rn.xcodeproj">
+            BuildableName = "Moosiac.app"
+            BlueprintName = "MoosiacRN-macOS"
+            ReferencedContainer = "container:MoosiacRN.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "514201482437B4B30078DB4F"
-            BuildableName = "music_app_rn.app"
-            BlueprintName = "music_app_rn-macOS"
-            ReferencedContainer = "container:music_app_rn.xcodeproj">
+            BuildableName = "Moosiac.app"
+            BlueprintName = "MoosiacRN-macOS"
+            ReferencedContainer = "container:MoosiacRN.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

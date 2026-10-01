@@ -25,9 +25,37 @@ require "#{ws_dir}/node_modules/react-native-macos/scripts/react_native_pods.rb"
 
 prepare_react_native_project!
 
-target 'music_app_rn-macOS' do
+# react-native-firebase is not linked on macOS (the desktop runs Firebase's JS
+# SDK), but its podspecs are still evaluated during codegen discovery, and since
+# version 26 that puts them in Swift Package Manager mode, which rejects this
+# target's static linkage and fails `pod install`. Keep them in CocoaPods mode
+# so that check does not apply. The same as sudojo_app_rn's and svgr_app_rn's.
+$RNFirebaseDisableSPM = true
+
+# The packages react-native.config.js turns off for macOS (`macos: null`).
+# react-native-macos autolinks from each package's *iOS* config, and keeps any
+# pod whose podspec claims macOS, so `macos: null` alone never reaches this
+# Podfile: RNFirebase, Google Sign-In and the others would be installed and
+# linked into the Mac app. Read from that file rather than listed here, so the
+# two cannot disagree.
+require 'json'
+EXCLUDED_PACKAGES = JSON.parse(`node -e '
+  const c = require(process.argv[1]);
+  const off = Object.entries(c.dependencies || {})
+    .filter(([, v]) => v && v.platforms && v.platforms.macos === null)
+    .map(([name]) => name);
+  console.log(JSON.stringify(off));
+' #{File.join(__dir__, '..', 'react-native.config.js')}`).freeze
+raise 'react-native.config.js listed no macOS exclusions' if EXCLUDED_PACKAGES.empty?
+
+target 'MoosiacRN-macOS' do
   platform :macos, '14.0'
-  use_native_modules!
+
+  # use_native_modules!, split into list + filter + link to leave out the
+  # packages above.
+  pods = list_native_modules!($default_command)
+  pods[:ios_packages].reject! { |p| EXCLUDED_PACKAGES.include?(p[:name]) }
+  link_native_modules!(pods)
 
   # Flags change depending on the env values.
   flags = get_default_flags()

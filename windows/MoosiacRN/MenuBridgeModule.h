@@ -8,7 +8,7 @@ namespace winrt::MoosiacRN::implementation {
 
 /**
  * The Windows half of the File/Edit/Nav menu bridge — the counterpart of
- * macOS's `MoosiacMenuBridge` (`macos/music_app_rn-macOS/AppDelegate.mm`).
+ * macOS's `MoosiacMenuBridge` (`macos/MoosiacRN-macOS/AppDelegate.mm`).
  * The menu bar in `MoosiacRN.cpp` (a Win32 `HMENU` and accelerator table on
  * the main window) calls the static `Emit`, never JS, and JS
  * hears it as the same `menuCommand` event `src/app/menu-commands.ts` already
