@@ -48,6 +48,10 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Moosiac plays music and does not record from the microphone. An audio component it includes is able to record, and iOS asks for this description because of it.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Moosiac lets you choose a picture from your photo library to use as your profile picture.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
