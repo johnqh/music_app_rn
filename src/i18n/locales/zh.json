@@ -882,6 +882,18 @@
     "title": "生成新乐谱",
     "titleField": "标题",
     "titlePlaceholder": "生成的乐谱",
+    "styleFamily": {
+      "popRock": "流行与摇滚",
+      "americanRoots": "美国根源音乐",
+      "jazz": "爵士",
+      "funkSoul": "放克与灵魂乐",
+      "latinCaribbean": "拉丁与加勒比",
+      "hipHop": "嘻哈",
+      "electronic": "电子",
+      "classical": "古典",
+      "danceCeremonial": "舞曲与仪式音乐",
+      "screen": "影视与氛围"
+    },
     "styleName": {
       "ambient": "氛围",
       "baroque": "巴洛克",

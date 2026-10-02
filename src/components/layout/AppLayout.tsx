@@ -36,8 +36,10 @@ import {
 import type { NoteEvent } from '@sudobility/music_types';
 import { SafeAreaView, useSafeAreaInsets } from '@/platform/SafeArea';
 import { useSafeEdgeList } from '@/platform/safe-edges';
+import { HeaderHeightContext } from '@react-navigation/elements';
 import {
   useCallback,
+  useContext,
   useEffect,
   useMemo,
   useRef,
@@ -278,6 +280,23 @@ export function AppLayout({
     the keyboard. Measured on the frame, the answer is a fact about the device.
   */
   const { size, onLayout } = useContainerSize();
+  /*
+    How far the navigator's header reaches over the editor, on iOS.
+
+    The native stack lays the screen out below the bar's standard height, but
+    the bar the editor's header draws is taller than that: a title with its
+    save badge and two clusters of glass buttons. Measured on an iPhone 18 Pro
+    in landscape, the header was 78pt and the screen began at 54, so the
+    editor toolbar's top 24pt sat under the bar. The difference is measured
+    rather than assumed, so a bar that fits leaves it at zero.
+  */
+  const headerHeight = useContext(HeaderHeightContext) ?? 0;
+  const rootRef = useRef<View>(null);
+  const [rootTop, setRootTop] = useState<number | null>(null);
+  const headerOverlap =
+    Platform.OS === 'ios' && hasNativeHeader() && rootTop !== null
+      ? Math.max(0, Math.ceil(headerHeight - rootTop))
+      : 0;
   const insets = useSafeAreaInsets();
   // The navigator's header has already cleared the status bar where it
   // draws one; clearing it again left an empty band under the header.
@@ -292,7 +311,7 @@ export function AppLayout({
   const keyboardCollapsed = useDevicePrefs(s => s.keyboardCollapsed);
   /*
     The keyboard's height: half of the room the score and the keyboard share —
-    the editor less its fixed bars — up to 120 (`keyboardPanelHeight`). On a
+    the editor less its fixed bars — up to 160 (`keyboardPanelHeight`). On a
     screen short enough for half to be less, the two are the same height.
 
     That room is the score's measured height plus the keyboard's as it was
@@ -544,9 +563,14 @@ export function AppLayout({
       side cutouts. The bottom remains edge-to-edge.
     */
     <SafeAreaView
+      ref={rootRef}
       className="bg-background flex-1"
       edges={topEdges}
-      onLayout={onLayout}
+      style={headerOverlap > 0 ? { paddingTop: headerOverlap } : undefined}
+      onLayout={event => {
+        onLayout(event);
+        rootRef.current?.measureInWindow((_x, y) => setRootTop(y));
+      }}
     >
       {/*
         Hidden wherever a menu bar exists to carry its buttons instead —

@@ -1,39 +1,47 @@
 {
   "locale": "en",
   "appleAppStore": {
-    "title": "Sudojo - Learn Sudoku Techniques",
-    "subtitle": "Master 60+ Solving Strategies",
-    "keywords": "sudoku,puzzle,brain,logic,techniques,solver,hints,learning,strategy,daily,challenge,training,number,grid,pencil marks",
-    "promotionalText": "Master Sudoku from beginner to expert with 60+ solving techniques and intelligent hints.",
-    "description": "Sudojo is the ultimate Sudoku learning platform that teaches you how to solve puzzles — not just gives you answers. Progress from beginner to expert through a structured belt system while mastering 60+ real solving techniques used by championship players.\n\nDAILY CHALLENGES\n• A fresh puzzle every day tailored to your skill level\n• Track your daily streak and compete with yourself\n• Share your completed puzzles with friends\n\nLEARN 60 SOLVING TECHNIQUES\n• Each technique includes step-by-step explanations and practice puzzles\n\nBasics: Full House, Hidden Single, Naked Single\nPairs & Tuples: Hidden Pair, Naked Pair, Locked Candidates, Hidden Triple, Naked Triple, Hidden Quad, Naked Quad\nFish: X-Wing, Swordfish, Jellyfish, Squirmbag\nFinned Fish: Finned X-Wing, Finned Swordfish, Finned Jellyfish, Finned Squirmbag\nSashimi Fish: Sashimi X-Wing, Sashimi Swordfish, Sashimi Jellyfish\nFranken Fish: Franken X-Wing, Franken Swordfish, Franken Jellyfish\nWings: XY-Wing, XYZ-Wing, WXYZ-Wing, VWXYZ-Wing, UVWXYZ-Wing, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Skyscraper, Two-String Kite, Empty Rectangle, Simple Coloring, W-Wing, Remote Pairs, Crane, Firework\nUnique Rectangles: Type 1, Type 2, Type 3, Type 4, Type 5, Hidden UR, Avoidable Rectangle\nAlmost Locked Sets: ALS, ALS-XZ, ALS Chain, Sue de Coq, Death Blossom\nChains: X-Cycles, Grouped X-Cycles, X-Chain, XY-Chain, AIC, Medusa Coloring, BUG+1, Forcing Chains, Forcing Net\n\nSMART HINT SYSTEM\n• Hints that teach you the technique, not just the answer\n• Visual highlighting shows exactly which cells and candidates matter\n• Step-by-step walkthrough of the solving logic\n• Learn the \"why\" behind every move\n\nBELT PROGRESSION SYSTEM\n• 12 belt levels from White Belt (beginner) to Black Belt (master)\n• Each belt introduces new techniques and harder puzzles\n• Earn points, unlock badges, and track your improvement\n• See your solving skills grow over time\n\n12 DIFFICULTY LEVELS\n• Beginner to Extreme — there's always a new challenge\n• Each level focuses on specific techniques\n• Free access to foundational levels\n• Premium unlocks advanced and expert difficulties\n\nMORE FEATURES\n• Enter custom puzzles manually or scan from paper\n• Multiple display modes: Numbers, Kanji (漢数字), or Emoji\n• Pencil marks with auto-candidate mode\n• Timer and error highlighting (optional)\n• Dark mode and 16 language options\n• Sync progress across devices with your account\n• Works on iPhone, iPad, and Mac\n\nFREE & PREMIUM\n• Play daily puzzles and beginner-to-challenging levels for free\n• Subscribe to unlock advanced levels, expert techniques, and full hint access\n• Blue Belt: Unlocks Difficult, Intense, and Expert levels\n• Red Belt: Unlocks all levels including Brutal and Brain Freeze\n\nWhether you're picking up Sudoku for the first time or you're an experienced solver looking to learn advanced techniques, Sudojo is your path to mastery.\n\nTerms of Use: https://sudojo.com/en/terms\nPrivacy Policy: https://sudojo.com/en/privacy",
-    "whatsNew": "Improved performance on technique details screen and fixed minor bugs.",
-    "supportUrl": "https://sudojo.com/support",
-    "marketingUrl": "https://sudojo.com/marketing"
+    "title": "Moosiac - AI Music Composer",
+    "subtitle": "Compose, Edit & Notate Music",
+    "keywords": "sheet music,notation,score,midi,musicxml,songwriting,piano,lyrics,generator,arrange,melody,band",
+    "promotionalText": "Describe the music you want and let AI write it — then edit every note in a full notation editor with playback, mixing and a playable piano keyboard.",
+    "description": "Moosiac is a music notation editor with AI composition built in. Describe the music you want, then edit every note of it by hand — or skip the AI entirely and write your score from scratch.\n\nCOMPOSE WITH AI\n• Describe a piece and choose its instruments, length, tempo, key, meter and mood — anything you leave blank, Moosiac decides\n• Add one new part to a score you already have: it hears your existing tracks, so a bass line is written under your melody rather than beside it\n• Replace a passage, a whole track, or just a few notes, while holding the harmony, rhythm or melody steady\n• Generate lyrics along with the music, on a subject you choose\n• Every generated part is checked for notes the instrument cannot play before you see it\n\nA REAL NOTATION EDITOR\n• Engraved notation: clefs, key and time signatures, ties, slurs, dynamics, articulations, ornaments, grace notes, repeats and endings\n• Tap to place notes, or play them in on the on-screen piano keyboard — how long you hold a key becomes the note's length\n• Type lyrics syllable by syllable, under the notes they belong to\n• An inspector for every note, bar, track and score, with full undo history\n• Transposing instruments shown at written or sounding pitch\n\nPLAYBACK AND MIXING\n• Hear your score through a General MIDI soundfont, with all 128 instruments and eight drum kits\n• Loop, metronome, playback speed and tempo control\n• Per-track volume, pan, mute and solo — live while the music plays\n• The keyboard lights up the notes as they sound\n\nIMPORT AND EXPORT\n• Import MIDI, MusicXML and tracker modules\n• Turn a recording (MP3 or WAV) into editable notes, one melodic line at a time\n• Export MIDI, MusicXML, XM modules, WAV and MP3 audio, or a Moosiac project file\n• Print parts or the full score, with paper size and orientation\n\nYOUR WORK, YOUR WAY\n• Write, play, import and export with no account — your scores are saved on your device\n• Sign in to keep projects in the cloud, take snapshots of a score, and share your music with the community\n• Light and dark themes, in English and Chinese\n• Works on iPhone, iPad and Mac\n\nCREDITS\nEditing, playback, import and export are free. AI generation uses credits: one credit writes one bar for one instrument, and you see an estimate before anything is generated.\n\nTerms of Use: https://moosiac.com/terms\nPrivacy Policy: https://moosiac.com/privacy",
+    "whatsNew": "Welcome to Moosiac: compose with AI, then edit every note in a full notation editor.",
+    "supportUrl": "https://moosiac.com/support",
+    "marketingUrl": "https://moosiac.com"
   },
   "googlePlay": {
-    "title": "Sudojo: Sudoku Techniques",
-    "shortDescription": "Master 60+ Sudoku techniques with smart hints and daily challenges.",
-    "fullDescription": "Sudojo is the ultimate Sudoku learning platform that teaches you how to solve puzzles — not just gives you answers. Progress from beginner to expert through a structured belt system while mastering 60+ real solving techniques used by championship players.\n\nDAILY CHALLENGES\n• A fresh puzzle every day tailored to your skill level\n• Track your daily streak and compete with yourself\n• Share your completed puzzles with friends\n\nLEARN 60 SOLVING TECHNIQUES\n• Each technique includes step-by-step explanations and practice puzzles\n\nBasics: Full House, Hidden Single, Naked Single\nPairs & Tuples: Hidden Pair, Naked Pair, Locked Candidates, Hidden Triple, Naked Triple, Hidden Quad, Naked Quad\nFish: X-Wing, Swordfish, Jellyfish, Squirmbag\nFinned Fish: Finned X-Wing, Finned Swordfish, Finned Jellyfish, Finned Squirmbag\nSashimi Fish: Sashimi X-Wing, Sashimi Swordfish, Sashimi Jellyfish\nFranken Fish: Franken X-Wing, Franken Swordfish, Franken Jellyfish\nWings: XY-Wing, XYZ-Wing, WXYZ-Wing, VWXYZ-Wing, UVWXYZ-Wing, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Skyscraper, Two-String Kite, Empty Rectangle, Simple Coloring, W-Wing, Remote Pairs, Crane, Firework\nUnique Rectangles: Type 1, Type 2, Type 3, Type 4, Type 5, Hidden UR, Avoidable Rectangle\nAlmost Locked Sets: ALS, ALS-XZ, ALS Chain, Sue de Coq, Death Blossom\nChains: X-Cycles, Grouped X-Cycles, X-Chain, XY-Chain, AIC, Medusa Coloring, BUG+1, Forcing Chains, Forcing Net\n\nSMART HINT SYSTEM\n• Hints that teach you the technique, not just the answer\n• Visual highlighting shows exactly which cells and candidates matter\n• Step-by-step walkthrough of the solving logic\n• Learn the \"why\" behind every move\n\nBELT PROGRESSION SYSTEM\n• 12 belt levels from White Belt (beginner) to Black Belt (master)\n• Each belt introduces new techniques and harder puzzles\n• Earn points, unlock badges, and track your improvement\n\n12 DIFFICULTY LEVELS\n• Beginner to Extreme — there's always a new challenge\n• Each level focuses on specific techniques\n• Free access to foundational levels\n• Premium unlocks advanced and expert difficulties\n\nMORE FEATURES\n• Enter custom puzzles manually\n• Multiple display modes: Numbers, Kanji (漢数字), or Emoji\n• Pencil marks with auto-candidate mode\n• Timer and error highlighting (optional)\n• Dark mode and 16 language options\n• Sync progress across devices with your account\n\nFREE & PREMIUM\n• Play daily puzzles and beginner-to-challenging levels for free\n• Subscribe to unlock advanced levels, expert techniques, and full hint access\n• Blue Belt: Unlocks Difficult, Intense, and Expert levels\n• Red Belt: Unlocks all levels including Brutal and Brain Freeze\n\nWhether you're picking up Sudoku for the first time or you're an experienced solver looking to learn advanced techniques, Sudojo is your path to mastery.\n\nTerms of Use: https://sudojo.com/en/terms\nPrivacy Policy: https://sudojo.com/en/privacy",
-    "tags": ["Sudoku", "Puzzle", "Brain Training", "Logic", "Education"]
+    "title": "Moosiac: AI Music Composer",
+    "shortDescription": "Compose music with AI, then edit every note in a full notation editor.",
+    "fullDescription": "Moosiac is a music notation editor with AI composition built in. Describe the music you want, then edit every note of it by hand — or skip the AI entirely and write your score from scratch.\n\nCOMPOSE WITH AI\n• Describe a piece and choose its instruments, length, tempo, key, meter and mood — anything you leave blank, Moosiac decides\n• Add one new part to a score you already have: it hears your existing tracks, so a bass line is written under your melody rather than beside it\n• Replace a passage, a whole track, or just a few notes, while holding the harmony, rhythm or melody steady\n• Generate lyrics along with the music, on a subject you choose\n• Every generated part is checked for notes the instrument cannot play before you see it\n\nA REAL NOTATION EDITOR\n• Engraved notation: clefs, key and time signatures, ties, slurs, dynamics, articulations, ornaments, grace notes, repeats and endings\n• Tap to place notes, or play them in on the on-screen piano keyboard — how long you hold a key becomes the note's length\n• Type lyrics syllable by syllable, under the notes they belong to\n• An inspector for every note, bar, track and score, with full undo history\n• Transposing instruments shown at written or sounding pitch\n\nPLAYBACK AND MIXING\n• Hear your score through a General MIDI soundfont, with all 128 instruments and eight drum kits\n• Loop, metronome, playback speed and tempo control\n• Per-track volume, pan, mute and solo — live while the music plays\n• The keyboard lights up the notes as they sound\n\nIMPORT AND EXPORT\n• Import MIDI, MusicXML and tracker modules\n• Turn a recording (MP3 or WAV) into editable notes, one melodic line at a time\n• Export MIDI, MusicXML, XM modules, WAV and MP3 audio, or a Moosiac project file\n• Print parts or the full score, with paper size and orientation\n\nYOUR WORK, YOUR WAY\n• Write, play, import and export with no account — your scores are saved on your device\n• Sign in to keep projects in the cloud, take snapshots of a score, and share your music with the community\n• Light and dark themes, in English and Chinese\n\nCREDITS\nEditing, playback, import and export are free. AI generation uses credits: one credit writes one bar for one instrument, and you see an estimate before anything is generated.\n\nTerms of Use: https://moosiac.com/terms\nPrivacy Policy: https://moosiac.com/privacy",
+    "tags": [
+      "Music",
+      "Music Composition",
+      "Sheet Music",
+      "Songwriting",
+      "Education"
+    ]
   },
   "microsoftStore": {
-    "productName": "Sudojo",
-    "description": "Sudojo is the ultimate Sudoku learning platform that teaches you how to solve puzzles — not just gives you answers. Progress from beginner to expert through a structured belt system while mastering 60+ real solving techniques used by championship players.\n\nDAILY CHALLENGES\n• A fresh puzzle every day tailored to your skill level\n• Track your daily streak and compete with yourself\n• Share your completed puzzles with friends\n\nLEARN 60 SOLVING TECHNIQUES\n• Each technique includes step-by-step explanations and practice puzzles\n\nBasics: Full House, Hidden Single, Naked Single\nPairs & Tuples: Hidden Pair, Naked Pair, Locked Candidates, Hidden Triple, Naked Triple, Hidden Quad, Naked Quad\nFish: X-Wing, Swordfish, Jellyfish, Squirmbag\nFinned Fish: Finned X-Wing, Finned Swordfish, Finned Jellyfish, Finned Squirmbag\nSashimi Fish: Sashimi X-Wing, Sashimi Swordfish, Sashimi Jellyfish\nFranken Fish: Franken X-Wing, Franken Swordfish, Franken Jellyfish\nWings: XY-Wing, XYZ-Wing, WXYZ-Wing, VWXYZ-Wing, UVWXYZ-Wing, TUVWXYZ-Wing, STUVWXYZ-Wing\nSingle-Digit Patterns: Skyscraper, Two-String Kite, Empty Rectangle, Simple Coloring, W-Wing, Remote Pairs, Crane, Firework\nUnique Rectangles: Type 1, Type 2, Type 3, Type 4, Type 5, Hidden UR, Avoidable Rectangle\nAlmost Locked Sets: ALS, ALS-XZ, ALS Chain, Sue de Coq, Death Blossom\nChains: X-Cycles, Grouped X-Cycles, X-Chain, XY-Chain, AIC, Medusa Coloring, BUG+1, Forcing Chains, Forcing Net\n\nSMART HINT SYSTEM\n• Hints that teach you the technique, not just the answer\n• Visual highlighting shows exactly which cells and candidates matter\n• Step-by-step walkthrough of the solving logic\n\nBELT PROGRESSION SYSTEM\n• 12 belt levels from White Belt (beginner) to Black Belt (master)\n• Each belt introduces new techniques and harder puzzles\n• Earn points, unlock badges, and track your improvement\n\n12 DIFFICULTY LEVELS\n• Beginner to Extreme — there's always a new challenge\n• Free access to foundational levels\n• Premium unlocks advanced and expert difficulties\n\nMORE FEATURES\n• Enter custom puzzles manually\n• Multiple display modes: Numbers, Kanji (漢数字), or Emoji\n• Pencil marks with auto-candidate mode\n• Dark mode and 16 language options\n• Sync progress across devices\n\nTerms of Use: https://sudojo.com/en/terms\nPrivacy Policy: https://sudojo.com/en/privacy",
-    "shortDescription": "Master 60+ Sudoku solving techniques with smart hints, daily challenges, and a belt progression from beginner to expert.",
-    "searchTerms": "sudoku;puzzle;brain training;logic;techniques;solver;learning;strategy;daily challenge;number puzzle",
-    "whatsNew": "Improved performance on technique details screen and fixed minor bugs."
+    "productName": "Moosiac",
+    "description": "Moosiac is a music notation editor with AI composition built in. Describe the music you want, then edit every note of it by hand — or skip the AI entirely and write your score from scratch.\n\nCOMPOSE WITH AI\n• Describe a piece and choose its instruments, length, tempo, key, meter and mood — anything you leave blank, Moosiac decides\n• Add one new part to a score you already have: it hears your existing tracks, so a bass line is written under your melody rather than beside it\n• Replace a passage, a whole track, or just a few notes, while holding the harmony, rhythm or melody steady\n• Generate lyrics along with the music, on a subject you choose\n• Every generated part is checked for notes the instrument cannot play before you see it\n\nA REAL NOTATION EDITOR\n• Engraved notation: clefs, key and time signatures, ties, slurs, dynamics, articulations, ornaments, grace notes, repeats and endings\n• Tap to place notes, or play them in on the on-screen piano keyboard — how long you hold a key becomes the note's length\n• Type lyrics syllable by syllable, under the notes they belong to\n• An inspector for every note, bar, track and score, with full undo history\n• Transposing instruments shown at written or sounding pitch\n\nPLAYBACK AND MIXING\n• Hear your score through a General MIDI soundfont, with all 128 instruments and eight drum kits\n• Loop, metronome, playback speed and tempo control\n• Per-track volume, pan, mute and solo — live while the music plays\n• The keyboard lights up the notes as they sound\n\nIMPORT AND EXPORT\n• Import MIDI, MusicXML and tracker modules\n• Turn a recording (MP3 or WAV) into editable notes, one melodic line at a time\n• Export MIDI, MusicXML, XM modules, WAV and MP3 audio, or a Moosiac project file\n• Print parts or the full score, with paper size and orientation\n\nYOUR WORK, YOUR WAY\n• Write, play, import and export with no account — your scores are saved on your device\n• Sign in to keep projects in the cloud, take snapshots of a score, and share your music with the community\n• Light and dark themes, in English and Chinese\n\nCREDITS\nEditing, playback, import and export are free. AI generation uses credits: one credit writes one bar for one instrument, and you see an estimate before anything is generated.\n\nTerms of Use: https://moosiac.com/terms\nPrivacy Policy: https://moosiac.com/privacy",
+    "shortDescription": "Compose music with AI, then edit every note in a full notation editor with playback, mixing, MIDI and MusicXML import and export, and printing.",
+    "searchTerms": "music notation;sheet music;music composer;ai music;midi editor;musicxml;songwriting",
+    "whatsNew": "Welcome to Moosiac: compose with AI, then edit every note in a full notation editor."
   },
   "privacyPolicy": {
-    "url": "https://sudojo.com/privacy",
-    "lastUpdated": "2025-01-01",
+    "url": "https://moosiac.com/privacy",
+    "lastUpdated": "2026-10-02",
     "summary": {
-      "introduction": "Sudojo (\"we\", \"our\", or \"us\") respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our application.",
+      "introduction": "Moosiac (\"we\", \"our\", or \"us\") respects your privacy and is committed to protecting your personal data. This privacy policy explains how we collect, use, and safeguard your information when you use our application.",
       "informationWeCollect": {
         "youProvide": [
-          "Account information (email address, display name) when you create an account",
-          "Game progress, statistics, and puzzle completion data",
-          "User preferences and settings (theme, language, display mode)",
-          "Payment information processed through Apple App Store, Google Play, or Microsoft Store via RevenueCat"
+          "Account information (email address, display name, profile picture) when you sign in with Google or Apple",
+          "Projects you choose to keep in the cloud, including scores, snapshots, and any music you publish to the community",
+          "Descriptions, lyric subjects, and settings you submit when generating music",
+          "Audio recordings you choose to transcribe into notes",
+          "Preferences and settings (theme, language, pitch display)",
+          "Credit purchases, which are processed by our payment provider; we do not receive your full card details"
         ],
         "automaticallyCollected": [
           "Device information (model, OS version, screen size)",
@@ -43,82 +51,42 @@
         ]
       },
       "howWeUse": [
-        "Provide and improve the Sudoku learning experience",
-        "Sync your progress across devices",
-        "Process and manage subscriptions",
-        "Analyze usage patterns to improve techniques and puzzles",
-        "Send important service updates",
-        "Track points, badges, and level progression"
+        "Provide the notation editor, playback, and AI music generation",
+        "Store and sync your cloud projects across devices",
+        "Transcribe the recordings you submit into notes",
+        "Track your credit balance and the credits used by generation",
+        "Analyze usage and crashes to improve the app",
+        "Send important service updates"
       ],
-      "sharing": "We do not sell your personal data. We share data only with service providers (Firebase, RevenueCat) necessary to operate the app, when required by law, or with your consent.",
-      "security": "We use encryption in transit (TLS) and at rest, conduct regular security assessments, employ access controls, and use secure cloud infrastructure.",
-      "retention": "We retain your information while your account is active. You can request deletion at any time by contacting privacy@sudojo.com.",
+      "sharing": "We do not sell your personal data. We share data only with service providers necessary to operate the app (such as Firebase for sign-in and analytics, our hosting and AI providers for generation and transcription, and our payment provider), when required by law, or with your consent. Music you publish to the community is visible to other users.",
+      "security": "We use encryption in transit (TLS) and at rest, employ access controls, and use secure cloud infrastructure.",
+      "retention": "Scores you create without an account stay on your device and are never sent to us. We retain account data and cloud projects while your account is active. You can request deletion at any time by contacting privacy@moosiac.com.",
       "rights": [
         "Access your personal data",
         "Correct inaccurate data",
-        "Request deletion of your data",
-        "Export your game progress",
+        "Request deletion of your data and your account",
+        "Export your projects as MIDI, MusicXML, audio, or Moosiac project files",
         "Opt out of marketing communications"
       ],
-      "children": "Our service is designed for users of all ages. We do not knowingly collect personal information from children under 13 without verifiable parental consent. Users under 13 can use the app without creating an account.",
-      "contact": "privacy@sudojo.com"
+      "children": "We do not knowingly collect personal information from children under 13 without verifiable parental consent. The editor can be used without an account, in which case no personal information is collected.",
+      "contact": "privacy@moosiac.com"
     }
   },
   "termsOfService": {
-    "url": "https://sudojo.com/terms",
-    "lastUpdated": "2025-01-01",
+    "url": "https://moosiac.com/terms",
+    "lastUpdated": "2026-10-02",
     "summary": {
-      "acceptance": "By accessing or using Sudojo, you agree to be bound by these Terms of Service.",
-      "serviceDescription": "Sudojo is a Sudoku learning application offering progressive learning with daily challenges, skill-based difficulty levels, 60+ solving techniques, and free and premium subscription tiers.",
+      "acceptance": "By accessing or using Moosiac, you agree to be bound by these Terms of Service.",
+      "serviceDescription": "Moosiac is a music notation editor with AI composition, offering score editing, playback and mixing, import and export of common music formats, printing, cloud projects, and credit-based AI music generation.",
       "accounts": "You must provide accurate information, maintain account security, accept responsibility for activity under your account, and notify us of unauthorized access.",
-      "acceptableUse": "You agree not to circumvent subscriptions, use bots or automation, reverse engineer the app, share account credentials, or disrupt the service.",
-      "subscriptions": "Premium features are billed on a recurring basis. Subscriptions auto-renew unless cancelled at least 24 hours before the end of the current period. Refunds follow the respective app store's refund policy.",
-      "intellectualProperty": "All content, features, puzzles, techniques, and design are owned by Sudobility and protected by copyright and trademark law.",
+      "acceptableUse": "You agree not to circumvent credit charges, use bots or automation to abuse generation, reverse engineer the app, upload content you do not have the rights to, publish unlawful or infringing material to the community, or disrupt the service.",
+      "credits": "AI generation consumes credits: one credit per bar, per instrument, charged for what is actually generated. Credits are purchased separately and are non-refundable except where required by law.",
+      "userContent": "You keep the rights to the music you write and the music generated for you. By publishing a score to the community you allow other users to view and play it.",
+      "intellectualProperty": "The app, its design, and its software are owned by Sudobility and protected by copyright and trademark law.",
       "limitationOfLiability": "The service is provided \"as is\" without warranties of any kind. We are not liable for indirect or consequential damages.",
       "termination": "We may terminate accounts for violations of these terms. Users can delete their accounts at any time.",
-      "contact": "support@sudojo.com"
+      "contact": "support@moosiac.com"
     }
   },
-  "subscriptions": {
-    "blue_belt_monthly": {
-      "apple": {
-        "name": "Blue Belt (Monthly)",
-        "description": "Unlocks Difficult, Intense, and Expert difficulty levels. Includes full hint access with step-by-step technique explanations. Sync progress across iPhone, iPad, and Mac."
-      },
-      "google": {
-        "name": "Blue Belt (Monthly)",
-        "description": "Unlocks Difficult, Intense, and Expert difficulty levels. Includes full hint access with step-by-step technique explanations. Sync progress across all your devices including Android, iPhone, iPad, and Mac."
-      }
-    },
-    "blue_belt_annual": {
-      "apple": {
-        "name": "Blue Belt (Annual)",
-        "description": "Unlocks Difficult, Intense, and Expert difficulty levels. Includes full hint access with step-by-step technique explanations. Sync progress across iPhone, iPad, and Mac. Save with an annual plan."
-      },
-      "google": {
-        "name": "Blue Belt (Annual)",
-        "description": "Unlocks Difficult, Intense, and Expert difficulty levels. Includes full hint access with step-by-step technique explanations. Sync progress across all your devices including Android, iPhone, iPad, and Mac. Save with an annual plan."
-      }
-    },
-    "red_belt_monthly": {
-      "apple": {
-        "name": "Red Belt (Monthly)",
-        "description": "Unlocks all difficulty levels including Brutal and Brain Freeze. Full access to every solving technique and complete hint walkthroughs. Sync progress across iPhone, iPad, and Mac."
-      },
-      "google": {
-        "name": "Red Belt (Monthly)",
-        "description": "Unlocks all difficulty levels including Brutal and Brain Freeze. Full access to every solving technique and complete hint walkthroughs. Sync progress across all your devices including Android, iPhone, iPad, and Mac."
-      }
-    },
-    "red_belt_annual": {
-      "apple": {
-        "name": "Red Belt (Annual)",
-        "description": "Unlocks all difficulty levels including Brutal and Brain Freeze. Full access to every solving technique and complete hint walkthroughs. Sync progress across iPhone, iPad, and Mac. Save with an annual plan."
-      },
-      "google": {
-        "name": "Red Belt (Annual)",
-        "description": "Unlocks all difficulty levels including Brutal and Brain Freeze. Full access to every solving technique and complete hint walkthroughs. Sync progress across all your devices including Android, iPhone, iPad, and Mac. Save with an annual plan."
-      }
-    }
-  }
+  "subscriptions": {}
 }

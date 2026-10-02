@@ -39,12 +39,12 @@ import {
   GENERATE_SCORE_COMPLEXITY_OPTIONS,
   GENERATE_SCORE_KEY_FIFTHS_OPTIONS,
   GENERATE_SCORE_MOOD_OPTIONS,
-  GENERATE_SCORE_STYLE_OPTIONS,
   GENERATE_SCORE_TIME_SIGNATURE_OPTIONS,
   canRemoveNewProjectEntry,
   complexityLabelKey,
   generationInstrumentOptionsFlat,
   isNewProjectEntryLocked,
+  flatStyleOptions,
   labelledOptions,
   moodLabelKey,
   newProjectDefaultTitleKey,
@@ -56,6 +56,7 @@ import {
   showNewProjectDuration,
   showNewProjectLyrics,
   showNewProjectLyricsTheme,
+  styleFamilyLabelKey,
   styleLabelKey,
   styleGenerationSettings,
 } from '@sudobility/music_lib';
@@ -184,13 +185,14 @@ export function ScoreSetupFields({
   /*
     Style and mood as the reader scans them: sorted on the translated label
     under the language on screen, with the "none" entry pinned above rather
-    than filed between "New Age" and "Pop". `labelledOptions` is shared with
+    than filed between "New Age" and "Pop", each style prefixed with its family
+    since a native Select draws no headings. Shared with
     the web pickers. The draft holds `''` for none; the picker holds `NO_MARK`,
     and `optionalToPicker`/`optionalFromPicker` are the two directions.
   */
-  const styleOptions = labelledOptions(
-    GENERATE_SCORE_STYLE_OPTIONS,
+  const styleOptions = flatStyleOptions(
     value => t(styleLabelKey(value)),
+    family => t(styleFamilyLabelKey(family)),
     i18n.language,
     t('generateScore.noStyle'),
   );

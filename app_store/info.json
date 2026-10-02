@@ -1,85 +1,125 @@
 {
   "metadata": {
-    "version": "1.7",
-    "lastUpdated": "2026-07-12",
-    "whatsNew": "Sensei made adjustments to the layout"
+    "version": "1.0.1",
+    "lastUpdated": "2026-10-02",
+    "whatsNew": "Welcome to Moosiac: compose with AI, then edit every note in a full notation editor."
   },
   "capture": {
     "loopOrder": "languages_first"
   },
   "build": {
-    "metroPort": 8082,
+    "metroPort": 8091,
     "ios": {
-      "appName": "Sudojo",
-      "workspace": "Sudojo.xcworkspace",
-      "scheme": "Sudojo"
+      "appName": "Moosiac",
+      "workspace": "music_app_rn.xcworkspace",
+      "scheme": "music_app_rn"
     },
     "macos": {
-      "workspace": "Sudojo.xcworkspace",
-      "scheme": "Sudojo-macOS"
+      "appName": "Moosiac",
+      "workspace": "music_app_rn.xcworkspace",
+      "scheme": "music_app_rn-macOS"
     }
   },
   "app": {
-    "name": "Sudojo",
-    "bundleId": "com.sudobility.sudojo",
-    "packageName": "com.sudobility.sudojo",
+    "name": "Moosiac",
+    "bundleId": "com.sudobility.moosiac",
+    "packageName": "com.sudobility.moosiac",
     "developer": "Sudobility",
-    "website": "https://sudojo.com",
-    "supportUrl": "https://sudojo.com/support",
-    "marketingUrl": "https://sudojo.com",
-    "privacyPolicyUrl": "https://sudojo.com/privacy",
-    "termsOfServiceUrl": "https://sudojo.com/terms",
-    "contactEmail": "support@sudojo.com",
-    "privacyEmail": "privacy@sudojo.com",
+    "website": "https://moosiac.com",
+    "supportUrl": "https://moosiac.com/support",
+    "marketingUrl": "https://moosiac.com",
+    "privacyPolicyUrl": "https://moosiac.com/privacy",
+    "termsOfServiceUrl": "https://moosiac.com/terms",
+    "contactEmail": "support@moosiac.com",
+    "privacyEmail": "privacy@moosiac.com",
     "copyright": "© 2025-2026 Sudobility",
-    "scheme": "sudojo"
+    "scheme": "moosiac"
   },
   "subscriptions": {
-    "products": [
-      {
-        "key": "blue_belt_monthly",
-        "appleProductId": "blue_belt_monthly",
-        "googleSku": "blue_belt_monthly"
-      },
-      {
-        "key": "blue_belt_annual",
-        "appleProductId": "blue_belt_annual",
-        "googleSku": "blue_belt_annual"
-      },
-      {
-        "key": "red_belt_monthly",
-        "appleProductId": "red_belt_monthly",
-        "googleSku": "red_belt_monthly"
-      },
-      {
-        "key": "red_belt_annual",
-        "appleProductId": "red_belt_annual",
-        "googleSku": "red_belt_annual"
-      }
-    ]
+    "products": []
   },
   "supportedLanguages": [
-    { "code": "en", "name": "English", "primary": true },
-    { "code": "zh", "name": "Chinese (Simplified)", "primary": false },
-    { "code": "zh-Hant", "name": "Chinese (Traditional)", "primary": false },
-    { "code": "ja", "name": "Japanese", "primary": false },
-    { "code": "ko", "name": "Korean", "primary": false },
-    { "code": "es", "name": "Spanish", "primary": false },
-    { "code": "fr", "name": "French", "primary": false },
-    { "code": "de", "name": "German", "primary": false },
-    { "code": "pt", "name": "Portuguese", "primary": false },
-    { "code": "it", "name": "Italian", "primary": false },
-    { "code": "ru", "name": "Russian", "primary": false },
-    { "code": "sv", "name": "Swedish", "primary": false },
-    { "code": "th", "name": "Thai", "primary": false },
-    { "code": "uk", "name": "Ukrainian", "primary": false },
-    { "code": "vi", "name": "Vietnamese", "primary": false }
+    {
+      "code": "en",
+      "name": "English",
+      "primary": true
+    },
+    {
+      "code": "zh",
+      "name": "Chinese (Simplified)",
+      "primary": false
+    },
+    {
+      "code": "zh-Hant",
+      "name": "Chinese (Traditional)",
+      "primary": false
+    },
+    {
+      "code": "ja",
+      "name": "Japanese",
+      "primary": false
+    },
+    {
+      "code": "ko",
+      "name": "Korean",
+      "primary": false
+    },
+    {
+      "code": "es",
+      "name": "Spanish",
+      "primary": false
+    },
+    {
+      "code": "fr",
+      "name": "French",
+      "primary": false
+    },
+    {
+      "code": "de",
+      "name": "German",
+      "primary": false
+    },
+    {
+      "code": "pt",
+      "name": "Portuguese",
+      "primary": false
+    },
+    {
+      "code": "it",
+      "name": "Italian",
+      "primary": false
+    },
+    {
+      "code": "ru",
+      "name": "Russian",
+      "primary": false
+    },
+    {
+      "code": "sv",
+      "name": "Swedish",
+      "primary": false
+    },
+    {
+      "code": "th",
+      "name": "Thai",
+      "primary": false
+    },
+    {
+      "code": "uk",
+      "name": "Ukrainian",
+      "primary": false
+    },
+    {
+      "code": "vi",
+      "name": "Vietnamese",
+      "primary": false
+    }
   ],
   "appleAppStore": {
-    "primaryCategory": "Games",
-    "primarySubcategory": "Puzzle",
-    "secondaryCategory": "Education",
-    "secondarySubcategory": "Educational Games",
+    "primaryCategory": "Music",
+    "primarySubcategory": null,
+    "secondaryCategory": "Productivity",
+    "secondarySubcategory": null,
     "contentRights": {
       "doesNotContainThirdPartyContent": true,
       "hasRightsToAllContent": true
@@ -114,67 +154,108 @@
       "contactFirstName": "",
       "contactLastName": "",
       "contactPhone": "",
-      "contactEmail": "support@sudojo.com",
+      "contactEmail": "support@moosiac.com",
       "demoAccountName": "",
       "demoAccountPassword": "",
-      "notes": "The app can be used without an account (anonymous sign-in). Creating an account is optional and enables cross-device progress sync. Subscription is optional — free tier provides daily puzzles and beginner-to-challenging difficulty levels."
+      "notes": "Moosiac can be used without an account: the notation editor, playback, import, export and printing all work offline, and scores are saved on the device. Signing in (Google or Apple) is optional and adds cloud projects, snapshots, community sharing and AI generation. AI generation uses credits; the app contains no in-app purchases and does not link to or advertise any purchase outside the app. The microphone usage description is declared because a bundled audio library contains recording code; the app never records audio. The photo library is accessed only through the system picker, to choose a profile picture."
     },
     "pricing": {
       "priceTier": 0,
       "availableInAllTerritories": true
     },
     "appPrivacy": {
-      "privacyPolicyUrl": "https://sudojo.com/privacy",
+      "privacyPolicyUrl": "https://moosiac.com/privacy",
       "dataCollection": {
         "collectsData": true,
         "dataTypes": [
           {
             "type": "Contact Info",
             "subtype": "Email Address",
-            "purposes": ["App Functionality"],
+            "purposes": [
+              "App Functionality"
+            ],
             "linked": true,
             "tracking": false
           },
           {
             "type": "Contact Info",
             "subtype": "Name",
-            "purposes": ["App Functionality"],
+            "purposes": [
+              "App Functionality"
+            ],
             "linked": true,
             "tracking": false
           },
           {
             "type": "Identifiers",
             "subtype": "User ID",
-            "purposes": ["App Functionality"],
+            "purposes": [
+              "App Functionality"
+            ],
+            "linked": true,
+            "tracking": false
+          },
+          {
+            "type": "User Content",
+            "subtype": "Photos or Videos",
+            "purposes": [
+              "App Functionality"
+            ],
+            "linked": true,
+            "tracking": false
+          },
+          {
+            "type": "User Content",
+            "subtype": "Audio Data",
+            "purposes": [
+              "App Functionality"
+            ],
+            "linked": true,
+            "tracking": false
+          },
+          {
+            "type": "User Content",
+            "subtype": "Other User Content",
+            "purposes": [
+              "App Functionality"
+            ],
+            "linked": true,
+            "tracking": false
+          },
+          {
+            "type": "Purchases",
+            "subtype": "Purchase History",
+            "purposes": [
+              "App Functionality"
+            ],
             "linked": true,
             "tracking": false
           },
           {
             "type": "Usage Data",
             "subtype": "Product Interaction",
-            "purposes": ["Analytics", "App Functionality"],
+            "purposes": [
+              "Analytics"
+            ],
             "linked": true,
             "tracking": false
           },
           {
             "type": "Diagnostics",
             "subtype": "Crash Data",
-            "purposes": ["Analytics"],
+            "purposes": [
+              "Analytics"
+            ],
             "linked": false,
             "tracking": false
           },
           {
             "type": "Diagnostics",
             "subtype": "Performance Data",
-            "purposes": ["Analytics"],
+            "purposes": [
+              "Analytics"
+            ],
             "linked": false,
-            "tracking": false
-          },
-          {
-            "type": "Purchases",
-            "subtype": "Purchase History",
-            "purposes": ["App Functionality"],
-            "linked": true,
             "tracking": false
           }
         ]
@@ -183,30 +264,40 @@
     "platforms": {
       "ios": {
         "minimumOsVersion": "15.1",
-        "devices": ["iPhone", "iPod touch"],
+        "devices": [
+          "iPhone"
+        ],
+        "orientation": "landscape",
         "supportsAppleWatch": false,
         "supportsGameCenter": false,
         "supportsUniversalPurchase": true
       },
       "ipados": {
         "minimumOsVersion": "15.1",
-        "devices": ["iPad"],
-        "supportsMultitasking": true,
-        "supportsSplitView": true,
+        "devices": [
+          "iPad"
+        ],
+        "orientation": "landscape",
+        "supportsMultitasking": false,
+        "supportsSplitView": false,
         "supportsUniversalPurchase": true
       },
       "macos": {
-        "minimumOsVersion": "13.0",
-        "architectures": ["arm64", "x86_64"],
-        "category": "Games",
-        "subcategory": "Puzzle Games",
+        "minimumOsVersion": "14.0",
+        "architectures": [
+          "arm64",
+          "x86_64"
+        ],
+        "category": "Music",
+        "subcategory": null,
+        "sandboxed": true,
         "supportsUniversalPurchase": true
       }
     }
   },
   "googlePlay": {
     "defaultLanguage": "en-US",
-    "applicationCategory": "GAME_PUZZLE",
+    "applicationCategory": "MUSIC_AND_AUDIO",
     "contentRating": {
       "targetAgeGroup": "all",
       "contentDescriptors": {
@@ -214,13 +305,16 @@
         "sexualContent": "none",
         "language": "none",
         "controlledSubstance": "none",
-        "digitalPurchases": "yes",
+        "digitalPurchases": "no",
         "sharesInfo": "no",
         "sharesLocation": "no",
-        "gambling": "none"
+        "gambling": "none",
+        "userInteraction": "yes"
       },
       "expectedRating": "Everyone",
-      "interactiveElements": ["Digital Purchases"]
+      "interactiveElements": [
+        "Users Interact"
+      ]
     },
     "dataSafety": {
       "overview": {
@@ -238,7 +332,10 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": ["App functionality", "Account management"],
+          "purpose": [
+            "App functionality",
+            "Account management"
+          ],
           "ephemeral": false
         },
         {
@@ -247,7 +344,56 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": ["App functionality", "Account management"],
+          "purpose": [
+            "App functionality",
+            "Account management"
+          ],
+          "ephemeral": false
+        },
+        {
+          "category": "Personal info",
+          "type": "User IDs",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": [
+            "App functionality",
+            "Account management"
+          ],
+          "ephemeral": false
+        },
+        {
+          "category": "Photos and videos",
+          "type": "Photos",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": [
+            "App functionality",
+            "Account management"
+          ],
+          "ephemeral": false
+        },
+        {
+          "category": "Audio",
+          "type": "Other audio files",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": [
+            "App functionality"
+          ],
+          "ephemeral": false
+        },
+        {
+          "category": "Files and docs",
+          "type": "Files and docs",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": [
+            "App functionality"
+          ],
           "ephemeral": false
         },
         {
@@ -256,7 +402,9 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": ["App functionality"],
+          "purpose": [
+            "App functionality"
+          ],
           "ephemeral": false
         },
         {
@@ -265,7 +413,20 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": ["Analytics"],
+          "purpose": [
+            "Analytics"
+          ],
+          "ephemeral": false
+        },
+        {
+          "category": "App activity",
+          "type": "Other user-generated content",
+          "collected": true,
+          "shared": false,
+          "required": false,
+          "purpose": [
+            "App functionality"
+          ],
           "ephemeral": false
         },
         {
@@ -274,7 +435,9 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": ["Analytics"],
+          "purpose": [
+            "Analytics"
+          ],
           "ephemeral": false
         },
         {
@@ -283,7 +446,9 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": ["Analytics"],
+          "purpose": [
+            "Analytics"
+          ],
           "ephemeral": false
         },
         {
@@ -292,7 +457,9 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": ["Analytics", "App functionality"],
+          "purpose": [
+            "Analytics"
+          ],
           "ephemeral": false
         }
       ]
@@ -300,29 +467,28 @@
     "pricing": {
       "free": true,
       "containsAds": false,
-      "inAppPurchases": true,
-      "inAppPurchaseRange": "$0.99 - $49.99 per item"
+      "inAppPurchases": false
     },
     "targetAudience": {
-      "targetAge": "all",
+      "targetAge": "13+",
       "appealsToChildren": false,
       "familyProgram": false
     },
     "contactDetails": {
-      "email": "support@sudojo.com",
-      "website": "https://sudojo.com",
-      "privacyPolicy": "https://sudojo.com/privacy"
+      "email": "support@moosiac.com",
+      "website": "https://moosiac.com",
+      "privacyPolicy": "https://moosiac.com/privacy"
     }
   },
   "microsoftStore": {
-    "category": "Games",
-    "subcategory": "Puzzle & trivia",
+    "category": "Music",
+    "subcategory": null,
     "properties": {
-      "category": "Games",
-      "subcategory": "Puzzle & trivia",
-      "privacyPolicyUrl": "https://sudojo.com/privacy",
-      "supportContactUrl": "https://sudojo.com/support",
-      "websiteUrl": "https://sudojo.com"
+      "category": "Music",
+      "subcategory": null,
+      "privacyPolicyUrl": "https://moosiac.com/privacy",
+      "supportContactUrl": "https://moosiac.com/support",
+      "websiteUrl": "https://moosiac.com"
     },
     "ageRating": {
       "iarc": "3+",
@@ -334,17 +500,20 @@
         "language": "none",
         "discrimination": "none",
         "gambling": "none",
-        "onlineInteractivity": "none",
-        "inAppPurchases": true
+        "onlineInteractivity": "users interact",
+        "inAppPurchases": false
       }
     },
     "pricing": {
       "free": true,
-      "inAppPurchases": true
+      "inAppPurchases": false
     },
     "systemRequirements": {
       "minimumOs": "Windows 10 version 17763.0",
-      "architecture": ["x64", "ARM64"]
+      "architecture": [
+        "x64",
+        "ARM64"
+      ]
     }
   }
 }

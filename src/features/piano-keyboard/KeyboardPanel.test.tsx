@@ -21,6 +21,8 @@ import { renderWithApp, testDocument } from '@/test/render';
 import type { MusicDocument } from '@/documents/document';
 import { KeyboardPanel } from './KeyboardPanel';
 import { PianoKeyboard } from './PianoKeyboard';
+import { StyleSheet } from 'react-native';
+import { PITCH_LABEL_GUTTER } from '@sudobility/music_drawing';
 
 function setup(collapsed = true) {
   const view = renderWithApp(
@@ -151,25 +153,32 @@ describe('size', () => {
     expect(scroller.props.horizontal).toBe(true);
   });
 
-  it('writes nothing for a press that turns into a scroll', () => {
-    const { noteOff } = recordingPlayer();
-    const document = testDocument();
-    const view = openKeyboard(document);
-    const c4 = view
-      .getAllByRole('button')
-      .find(k => k.props.accessibilityLabel === 'C4')!;
+  it('hides the scrollbar and draws a thin indicator when the keys overflow', () => {
+    // The panel is laid out 900 wide; a piano is 2288.
+    const view = openKeyboard(testDocument());
     const scroller = view.getByTestId('piano-keyboard-panel').children[0];
     if (scroller === undefined || typeof scroller === 'string')
       throw new Error('no scroller');
+    expect(scroller.props.showsHorizontalScrollIndicator).toBe(false);
+    const indicator = view.getByTestId('piano-keyboard-scroll-indicator');
+    expect(StyleSheet.flatten(indicator.props.style).height).toBe(3);
+  });
 
-    act(() => {
-      fireEvent(c4, 'pressIn');
-      fireEvent(scroller, 'scrollBeginDrag');
-      fireEvent(c4, 'pressOut');
-    });
+  it('scrolls from the strip under the keys, not by a finger on the keys', () => {
+    // On a touch screen a finger on the keys plays them, so the scroll view's
+    // own dragging is off; the strip (labels plus `KEYBOARD_SCROLL_STRIP`) is
+    // what scrolls. The test platform is a touch one.
+    const view = openKeyboard(testDocument());
+    const scroller = view.getByTestId('piano-keyboard-panel').children[0];
+    if (scroller === undefined || typeof scroller === 'string')
+      throw new Error('no scroller');
+    expect(scroller.props.scrollEnabled).toBe(false);
 
-    expect(noteOff).toHaveBeenCalledWith(60);
-    expect(allNotes(document.store.getState().score!)).toHaveLength(0);
+    const strip = view.getByTestId('piano-keyboard-scroll-strip');
+    expect(StyleSheet.flatten(strip.props.style).height).toBe(
+      PITCH_LABEL_GUTTER,
+    );
+    expect(typeof strip.props.onResponderMove).toBe('function');
   });
 });
 

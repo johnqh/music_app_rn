@@ -10,10 +10,16 @@ import { jest } from '@jest/globals';
 import { fireEvent } from '@testing-library/react-native';
 import { createEmptyScore } from '@sudobility/music_types';
 import { renderWithApp } from '@/test/render';
+import { devicePrefs } from '@/config/useDevicePrefs';
 import { PrintSheet } from './PrintSheet';
 
 describe('PrintSheet', () => {
-  it('prints the visible tracks of the whole score on portrait A4 by default', () => {
+  afterEach(() => devicePrefs.getState().setPaperSize(null));
+
+  it('prints the visible tracks of the whole score, portrait, on the remembered paper', () => {
+    // The paper is a device pref; with none chosen it follows the region,
+    // which a test does not control, so this one is chosen.
+    devicePrefs.getState().setPaperSize('a4');
     const score = createEmptyScore({ title: 'A' });
     const onPrint = jest.fn();
     const visible = [score.tracks[0]!.id];
@@ -38,5 +44,19 @@ describe('PrintSheet', () => {
       paper: 'a4',
       orientation: 'portrait',
     });
+  });
+
+  it('remembers a paper chosen here for the next printout', () => {
+    devicePrefs.getState().setPaperSize('letter');
+    const view = renderWithApp(
+      <PrintSheet
+        open
+        score={createEmptyScore({ title: 'A' })}
+        visibleTrackIds={[]}
+        onClose={jest.fn()}
+        onPrint={jest.fn()}
+      />,
+    );
+    expect(view.getByText('Letter')).toBeTruthy();
   });
 });

@@ -18,7 +18,15 @@ import {
   pitchToMidi,
 } from '@sudobility/music_types';
 import type { SoundingNote, UUID } from '@sudobility/music_types';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Animated,
+  PanResponder,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
+import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { useStore } from 'zustand';
 import {
   EMPTY_GROUP,
@@ -34,7 +42,10 @@ import {
   KEYBOARD_MAX_HEIGHT,
   LIGHT_RENDER_THEME,
   keyboardKeys,
+  KEYBOARD_SCROLL_INDICATOR_HEIGHT,
+  keyboardScrollIndicator,
   keyboardScrollStart,
+  KineticScroller,
 } from '@sudobility/music_drawing';
 import { getAppServices } from '@/config/initialize';
 import { useTheme } from '@/config/ThemeContext';
@@ -293,33 +304,89 @@ export function KeyboardPanel({
     [onKeyDown, release],
   );
 
+  const scroller = useRef<ScrollView>(null);
+  /*
+    Where the keyboard is scrolled to, for the indicator under the strip —
+    drawn in place of the platform's scrollbar, which is hidden: a full bar of
+    chrome across a panel 160 high, for something a drag in the strip already
+    does.
+  */
+  const [scrollX, setScrollX] = useState(0);
+
+  /*
+    Drag-scrolling, from the strip under the keys (`labelGutter` in
+    music_drawing — the labels and the scroll strip, which no key covers).
+
+    On a touch screen it is the only way to scroll: the scroll view's own
+    dragging is off there, because a finger on the keys plays them, and a
+    glissando that turned into a scroll would be neither. On macOS and Windows
+    the scroll view keeps its trackpad and wheel scrolling, and the strip is
+    what a mouse drags, which no scroll view there does by itself.
+
+    With momentum, as a touch screen scrolls — music_drawing's
+    `KineticScroller`, the web keyboard's too: it keeps going after the finger
+    lets go, slowing down, and springs back from past either end. Android does
+    not scroll past an end, so the overscroll is drawn by shifting the
+    content (`overshoot`, an animated value, so a frame does not re-render).
+  */
+  const overshoot = useRef(new Animated.Value(0)).current;
+  const geometry = useRef({ view: size.width, content: keyboard.width });
+  geometry.current = { view: size.width, content: keyboard.width };
+  const kinetic = useMemo(
+    () =>
+      new KineticScroller({
+        max: () =>
+          Math.max(0, geometry.current.content - geometry.current.view),
+        viewport: () => geometry.current.view,
+        apply: position => {
+          const max = Math.max(
+            0,
+            geometry.current.content - geometry.current.view,
+          );
+          const x = Math.min(Math.max(position, 0), max);
+          scroller.current?.scrollTo({ x, animated: false });
+          overshoot.setValue(x - position);
+          setScrollX(x);
+        },
+      }),
+    [overshoot],
+  );
+  useEffect(() => () => kinetic.stop(), [kinetic]);
+
   /*
     A keyboard wider than the panel opens on its middle, as a narrower one is
     centred — again whenever its width changes, which a new instrument's range
     does. Not on every render: a reader who scrolled to the bass keeps it.
   */
-  const scroller = useRef<ScrollView>(null);
   useEffect(() => {
     if (!measured) return;
-    scroller.current?.scrollTo({
-      x: keyboardScrollStart(size.width, keyboard.width),
-      animated: false,
-    });
-  }, [measured, size.width, keyboard.width]);
+    kinetic.jumpTo(keyboardScrollStart(size.width, keyboard.width));
+  }, [measured, size.width, keyboard.width, kinetic]);
 
-  /*
-    A drag that turns into a scroll is not a note. The key under the finger
-    was pressed when it went down and is released when the scroll takes the
-    touch, and that release would write it. Dropping the group here leaves the
-    release nothing to write; the audition stops as a lift would stop it.
-  */
-  const onScrollBeginDrag = useCallback(() => {
-    for (const midi of group.current.down) {
-      getAppServices().player.noteOff(midi);
-    }
-    group.current = EMPTY_GROUP;
-    setHeld(NO_PITCHES);
-  }, []);
+  // A trackpad or wheel scroll (macOS, Windows): the next drag starts there.
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (kinetic.active) return;
+      kinetic.sync(event.nativeEvent.contentOffset.x);
+      setScrollX(event.nativeEvent.contentOffset.x);
+    },
+    [kinetic],
+  );
+
+  const strip = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+        // A scroll view asking for the touch mid-drag does not get it.
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => kinetic.grab(),
+        onPanResponderMove: (_event, gesture) => kinetic.drag(gesture.dx),
+        onPanResponderRelease: () => kinetic.release(),
+        onPanResponderTerminate: () => kinetic.release(),
+      }),
+    [kinetic],
+  );
 
   /*
     Nothing at all when collapsed.
@@ -332,6 +399,10 @@ export function KeyboardPanel({
   */
   if (collapsed) return null;
 
+  const indicator = measured
+    ? keyboardScrollIndicator(size.width, keyboard.width, scrollX)
+    : null;
+
   return (
     // `testID` so the panel is addressable as a whole: its keys are not drawn
     // until it has been measured, and a test renderer measures nothing, so
@@ -341,7 +412,10 @@ export function KeyboardPanel({
         ref={scroller}
         horizontal
         onLayout={onLayout}
-        onScrollBeginDrag={onScrollBeginDrag}
+        onScroll={onScroll}
+        scrollEventThrottle={16}
+        scrollEnabled={POINTER_SCROLLS}
+        showsHorizontalScrollIndicator={false}
         style={{ height }}
         // Grows to the panel's width so a keyboard narrower than it can be
         // centred; a wider one is wider than this and simply scrolls.
@@ -350,27 +424,62 @@ export function KeyboardPanel({
         keyboardShouldPersistTaps="always"
       >
         {measured ? (
-          <PianoKeyboard
-            keys={keyboard.keys}
-            width={keyboard.width}
-            height={height}
-            theme={theme}
-            lit={lit}
-            selected={selectedMidis}
-            onKeyDown={onKeyDown}
-            onKeyUp={onKeyUp}
-            onKeyTap={onKeyTap}
-          />
+          <Animated.View
+            style={{
+              width: keyboard.width,
+              height,
+              transform: [{ translateX: overshoot }],
+            }}
+          >
+            <PianoKeyboard
+              keys={keyboard.keys}
+              width={keyboard.width}
+              height={height}
+              theme={theme}
+              lit={lit}
+              selected={selectedMidis}
+              onKeyDown={onKeyDown}
+              onKeyUp={onKeyUp}
+              onKeyTap={onKeyTap}
+            />
+            <View
+              testID="piano-keyboard-scroll-strip"
+              style={[styles.strip, { height: keyboard.labelGutter }]}
+              {...strip.panHandlers}
+            />
+          </Animated.View>
         ) : null}
       </ScrollView>
+      {indicator ? (
+        <View
+          testID="piano-keyboard-scroll-indicator"
+          pointerEvents="none"
+          className="bg-muted-foreground absolute rounded-full opacity-50"
+          style={{
+            bottom: 2,
+            left: indicator.left,
+            width: indicator.width,
+            height: KEYBOARD_SCROLL_INDICATOR_HEIGHT,
+          }}
+        />
+      ) : null}
     </View>
   );
 }
 
 const NO_PITCHES: ReadonlySet<number> = new Set();
 
+/**
+ * Whether the scroll view scrolls by itself: on macOS and Windows, by trackpad
+ * and wheel. Off on a touch screen, where its dragging would take a finger
+ * meant for the keys — the strip scrolls there.
+ */
+const POINTER_SCROLLS = Platform.OS === 'macos' || Platform.OS === 'windows';
+
 const styles = StyleSheet.create({
   centred: { flexGrow: 1, justifyContent: 'center' },
+  // Over the labels, which take no touches of their own.
+  strip: { position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 2 },
 });
 
 /** The kept pitch set, in the shape `litKeys` reads: already this track's. */

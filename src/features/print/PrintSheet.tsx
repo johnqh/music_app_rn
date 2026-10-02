@@ -13,8 +13,11 @@
  * rehearsal marks and page turns laid out for that player; the whole score is
  * the visible tracks in concert pitch. This sheet only collects the answers.
  *
- * Held here rather than remembered: a print is a one-off, and a paper size
- * carried silently into next week's printout is a surprise.
+ * The paper is remembered (the `paperSize` device pref): a reader's printer
+ * does not change between printouts. Until they choose one it follows the
+ * device's region — Letter where the region prints on Letter, A4 elsewhere
+ * (`defaultPaperSizeFor`). What to print and which way up are held here: they
+ * are about this printout, not the printer.
  */
 import { useState } from 'react';
 import { View } from 'react-native';
@@ -24,7 +27,13 @@ import { WHOLE_SCORE } from '@sudobility/music_drawing';
 import type { PrintPlanOptions } from '@sudobility/music_drawing';
 import type { Score } from '@sudobility/music_types';
 import { Field } from '@/features/inspector/Field';
-import { ORIENTATION_OPTIONS, PAPER_OPTIONS } from '@sudobility/music_types';
+import {
+  ORIENTATION_OPTIONS,
+  PAPER_OPTIONS,
+  defaultPaperSizeFor,
+} from '@sudobility/music_types';
+import { getDeviceLocaleTags } from '@sudobility/building_blocks_rn';
+import { devicePrefs, useDevicePrefs } from '@/config/useDevicePrefs';
 import type { PaperOrientation, PaperSize } from '@sudobility/music_types';
 
 export type PrintSheetProps = {
@@ -45,7 +54,13 @@ export function PrintSheet({
 }: PrintSheetProps) {
   const { t } = useTranslation();
   const [scope, setScope] = useState<string>(WHOLE_SCORE);
-  const [paper, setPaper] = useState<PaperSize>('a4');
+  const chosenPaper = useDevicePrefs(s => s.paperSize);
+  const [devicePaper] = useState(() =>
+    defaultPaperSizeFor(getDeviceLocaleTags()),
+  );
+  const paper = chosenPaper ?? devicePaper;
+  const setPaper = (value: PaperSize) =>
+    devicePrefs.getState().setPaperSize(value);
   const [orientation, setOrientation] = useState<PaperOrientation>('portrait');
 
   // A part whose track has since been deleted falls back to the whole score

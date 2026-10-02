@@ -89,10 +89,26 @@ export function ProjectsSplitView({
   // remembering to add the subscription back.
   useActiveDocument();
   const creation = useServerProjectCreation();
-  const [selected, setSelected] = useState<PaneKey>('new');
+  const signedIn = user !== null;
+  /*
+    Signed in, the reader's own projects are what they came for, so the list
+    opens on My Projects; signed out there are none, and New is the start.
+    The session is often restored a moment after mount, so until the reader
+    picks something themselves the selection follows it rather than staying
+    on whatever the first render guessed.
+  */
+  const homePane: PaneKey = signedIn ? 'myProjects' : 'new';
+  const [selected, setSelectedState] = useState<PaneKey>(homePane);
+  const [picked, setPicked] = useState(false);
+  const setSelected = useCallback((pane: PaneKey) => {
+    setPicked(true);
+    setSelectedState(pane);
+  }, []);
+  useEffect(() => {
+    if (!picked) setSelectedState(homePane);
+  }, [picked, homePane]);
   const [failure, setFailure] = useState<string | null>(null);
 
-  const signedIn = user !== null;
   // A model writes into a project on the server, so generating needs an
   // account with a server behind it — the same rule `MenuFileCommands`'s
   // File-menu New uses.
@@ -104,9 +120,11 @@ export function ProjectsSplitView({
     just used, or a My Projects pane behind a session that just ended.
   */
   useEffect(() => {
-    if (signedIn && selected === 'connect') setSelected('myProjects');
-    if (!signedIn && selected === 'myProjects') setSelected('connect');
-  }, [signedIn, selected]);
+    // Until the reader picks, `homePane` above already follows the session.
+    if (!picked) return;
+    if (signedIn && selected === 'connect') setSelectedState('myProjects');
+    if (!signedIn && selected === 'myProjects') setSelectedState('connect');
+  }, [picked, signedIn, selected]);
 
   const requestedPane = requested?.pane;
   const requestedAt = requested?.at;
@@ -115,12 +133,17 @@ export function ProjectsSplitView({
   }, [requestedPane, requestedAt]);
 
   const { documents } = useDocuments();
-  const offersOpen = single && documents.length > 0;
+  /*
+    Not offered when signed in: the open project is one of the reader's own,
+    and My Projects already lists it — two entries leading to one project.
+  */
+  const offersOpen = single && documents.length > 0 && !signedIn;
   const { guard, prompt } = useSingleDocumentGuard(single);
-  // The last open document was closed while its pane was showing.
+  // The last open document was closed while its pane was showing, or the
+  // reader signed in and the pane went away.
   useEffect(() => {
-    if (!offersOpen && selected === 'open') setSelected('new');
-  }, [offersOpen, selected]);
+    if (!offersOpen && selected === 'open') setSelectedState(homePane);
+  }, [offersOpen, selected, homePane]);
 
   const openExisting = useCallback(
     (id: string) => {

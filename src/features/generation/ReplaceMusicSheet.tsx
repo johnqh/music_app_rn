@@ -28,17 +28,18 @@ import {
 import {
   GENERATE_SCORE_COMPLEXITY_OPTIONS,
   GENERATE_SCORE_MOOD_OPTIONS,
-  GENERATE_SCORE_STYLE_OPTIONS,
   NO_MARK,
   REPLACE_PRESET_KEYS,
   buildReplaceSubmission,
   complexityLabelKey,
   defaultReplaceSubmission,
+  flatStyleOptions,
   labelledOptions,
   moodLabelKey,
   optionalFromPicker,
   optionalToPicker,
   replacePresetLabelKey,
+  styleFamilyLabelKey,
   styleLabelKey,
 } from '@sudobility/music_lib';
 import type {
@@ -167,14 +168,15 @@ export function ReplaceMusicSheet({
         </Field>
 
         {/* Translated and sorted, with "none" pinned above — the raw values
-            (`electroSwing`) were what this picker used to show. */}
+            (`electroSwing`) were what this picker used to show. A native
+            Select draws no headings, so each style names its family. */}
         <Field label={t('generateScore.style')}>
           <Select
             value={optionalToPicker(draft.style)}
             accessibilityLabel={t('generateScore.style')}
-            options={labelledOptions(
-              GENERATE_SCORE_STYLE_OPTIONS,
+            options={flatStyleOptions(
               value => t(styleLabelKey(value)),
+              family => t(styleFamilyLabelKey(family)),
               i18n.language,
               t('generateScore.noStyle'),
             )}
