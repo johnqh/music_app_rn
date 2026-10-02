@@ -81,7 +81,7 @@ function nativeFirebaseOnMobileOnly(packageName) {
   };
 }
 
-module.exports = {
+const config = {
   dependencies: {
     '@react-native-documents/picker': {
       platforms: { macos: null, windows: null },
@@ -136,3 +136,28 @@ module.exports = {
     ios: { sourceDir: 'ios', automaticPodsInstallation: false },
   },
 };
+
+/*
+  A macOS build: every package switched off for macOS is switched off for iOS
+  too, because a macOS build reads the iOS settings.
+
+  react-native-macos autolinks pods from each package's `platforms.ios`, and
+  codegen skips a library only when its config for the platform it generates,
+  `ios`, is `null`. So `macos: null` alone reaches neither: the Mac app
+  autolinked RNFirebase and the rest, and codegen listed their TurboModules in
+  `RCTModuleProviders` with no class behind them, a fatal "Module provider
+  RNFBAnalyticsModule cannot be found in the runtime" on a Debug launch.
+
+  `RN_MACOS_BUILD=1` is set by `macos/Podfile` (for `pod install`) and
+  `macos/.xcode.env` (for the codegen build phase, which re-runs on every
+  build). iOS and Android builds never set it, and keep `ios` untouched.
+*/
+if (process.env.RN_MACOS_BUILD === '1') {
+  for (const dependency of Object.values(config.dependencies)) {
+    if (dependency.platforms && dependency.platforms.macos === null) {
+      dependency.platforms = { ...dependency.platforms, ios: null };
+    }
+  }
+}
+
+module.exports = config;

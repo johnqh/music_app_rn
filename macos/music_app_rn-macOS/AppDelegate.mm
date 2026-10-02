@@ -77,7 +77,7 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
-  self.moduleName = @"MoosiacRN"; // matches app.json and index.js; the macOS project was generated under the repo name
+  self.moduleName = @"MoosiacRN"; // the JS registration name: matches app.json and index.js
   // You can add your custom initial props in the dictionary below.
   // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
@@ -98,6 +98,16 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
     close, the next project chosen had no window to appear in.
   */
   self.window.releasedWhenClosed = NO;
+
+  /*
+    The app's name, not the module's. `super` titles the window with
+    `moduleName`, which is the JS registration name ("MoosiacRN") and has to
+    stay that, so until a document's title arrives from `WindowTitleSync` the
+    window read "MoosiacRN". `CFBundleName` is `$(PRODUCT_NAME)`, "Moosiac" —
+    the name the Dock and the app menu already show.
+  */
+  NSString *appName = NSBundle.mainBundle.infoDictionary[@"CFBundleName"];
+  if (appName.length > 0) self.window.title = appName;
 }
 
 /*

@@ -39,7 +39,7 @@ $RNFirebaseDisableSPM = true
 
 use_frameworks! :linkage => :static
 
-target 'MoosiacRN' do
+target 'music_app_rn' do
   config = use_native_modules!
 
   # Google Sign-In brings `AppCheckCore`, a Swift pod, and a Swift pod built

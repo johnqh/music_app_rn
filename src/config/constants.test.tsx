@@ -16,7 +16,7 @@ jest.mock('firebase/auth', () => ({}));
   the two drifting apart.
 */
 const ROOT = join(__dirname, '..', '..');
-const IOS = join(ROOT, 'ios', 'MoosiacRN');
+const IOS = join(ROOT, 'ios', 'music_app_rn');
 
 function plistString(file: string, key: string): string {
   const m = readFileSync(file, 'utf8').match(

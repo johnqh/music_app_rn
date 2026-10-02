@@ -16,8 +16,8 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "514201482437B4B30078DB4F"
                BuildableName = "Moosiac.app"
-               BlueprintName = "MoosiacRN-macOS"
-               ReferencedContainer = "container:MoosiacRN.xcodeproj">
+               BlueprintName = "music_app_rn-macOS"
+               ReferencedContainer = "container:music_app_rn.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -46,8 +46,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "514201482437B4B30078DB4F"
             BuildableName = "Moosiac.app"
-            BlueprintName = "MoosiacRN-macOS"
-            ReferencedContainer = "container:MoosiacRN.xcodeproj">
+            BlueprintName = "music_app_rn-macOS"
+            ReferencedContainer = "container:music_app_rn.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -63,8 +63,8 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "514201482437B4B30078DB4F"
             BuildableName = "Moosiac.app"
-            BlueprintName = "MoosiacRN-macOS"
-            ReferencedContainer = "container:MoosiacRN.xcodeproj">
+            BlueprintName = "music_app_rn-macOS"
+            ReferencedContainer = "container:music_app_rn.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

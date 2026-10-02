@@ -95,7 +95,7 @@ describe('android orientation', () => {
 });
 
 describe('ios orientation', () => {
-  const plist = readFileSync('ios/MoosiacRN/Info.plist', 'utf8');
+  const plist = readFileSync('ios/music_app_rn/Info.plist', 'utf8');
 
   it.each(IOS_ORIENTATION_KEYS)('%s is landscape only', key => {
     expect(plistArray(plist, key)).toEqual(LANDSCAPE_IOS);

@@ -11,7 +11,7 @@ PODS:
     - PromisesObjC (~> 2.4)
     - PromisesSwift (~> 2.4)
     - RecaptchaInterop (~> 101.0)
-  - building_blocks_rn (0.0.78):
+  - building_blocks_rn (0.0.79):
     - React-Core
   - FBLazyVector (0.81.6)
   - Firebase/CoreOnly (12.18.0):
@@ -2908,7 +2908,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AppAuth: ef4da5a3fc2e10b90c09a0a94a9baeaedc0341d5
   AppCheckCore: be8fce5469f68d7f6a29aa94b25f097409ff7fdc
-  building_blocks_rn: a3bebe29dc1ae9e3d8e885975aeee2b5e8ca8998
+  building_blocks_rn: 03a698608329ed5427ab42312d916181d1b5c131
   FBLazyVector: 14ce6e3675cacb2683ad30272f04274a4ee5b67d
   Firebase: 5523dd53ebe603451b4e1befcd99fa20a5c015cd
   FirebaseABTesting: 7060ad22592c1ae86cccf9cc0f886f470084cbd5
@@ -3026,6 +3026,6 @@ SPEC CHECKSUMS:
   RNWorklets: eb8d899de8701d58c6a634b8468ce2a6db3113b2
   Yoga: 85b4effdaddcb337acfca5ec8e9b4c7b880d5a09
 
-PODFILE CHECKSUM: a87f649bb487079f85163c6e3db3ed4a901e9e3e
+PODFILE CHECKSUM: 93bc1b0d78117c3ad1ad6995ed0fa2dae2cc5dec
 
 COCOAPODS: 1.17.0
