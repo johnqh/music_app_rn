@@ -122,6 +122,58 @@ describe('KeyboardPanel', () => {
 });
 
 /*
+  The size is music_drawing's, the same on every platform: white keys 44 wide
+  however wide the panel, the panel as tall as `AppLayout` says, and a
+  keyboard wider than the panel scrolled rather than squeezed.
+*/
+describe('size', () => {
+  afterEach(() => resetAppServices());
+
+  it('draws 44-wide white keys at the height it is given, in a scroller', () => {
+    const view = renderWithApp(
+      <KeyboardPanel document={testDocument()} collapsed={false} height={80} />,
+    );
+    const scroller = view.getByTestId('piano-keyboard-panel').children[0];
+    if (scroller === undefined || typeof scroller === 'string')
+      throw new Error('no scroller');
+    act(() => {
+      fireEvent(scroller, 'layout', {
+        nativeEvent: { layout: { width: 300, height: 80 } },
+      });
+    });
+    const board = view.UNSAFE_getByType(PianoKeyboard);
+    expect(board.props.height).toBe(80);
+    const whites = board.props.keys.filter(
+      (k: { isBlack: boolean }) => !k.isBlack,
+    );
+    expect(whites[0].width).toBe(44);
+    expect(board.props.width).toBe(whites.length * 44);
+    expect(scroller.props.horizontal).toBe(true);
+  });
+
+  it('writes nothing for a press that turns into a scroll', () => {
+    const { noteOff } = recordingPlayer();
+    const document = testDocument();
+    const view = openKeyboard(document);
+    const c4 = view
+      .getAllByRole('button')
+      .find(k => k.props.accessibilityLabel === 'C4')!;
+    const scroller = view.getByTestId('piano-keyboard-panel').children[0];
+    if (scroller === undefined || typeof scroller === 'string')
+      throw new Error('no scroller');
+
+    act(() => {
+      fireEvent(c4, 'pressIn');
+      fireEvent(scroller, 'scrollBeginDrag');
+      fireEvent(c4, 'pressOut');
+    });
+
+    expect(noteOff).toHaveBeenCalledWith(60);
+    expect(allNotes(document.store.getState().score!)).toHaveLength(0);
+  });
+});
+
+/*
   A key is press-and-hold, and assistive technology cannot hold anything: on
   react-native-macos an activation arrives as `onAccessibilityTap` alone, so
   before this a VoiceOver user could focus a key, hear its name, and never

@@ -18,7 +18,7 @@ import {
   pitchToMidi,
 } from '@sudobility/music_types';
 import type { SoundingNote, UUID } from '@sudobility/music_types';
-import { View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { useStore } from 'zustand';
 import {
   EMPTY_GROUP,
@@ -31,8 +31,10 @@ import {
 import { midiIsInRange } from '@sudobility/music_types';
 import {
   DARK_RENDER_THEME,
+  KEYBOARD_MAX_HEIGHT,
   LIGHT_RENDER_THEME,
   keyboardKeys,
+  keyboardScrollStart,
 } from '@sudobility/music_drawing';
 import { getAppServices } from '@/config/initialize';
 import { useTheme } from '@/config/ThemeContext';
@@ -46,13 +48,6 @@ import {
   samePitchSet,
 } from '@sudobility/music_drawing';
 import type { KeyGroup } from '@sudobility/music_types';
-
-/**
- * The keyboard's whole height, label gutter included — `keyboardKeys` takes the
- * gutter out of it, as the web's does. The container states it so it can be
- * measured.
- */
-const KEYBOARD_HEIGHT = 120;
 
 /**
  * How long an assistive activation sounds for.
@@ -74,9 +69,19 @@ export type KeyboardPanelProps = {
    * so this panel no longer offers one and takes no `onToggle`.
    */
   collapsed: boolean;
+  /**
+   * The panel's whole height, label gutter included — music_drawing's
+   * `keyboardPanelHeight` of the room the score and the keyboard share, which
+   * only `AppLayout` can measure. `keyboardKeys` takes the gutter out of it.
+   */
+  height?: number;
 };
 
-export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
+export function KeyboardPanel({
+  document,
+  collapsed,
+  height = KEYBOARD_MAX_HEIGHT,
+}: KeyboardPanelProps) {
   const { size, onLayout, measured } = useContainerSize();
   const [sounding, setSounding] = useState<ReadonlySet<number>>(NO_PITCHES);
   /** What `sounding` holds, readable from the player's callback without a render. */
@@ -191,20 +196,12 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
    * track holds, keys outside the compass marked, through the track rather
    * than `midiProgram` alone since a percussion track's program is a kit), the
    * naming, the label gutter, and the lettering of a transposing part read in
-   * written pitch. `fit: 'width'` is the one native difference, and the
-   * library's own option for it: the whole range always fits, because a
-   * keyboard you have to scroll is one you cannot play a two-handed chord on.
+   * written pitch. Its white keys are `WHITE_KEY_WIDTH` everywhere: centred in
+   * a wider panel, scrolled in a narrower one.
    */
   const keyboard = useMemo(
-    () =>
-      keyboardKeys({
-        width: size.width,
-        height: KEYBOARD_HEIGHT,
-        track,
-        pitchDisplay,
-        fit: 'width',
-      }),
-    [size.width, track, pitchDisplay],
+    () => keyboardKeys({ height, track, pitchDisplay }),
+    [height, track, pitchDisplay],
   );
   const { playable } = keyboard;
 
@@ -297,6 +294,34 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
   );
 
   /*
+    A keyboard wider than the panel opens on its middle, as a narrower one is
+    centred — again whenever its width changes, which a new instrument's range
+    does. Not on every render: a reader who scrolled to the bass keeps it.
+  */
+  const scroller = useRef<ScrollView>(null);
+  useEffect(() => {
+    if (!measured) return;
+    scroller.current?.scrollTo({
+      x: keyboardScrollStart(size.width, keyboard.width),
+      animated: false,
+    });
+  }, [measured, size.width, keyboard.width]);
+
+  /*
+    A drag that turns into a scroll is not a note. The key under the finger
+    was pressed when it went down and is released when the scroll takes the
+    touch, and that release would write it. Dropping the group here leaves the
+    release nothing to write; the audition stops as a lift would stop it.
+  */
+  const onScrollBeginDrag = useCallback(() => {
+    for (const midi of group.current.down) {
+      getAppServices().player.noteOff(midi);
+    }
+    group.current = EMPTY_GROUP;
+    setHeld(NO_PITCHES);
+  }, []);
+
+  /*
     Nothing at all when collapsed.
 
     This used to be a bar of its own carrying the show/hide control, which cost
@@ -312,12 +337,23 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
     // until it has been measured, and a test renderer measures nothing, so
     // there is no key to point at when asserting where the panel sits.
     <View testID="piano-keyboard-panel" className="border-border border-t">
-      <View onLayout={onLayout} style={{ height: KEYBOARD_HEIGHT }}>
+      <ScrollView
+        ref={scroller}
+        horizontal
+        onLayout={onLayout}
+        onScrollBeginDrag={onScrollBeginDrag}
+        style={{ height }}
+        // Grows to the panel's width so a keyboard narrower than it can be
+        // centred; a wider one is wider than this and simply scrolls.
+        contentContainerStyle={styles.centred}
+        bounces={false}
+        keyboardShouldPersistTaps="always"
+      >
         {measured ? (
           <PianoKeyboard
             keys={keyboard.keys}
             width={keyboard.width}
-            height={KEYBOARD_HEIGHT}
+            height={height}
             theme={theme}
             lit={lit}
             selected={selectedMidis}
@@ -326,12 +362,16 @@ export function KeyboardPanel({ document, collapsed }: KeyboardPanelProps) {
             onKeyTap={onKeyTap}
           />
         ) : null}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
 const NO_PITCHES: ReadonlySet<number> = new Set();
+
+const styles = StyleSheet.create({
+  centred: { flexGrow: 1, justifyContent: 'center' },
+});
 
 /** The kept pitch set, in the shape `litKeys` reads: already this track's. */
 function asSounding(

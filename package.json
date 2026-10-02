@@ -58,7 +58,7 @@
     "@sudobility/entity_client": "^0.0.45",
     "@sudobility/music_client": "^0.4.83",
     "@sudobility/music_codecs": "^0.2.49",
-    "@sudobility/music_drawing": "^0.0.58",
+    "@sudobility/music_drawing": "^0.0.59",
     "@sudobility/music_editing": "^0.0.41",
     "@sudobility/music_io": "^0.9.65",
     "@sudobility/music_lib": "^1.9.70",

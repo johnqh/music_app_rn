@@ -22,6 +22,11 @@
  * could not spare.
  */
 import { Platform, View } from 'react-native';
+import type { LayoutChangeEvent } from 'react-native';
+import {
+  KEYBOARD_MAX_HEIGHT,
+  keyboardPanelHeight,
+} from '@sudobility/music_drawing';
 import {
   findEvent,
   findTrack,
@@ -285,6 +290,29 @@ export function AppLayout({
     so a reader who played from the keyboard reopened it every time.
   */
   const keyboardCollapsed = useDevicePrefs(s => s.keyboardCollapsed);
+  /*
+    The keyboard's height: half of the room the score and the keyboard share —
+    the editor less its fixed bars — up to 120 (`keyboardPanelHeight`). On a
+    screen short enough for half to be less, the two are the same height.
+
+    That room is the score's measured height plus the keyboard's as it was
+    when the score was measured, so a new keyboard height changes only how
+    the room is split, never the room — one layout pass settles it. The
+    keyboard's height is what was drawn, kept in a ref for the layout callback
+    rather than state, which would render once more for nothing.
+  */
+  const [sharedHeight, setSharedHeight] = useState<number | null>(null);
+  const keyboardHeight =
+    sharedHeight === null
+      ? KEYBOARD_MAX_HEIGHT
+      : keyboardPanelHeight(sharedHeight);
+  const drawnKeyboardHeight = useRef(0);
+  drawnKeyboardHeight.current = keyboardCollapsed ? 0 : keyboardHeight;
+  const onScoreLayout = useCallback((event: LayoutChangeEvent) => {
+    const shared =
+      event.nativeEvent.layout.height + drawnKeyboardHeight.current;
+    setSharedHeight(previous => (previous === shared ? previous : shared));
+  }, []);
   /*
     Page by default, matching the web app. Continuous is one wide system, which
     is the right shape for following a single line and the wrong one for reading
@@ -583,7 +611,7 @@ export function AppLayout({
           `` `flex-1 ${row ? 'flex-row' : ''}` ``, which yields no `flex-row`
           utility at all and fails silently into a box of zero height.
         */}
-        <View className="min-h-0 flex-1 flex-row">
+        <View className="min-h-0 flex-1 flex-row" onLayout={onScoreLayout}>
           <View className="min-h-0 min-w-0 flex-1">
             {spatialActive ? (
               <SpatialSection store={document.store} />
@@ -686,7 +714,11 @@ export function AppLayout({
         />
       </SafeAreaView>
       <SafeAreaView edges={sideEdges} className="bg-card">
-        <KeyboardPanel document={document} collapsed={keyboardCollapsed} />
+        <KeyboardPanel
+          document={document}
+          collapsed={keyboardCollapsed}
+          height={keyboardHeight}
+        />
       </SafeAreaView>
       {/*
         The last row clears the bottom as well, where the rule says to (a
