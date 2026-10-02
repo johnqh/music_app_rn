@@ -68,7 +68,13 @@ import { useScoreSelection } from '@/features/score/useScoreSelection';
 import { EditorToolbar } from '@/features/score-editor/EditorToolbar';
 import { LyricEntryBar } from '@/features/score-editor/LyricEntryBar';
 import { TitleBar } from './TitleBar';
-import { hasMenuBar } from '@/app/menu-commands';
+import {
+  hasMenuBar,
+  useMenuAvailability,
+  useMenuCommand,
+} from '@/app/menu-commands';
+import type { MenuCommand } from '@/app/menu-commands';
+import type { ScoreContextAction } from '@sudobility/music_types';
 import { hasNativeHeader } from '@/app/native-header';
 import { hasTabBar } from '@/app/tab-bar';
 import { devicePrefs, useDevicePrefs } from '@/config/useDevicePrefs';
@@ -200,6 +206,12 @@ export type AppLayoutProps = {
    */
   initialScroll?: ScrollOffset | null;
   onLeaveScroll?: (offset: ScrollOffset) => void;
+  /**
+   * False while the editor is mounted but not on screen — behind the Projects
+   * or Settings tab — so the Edit menu neither offers nor runs score actions
+   * nobody can see. Defaults to true.
+   */
+  menuActive?: boolean;
 };
 
 // Held, so the safe-area views are handed the same arrays on every render.
@@ -209,6 +221,22 @@ const TOP_EDGE = ['top'] as const;
 const SIDE_EDGES = ['left', 'right'] as const;
 const BOTTOM_ROW_EDGES = ['left', 'right', 'bottom'] as const;
 const NO_EDGES = [] as const;
+
+/** The Edit menu's clipboard items, by the score action each one runs. */
+const EDIT_MENU_COMMAND: Partial<Record<ScoreContextAction, MenuCommand>> = {
+  cut: 'edit.cut',
+  copy: 'edit.copy',
+  paste: 'edit.paste',
+  delete: 'edit.delete',
+  selectAll: 'edit.selectAll',
+};
+const EDIT_MENU_ACTION: Partial<Record<MenuCommand, ScoreContextAction>> =
+  Object.fromEntries(
+    Object.entries(EDIT_MENU_COMMAND).map(([action, command]) => [
+      command,
+      action,
+    ]),
+  );
 
 export function AppLayout({
   document,
@@ -231,6 +259,7 @@ export function AppLayout({
   printing,
   initialScroll,
   onLeaveScroll,
+  menuActive = true,
 }: AppLayoutProps) {
   /*
     The **whole editor** inside the safe area, not the row the score sits in.
@@ -391,6 +420,48 @@ export function AppLayout({
   const clipboard = useStore(document.store, s => s.clipboard);
   const isPlaying = useStore(document.store, s => s.state) === 'playing';
   const clipboardPrompts = useClipboardPrompts(document.store);
+
+  /*
+    The Edit menu's Cut, Copy, Paste, Delete and Select All, on the score (a
+    desktop build). They reach here only when no text field has focus — one
+    that has answers them itself — and run exactly what the score's own
+    actions menu runs, the cut and paste prompts included. Each is enabled
+    exactly when that menu would enable it.
+  */
+  const scoreActions = useMemo(
+    () =>
+      scoreContextMenuModel({
+        selection,
+        clipboard,
+        playing: isPlaying,
+        score: document.store.getState().score,
+      }),
+    [selection, clipboard, isPlaying, document],
+  );
+  useMenuAvailability(
+    useMemo(
+      () =>
+        menuActive
+          ? scoreActions.entries
+              .filter(entry => entry.enabled && EDIT_MENU_COMMAND[entry.action])
+              .map(entry => EDIT_MENU_COMMAND[entry.action] as MenuCommand)
+          : [],
+      [scoreActions, menuActive],
+    ),
+  );
+  useMenuCommand(
+    useCallback(
+      (command: MenuCommand) => {
+        const action = EDIT_MENU_ACTION[command];
+        if (!action || !menuActive) return;
+        runScoreContextAction(document.store, action, {
+          requestCut: clipboardPrompts.requestCut,
+          requestPaste: clipboardPrompts.requestPaste,
+        });
+      },
+      [document, clipboardPrompts, menuActive],
+    ),
+  );
 
   /*
     A tap on the score, whatever it landed on. music_editing's `routeScorePress`

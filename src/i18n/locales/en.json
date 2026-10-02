@@ -1188,7 +1188,7 @@
   "newProject": {
     "generateForMe": "Generate for me",
     "generateForMeHint": "Let AI write the music. Off, you get an empty score with these instruments.",
-    "generationNeedsServer": "Generating needs a project on the server.",
+    "generationNeedsServer": "Generating needs a project on the server. Log-in required.",
     "title": "New Project",
     "untitled": "Untitled Project",
     "writeLyrics": "Write lyrics",

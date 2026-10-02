@@ -103,6 +103,14 @@ describe('MenuFileCommands nav commands', () => {
     );
   });
 
+  it('opens Docs on nav.docs (Help ▸ Moosiac Help)', () => {
+    setup();
+    act(() => mockHandler!('nav.docs'));
+    expect(mockDispatch).toHaveBeenCalledWith(
+      StackActions.popTo('Main', { screen: 'Docs', params: undefined }),
+    );
+  });
+
   it('ignores every other command', () => {
     setup();
     act(() => mockHandler!('export.midi'));

@@ -6,7 +6,11 @@
  * storage and the transport at once.
  */
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import {
+  useIsFocused,
+  useNavigation,
+  useRoute,
+} from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from 'react-native';
@@ -23,7 +27,7 @@ import { UnsavedQuitGuard } from '@/features/documents/UnsavedQuitGuard';
 import { exportDocument } from '@/documents/export';
 import type { ExportFormat } from '@/documents/export';
 import { ExportSheet } from '@/features/documents/ExportSheet';
-import { useMenuCommand } from '@/app/menu-commands';
+import { useMenuAvailability, useMenuCommand } from '@/app/menu-commands';
 import { useEditorHeader } from './useEditorHeader';
 import { ProjectsPopup } from './ProjectsPopup';
 import { ShortcutsSheet } from '@/features/shortcuts/ShortcutsSheet';
@@ -432,9 +436,37 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     }),
     [],
   );
+  /*
+    What the handler below can do right now, for the menu to enable: the same
+    guards it applies, read reactively. With the editor unmounted (Settings,
+    the Projects tab) none of these is declared and the menu greys them out,
+    where it used to offer items that fired into nothing.
+  */
+  const canUndo = useStore(document.store, s => s.canUndo);
+  const canRedo = useStore(document.store, s => s.canRedo);
+  const playing = useStore(document.store, s => s.state === 'playing');
+  /*
+    The editor stays mounted under the Projects and Settings tabs, so being
+    mounted is not being on screen: its commands are offered only while it
+    is the focused screen, and the handler below ignores them otherwise.
+  */
+  const focused = useIsFocused();
+  const editorCommands = useMemo(() => {
+    const commands: MenuCommand[] = [];
+    if (!focused) return commands;
+    if (score) commands.push(...(Object.keys(MENU_EXPORT) as MenuCommand[]));
+    if (score && canPrint()) commands.push('file.print');
+    if (projectId) commands.push('file.snapshots');
+    if (canUndo && !playing) commands.push('edit.undo');
+    if (canRedo && !playing) commands.push('edit.redo');
+    return commands;
+  }, [MENU_EXPORT, score, projectId, canUndo, canRedo, playing, focused]);
+  useMenuAvailability(editorCommands);
+
   useMenuCommand(
     useCallback(
       (command: MenuCommand) => {
+        if (!focused) return;
         const format = MENU_EXPORT[command];
         if (format) {
           runExport(format);
@@ -458,7 +490,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
           if (projectId) setSnapshotsOpen(true);
         }
       },
-      [MENU_EXPORT, runExport, document, onPrint, projectId],
+      [MENU_EXPORT, runExport, document, onPrint, projectId, focused],
     ),
   );
 
@@ -526,6 +558,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       document={document}
       initialScroll={initialScroll}
       onLeaveScroll={onLeaveScroll}
+      menuActive={focused}
       onSave={onSave}
       onExport={onExport}
       onSettings={onSettings}

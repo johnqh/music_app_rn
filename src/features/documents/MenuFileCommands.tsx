@@ -27,7 +27,7 @@
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
-import { useMenuCommand } from '@/app/menu-commands';
+import { useMenuAvailability, useMenuCommand } from '@/app/menu-commands';
 import type { MenuCommand } from '@/app/menu-commands';
 import {
   DOCUMENT_EXTENSION,
@@ -55,6 +55,16 @@ import { useAuth } from '@/auth/AuthContext';
 import { useServerContext } from '@/config/useServerContext';
 
 const keyValue = createKeyValueStore();
+
+const MENU_FILE_COMMANDS: readonly MenuCommand[] = [
+  'file.new',
+  'file.open',
+  'file.save',
+  'file.saveAs',
+  'nav.projects',
+  'nav.settings',
+  'nav.docs',
+];
 
 export function MenuFileCommands() {
   const { t } = useTranslation();
@@ -104,6 +114,9 @@ export function MenuFileCommands() {
             if (navigationRef.isReady()) goToTab(navigationRef, 'Dashboard');
           } else if (command === 'nav.settings') {
             if (navigationRef.isReady()) goToTab(navigationRef, 'Settings');
+          } else if (command === 'nav.docs') {
+            // Help ▸ Moosiac Help.
+            if (navigationRef.isReady()) goToTab(navigationRef, 'Docs');
           } else if (command === 'file.new') {
             setNewOpen(true);
           } else if (command === 'file.open') {
@@ -141,6 +154,17 @@ export function MenuFileCommands() {
   );
 
   useMenuCommand(run);
+  /*
+    What this listener can answer. New, Open and the three destinations
+    always; Save and Save As only with a document to write.
+  */
+  useMenuAvailability(
+    document
+      ? MENU_FILE_COMMANDS
+      : MENU_FILE_COMMANDS.filter(
+          c => c !== 'file.save' && c !== 'file.saveAs',
+        ),
+  );
 
   /*
     A `moosiac://open` link, or a `.moo` opened from Finder, opens the document

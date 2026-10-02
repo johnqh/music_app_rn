@@ -17,7 +17,7 @@
  */
 import { useCallback, useState } from 'react';
 import type { ImportFormat } from '@/documents/import';
-import { useMenuCommand } from '@/app/menu-commands';
+import { useMenuAvailability, useMenuCommand } from '@/app/menu-commands';
 import type { MenuCommand } from '@/app/menu-commands';
 import type { NativeUploadFile } from '@sudobility/music_client';
 import { useAuth } from '@/auth/AuthContext';
@@ -39,6 +39,13 @@ const IMPORT_FOR: Partial<Record<MenuCommand, ImportFormat>> = {
   'import.musicxml': 'musicxml',
   'import.tracker': 'tracker',
 };
+
+const MENU_IMPORT_COMMANDS: readonly MenuCommand[] = [
+  'import.midi',
+  'import.musicxml',
+  'import.tracker',
+  'import.audio',
+];
 
 export function MenuImportCommands() {
   // What was imported is open; the editor is where it is looked at.
@@ -93,6 +100,9 @@ export function MenuImportCommands() {
       [run],
     ),
   );
+
+  // Every import is available whenever the app is: each opens a new document.
+  useMenuAvailability(MENU_IMPORT_COMMANDS);
 
   /*
     A `moosiac://open` link or a Finder open naming a file the importers read

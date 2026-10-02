@@ -20,6 +20,76 @@
 static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
 
 /*
+  The commands JavaScript can answer right now, published by
+  `useMenuAvailability` (`src/app/menu-commands.ts`). AppKit enables an item
+  whenever somebody implements its selector, and the app delegate implements
+  all of them all the time — so without this, Export, Print, Undo and the rest
+  stayed enabled on the Projects and Settings tabs, where the editor that
+  answers them is not mounted, and a click did nothing. `nil` until JavaScript
+  first reports, which leaves every item enabled as it was before.
+*/
+static NSSet<NSString *> *gEnabledCommands = nil;
+
+/*
+  Which command each of the delegate's selectors posts, so `validateMenuItem:`
+  can ask about a selector without a second list of item ids to keep in step
+  with the storyboard. `nav.projects` is not here on purpose: it is answered
+  natively as well (it brings the window back), so it is never greyed out.
+*/
+static NSDictionary<NSString *, NSString *> *MoosiacCommandsBySelector(void)
+{
+  static NSDictionary<NSString *, NSString *> *commands;
+  static dispatch_once_t once;
+  dispatch_once(&once, ^{
+    commands = @{
+      @"moosiacFileNew:" : @"file.new",
+      @"moosiacFileOpen:" : @"file.open",
+      @"moosiacFileSave:" : @"file.save",
+      @"moosiacFileSaveAs:" : @"file.saveAs",
+      @"moosiacFileSnapshots:" : @"file.snapshots",
+      @"moosiacFilePrint:" : @"file.print",
+      @"moosiacImportMidi:" : @"import.midi",
+      @"moosiacImportMusicXml:" : @"import.musicxml",
+      @"moosiacImportTracker:" : @"import.tracker",
+      @"moosiacImportAudio:" : @"import.audio",
+      @"moosiacExportMidi:" : @"export.midi",
+      @"moosiacExportMusicXml:" : @"export.musicxml",
+      @"moosiacExportXm:" : @"export.xm",
+      @"moosiacExportWav:" : @"export.wav",
+      @"moosiacExportMp3:" : @"export.mp3",
+      @"moosiacEditUndo:" : @"edit.undo",
+      @"moosiacEditRedo:" : @"edit.redo",
+      @"cut:" : @"edit.cut",
+      @"copy:" : @"edit.copy",
+      @"paste:" : @"edit.paste",
+      @"delete:" : @"edit.delete",
+      @"selectAll:" : @"edit.selectAll",
+      @"moosiacNavSettings:" : @"nav.settings",
+      @"moosiacNavDocs:" : @"nav.docs",
+    };
+  });
+  return commands;
+}
+
+/**
+ * Open Recent, for an app with no `NSDocument`s.
+ *
+ * AppKit fills the storyboard's Open Recent menu from the shared
+ * `NSDocumentController` — JavaScript reports each file it opens or saves
+ * (`noteRecentDocument`, below) — and in a sandboxed app it keeps a
+ * security-scoped bookmark with each entry, which is what lets the app reopen
+ * a file the user is no longer choosing in a panel. Choosing an entry asks
+ * the controller to open it as a document, which this app has no class for,
+ * so the request is handed to `application:openURLs:` — the same way in as a
+ * file double-clicked in Finder.
+ *
+ * Must be the first `NSDocumentController` created to become the shared one,
+ * which is why `applicationWillFinishLaunching` makes it.
+ */
+@interface MoosiacDocumentController : NSDocumentController
+@end
+
+/*
   Forward-declared so `applicationDidFinishLaunching` can call it directly —
   the full class (`MoosiacProjectsWindow`, below `AppDelegate`'s own
   `@implementation`) needs `AppDelegate`'s `window`/`rootViewFactory`
@@ -42,6 +112,12 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
 */
 - (void)applicationWillFinishLaunching:(NSNotification *)notification
 {
+  (void)[MoosiacDocumentController new];
+  /*
+    One window, so no window tabs: left on, AppKit adds Show Tab Bar and Show
+    All Tabs to the View menu, which in this app could only ever show one tab.
+  */
+  NSWindow.allowsAutomaticWindowTabbing = NO;
   [[NSAppleEventManager sharedAppleEventManager]
       setEventHandler:[RCTLinkingManager class]
           andSelector:@selector(getUrlEventHandler:withReplyEvent:)
@@ -208,6 +284,33 @@ static NSString *const kMoosiacMenuCommand = @"MoosiacMenuCommand";
   return YES;
 }
 - (void)moosiacNavSettings:(id)sender { [self postMenuCommand:@"nav.settings"]; }
+// Help ▸ Moosiac Help: the app's own Docs tab. There is no Help Book.
+- (void)moosiacNavDocs:(id)sender
+{
+  [self.window makeKeyAndOrderFront:nil];
+  [self postMenuCommand:@"nav.docs"];
+}
+
+#pragma mark - Edit menu
+
+/*
+  Cut, Copy, Paste, Delete and Select All keep AppKit's own selectors, so a
+  focused text field still answers them first — its field editor is ahead of
+  the app delegate in the responder chain. With no text field focused they
+  fall through to here and act on the score's selection (`AppLayout`).
+*/
+- (void)cut:(id)sender { [self postMenuCommand:@"edit.cut"]; }
+- (void)copy:(id)sender { [self postMenuCommand:@"edit.copy"]; }
+- (void)paste:(id)sender { [self postMenuCommand:@"edit.paste"]; }
+- (void)delete:(id)sender { [self postMenuCommand:@"edit.delete"]; }
+- (void)selectAll:(id)sender { [self postMenuCommand:@"edit.selectAll"]; }
+
+- (BOOL)validateMenuItem:(NSMenuItem *)item
+{
+  NSString *command = MoosiacCommandsBySelector()[NSStringFromSelector(item.action)];
+  if (command == nil || gEnabledCommands == nil) return YES;
+  return [gEnabledCommands containsObject:command];
+}
 
 - (NSURL *)sourceURLForBridge:(RCTBridge *)bridge
 {
@@ -289,6 +392,25 @@ RCT_EXPORT_MODULE(MoosiacMenuBridge);
 - (void)handleMenuCommand:(NSNotification *)note
 {
   [self sendEventWithName:@"menuCommand" body:note.userInfo];
+}
+
+// Which items `validateMenuItem:` enables — see `gEnabledCommands`.
+RCT_EXPORT_METHOD(setEnabledCommands:(NSArray<NSString *> *)commands)
+{
+  NSSet<NSString *> *enabled = [NSSet setWithArray:commands];
+  dispatch_async(dispatch_get_main_queue(), ^{
+    gEnabledCommands = enabled;
+  });
+}
+
+// A file opened or saved, for File ▸ Open Recent. A path or a `file://` URL.
+RCT_EXPORT_METHOD(noteRecentDocument:(NSString *)uri)
+{
+  NSURL *url = [uri hasPrefix:@"file:"] ? [NSURL URLWithString:uri] : [NSURL fileURLWithPath:uri];
+  if (url == nil || !url.isFileURL) return;
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [[NSDocumentController sharedDocumentController] noteNewRecentDocumentURL:url];
+  });
 }
 
 @end
@@ -556,6 +678,25 @@ RCT_EXPORT_METHOD(show:(NSArray<NSDictionary *> *)items
 
     resolve(self.selectedKey ?: (id)[NSNull null]);
   });
+}
+
+@end
+
+@implementation MoosiacDocumentController
+
+- (void)openDocumentWithContentsOfURL:(NSURL *)url
+                              display:(BOOL)displayDocument
+                    completionHandler:(void (^)(NSDocument *, BOOL, NSError *))completionHandler
+{
+  /*
+    Held for the rest of the run: JavaScript reads the file after this
+    returns, and an entry reopened from a bookmark is only readable while its
+    scope is open. Paired with nothing, as the file's scope ends with the
+    process.
+  */
+  [url startAccessingSecurityScopedResource];
+  [(AppDelegate *)NSApp.delegate application:NSApp openURLs:@[ url ]];
+  completionHandler(nil, NO, nil);
 }
 
 @end

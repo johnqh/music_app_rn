@@ -1188,7 +1188,7 @@
   "newProject": {
     "generateForMe": "由 AI 生成",
     "generateForMeHint": "让 AI 谱写音乐。关闭时，你会得到一份使用这些乐器的空白乐谱。",
-    "generationNeedsServer": "生成功能需要服务器上的项目。",
+    "generationNeedsServer": "生成功能需要服务器上的项目。需要登录。",
     "title": "新建项目",
     "untitled": "未命名项目",
     "writeLyrics": "填写歌词",

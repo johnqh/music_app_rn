@@ -16,6 +16,7 @@
  */
 import { useCallback } from 'react';
 import type { DocumentOrigin } from '@sudobility/music_lib';
+import { noteRecentDocument } from '@/app/menu-commands';
 import { noteOpened } from './recent-documents';
 import type { KeyValueStore } from './recent-documents';
 
@@ -27,6 +28,10 @@ export function recordRecent(
   { origin, title }: RecentCandidate,
 ): void {
   if (origin.kind !== 'file') return;
+  // The system's Open Recent menu too (macOS), which survives a relaunch with
+  // its sandbox access intact; the app's own list below is the cross-platform
+  // one.
+  noteRecentDocument(origin.uri);
   void noteOpened(store, {
     uri: origin.uri,
     handle: origin.uri,

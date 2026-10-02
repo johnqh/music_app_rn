@@ -126,7 +126,9 @@ describe('NewProjectSheet', () => {
     // something that cannot work.
     const { view } = setup({ generationAvailable: false });
     expect(
-      view.getByText('Generating needs a project on the server.'),
+      view.getByText(
+        'Generating needs a project on the server. Log-in required.',
+      ),
     ).toBeTruthy();
     expect(view.queryByLabelText('Prompt')).toBeNull();
   });
