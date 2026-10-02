@@ -1,6 +1,15 @@
 #!/bin/bash
 #
-# Builds apple/Frameworks/FluidSynth.xcframework for iOS, with SF3 support.
+# Builds apple/Frameworks/FluidSynth.xcframework for iOS and macOS, with SF3
+# support: an iPhone/iPad slice, a simulator slice and a universal (Apple
+# silicon + Intel) macOS slice.
+#
+# macOS used to link Homebrew's libfluidsynth instead. That builds on the Mac
+# it was installed on and nowhere else: Xcode Cloud has no Homebrew FluidSynth
+# ("'fluidsynth.h' file not found"), Homebrew's copy has no Intel slice for a
+# universal archive, and a shipped app would look for a library under
+# /opt/homebrew on its user's Mac. Bundled, the Mac app carries its own, as the
+# iOS app always has.
 #
 # The XCFramework FluidSynth publishes with each release is built with
 # `-Denable-libsndfile=OFF` (its own contrib/ios_build.sh). Without libsndfile
@@ -26,10 +35,11 @@
 # Everything else matches the official script: the C++11 OS layer rather than
 # glib, CoreAudio and CoreMIDI, no network, no file renderer.
 #
-# Usage:   native/synth/scripts/build-fluidsynth-ios.sh
+# Usage:   native/synth/scripts/build-fluidsynth-apple.sh
 # Needs:   Xcode, cmake (`brew install cmake`), git, curl
 # Env:     WORK   where to download and build (default: a fresh temp dir)
 #          IOS_DEPLOYMENT_TARGET   (default 15.0, the podspec's)
+#          MACOS_DEPLOYMENT_TARGET (default 14.0, the podspec's)
 #
 set -euo pipefail
 
@@ -49,6 +59,7 @@ OPUS_SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
 SNDFILE_SHA256=3799ca9924d3125038880367bf1468e53a1b7e3686a934f098b7e1d286cdb80e
 
 IOS_DEPLOYMENT_TARGET="${IOS_DEPLOYMENT_TARGET:-15.0}"
+MACOS_DEPLOYMENT_TARGET="${MACOS_DEPLOYMENT_TARGET:-14.0}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT="${SCRIPT_DIR}/../apple/Frameworks/FluidSynth.xcframework"
 WORK="${WORK:-$(mktemp -d)}"
@@ -82,21 +93,23 @@ fi
 
 # One slice: the three libraries into a prefix, then the framework against it.
 #   $1 name   $2 sdk   $3 architectures (";"-separated)
+#   $4 CMake system name (iOS, or Darwin for macOS)   $5 deployment target
 build_slice() {
-  local name="$1" sdk="$2" archs="$3"
+  local name="$1" sdk="$2" archs="$3" system="$4" deployment="$5"
   local build="${WORK}/${name}" prefix="${WORK}/${name}/prefix"
   mkdir -p "${prefix}"
 
   # pkg-config answers for the Mac this runs on. Left alone it offered
-  # Homebrew's own libsndfile — a macOS library — to a build for an iPad.
+  # Homebrew's own libsndfile — a macOS library — to a build for an iPad, and
+  # would hand a macOS slice Homebrew's arm64-only copies.
   export PKG_CONFIG_LIBDIR="${prefix}/lib/pkgconfig"
   unset PKG_CONFIG_PATH
 
   local platform=(
-    -DCMAKE_SYSTEM_NAME=iOS
+    -DCMAKE_SYSTEM_NAME="${system}"
     -DCMAKE_OSX_SYSROOT="${sdk}"
     -DCMAKE_OSX_ARCHITECTURES="${archs}"
-    -DCMAKE_OSX_DEPLOYMENT_TARGET="${IOS_DEPLOYMENT_TARGET}"
+    -DCMAKE_OSX_DEPLOYMENT_TARGET="${deployment}"
     -DCMAKE_BUILD_TYPE=Release
     -DCMAKE_INSTALL_PREFIX="${prefix}"
     -DCMAKE_PREFIX_PATH="${prefix}"
@@ -190,14 +203,17 @@ build_slice() {
   }
 }
 
-build_slice ios iphoneos "arm64"
-build_slice ios-simulator iphonesimulator "arm64;x86_64"
+build_slice ios iphoneos "arm64" iOS "${IOS_DEPLOYMENT_TARGET}"
+build_slice ios-simulator iphonesimulator "arm64;x86_64" iOS "${IOS_DEPLOYMENT_TARGET}"
+build_slice macos macosx "arm64;x86_64" Darwin "${MACOS_DEPLOYMENT_TARGET}"
 
 DEVICE="${WORK}/ios/fluidsynth/src/Release-iphoneos/FluidSynth.framework"
 SIMULATOR="${WORK}/ios-simulator/fluidsynth/src/Release-iphonesimulator/FluidSynth.framework"
+MACOS="${WORK}/macos/fluidsynth/src/Release/FluidSynth.framework"
 
-# The check the official framework fails: Vorbis has to be in the binary.
-for framework in "${DEVICE}" "${SIMULATOR}"; do
+# The check the official framework fails: Vorbis has to be in the binary —
+# and on macOS in both architectures, or an Intel Mac cannot read SF3.
+for framework in "${DEVICE}" "${SIMULATOR}" "${MACOS}"; do
   # Counted rather than `grep -q`: that stops reading at the first match,
   # `nm` dies writing to the closed pipe, and `pipefail` reports the death
   # as a failure — of a check that had just succeeded.
@@ -208,10 +224,21 @@ for framework in "${DEVICE}" "${SIMULATOR}"; do
   }
 done
 
+# A universal binary passes the check above if either half has Vorbis, so
+# each macOS architecture is checked on its own.
+for arch in arm64 x86_64; do
+  symbols="$(nm -arch "${arch}" "${MACOS}/FluidSynth" 2>/dev/null | grep -c "_vorbis_synthesis" || true)"
+  [ "${symbols}" -gt 0 ] || {
+    echo "No Vorbis decoder in the ${arch} half of ${MACOS}" >&2
+    exit 1
+  }
+done
+
 rm -rf "${WORK}/FluidSynth.xcframework"
 xcodebuild -create-xcframework \
   -framework "${DEVICE}" -debug-symbols "${DEVICE}.dSYM" \
   -framework "${SIMULATOR}" -debug-symbols "${SIMULATOR}.dSYM" \
+  -framework "${MACOS}" -debug-symbols "${MACOS}.dSYM" \
   -output "${WORK}/FluidSynth.xcframework" >/dev/null
 
 rm -rf "${OUTPUT}"
@@ -224,7 +251,7 @@ so CocoaPods reads the COPY in node_modules, and Xcode keeps a copy of its
 own. To put the new framework in the app:
 
   rm -rf node_modules/@moosiac/synth && bun install
-  (cd ios && pod install)
+  (cd ios && pod install) && (cd macos && pod install)
   find ~/Library/Developer/Xcode/DerivedData/MoosiacRN-*/Build/Products \
     -maxdepth 4 -name FluidSynth.framework -exec rm -rf {} +
 

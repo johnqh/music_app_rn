@@ -1,6 +1,6 @@
 ---
 triple:          'arm64-apple-darwin'
-binary-path:     '/private/tmp/claude-501/-Users-qianghuang-projects-music-api/98c4b3b6-e457-49cb-8f7a-dd1e229c28d4/scratchpad/fluid/ios-simulator/fluidsynth/src/Release-iphonesimulator/FluidSynth.framework/FluidSynth'
+binary-path:     '/private/tmp/claude-501/-Users-qianghuang-projects-music-api/98c4b3b6-e457-49cb-8f7a-dd1e229c28d4/scratchpad/fluidsynth/ios-simulator/fluidsynth/src/Release-iphonesimulator/FluidSynth.framework/FluidSynth'
 relocations:
   - { offset: 0x26, size: 0x8, addend: 0x0, symName: _set_channel_map, symObjAddr: 0x0, symBinAddr: 0xC70, symSize: 0x184 }
   - { offset: 0x4D, size: 0x8, addend: 0x0, symName: _PERF_MODE, symObjAddr: 0xB1A, symBinAddr: 0x168070, symSize: 0x0 }
@@ -348,13 +348,13 @@ relocations:
   - { offset: 0x75E09, size: 0x8, addend: 0x0, symName: _fluid_settings_split_csv, symObjAddr: 0x4DDC, symBinAddr: 0x18E8C, symSize: 0xBC }
   - { offset: 0x75FB2, size: 0x8, addend: 0x0, symName: _fluid_set_log_function, symObjAddr: 0x0, symBinAddr: 0x1915C, symSize: 0x34 }
   - { offset: 0x75FCD, size: 0x8, addend: 0x0, symName: _fluid_curtime, symObjAddr: 0x230, symBinAddr: 0x1938C, symSize: 0x50 }
-  - { offset: 0x75FEE, size: 0x8, addend: 0x0, symName: _fluid_curtime.initial_time, symObjAddr: 0x6718, symBinAddr: 0x2405E0, symSize: 0x0 }
+  - { offset: 0x75FEE, size: 0x8, addend: 0x0, symName: _fluid_curtime.initial_time, symObjAddr: 0x6720, symBinAddr: 0x2405E0, symSize: 0x0 }
   - { offset: 0x76022, size: 0x8, addend: 0x0, symName: _fluid_file_open, symObjAddr: 0x7B4, symBinAddr: 0x198A4, symSize: 0x94 }
   - { offset: 0x7604A, size: 0x8, addend: 0x0, symName: _fluid_file_open.ErrExist, symObjAddr: 0xDB7, symBinAddr: 0x172B9B, symSize: 0x0 }
   - { offset: 0x76061, size: 0x8, addend: 0x0, symName: _fluid_file_open.ErrRegular, symObjAddr: 0xDCC, symBinAddr: 0x172BB0, symSize: 0x0 }
   - { offset: 0x76078, size: 0x8, addend: 0x0, symName: _fluid_file_open.ErrNull, symObjAddr: 0xDF6, symBinAddr: 0x172BDA, symSize: 0x0 }
   - { offset: 0x76154, size: 0x8, addend: 0x0, symName: _fluid_log_function, symObjAddr: 0xC48, symBinAddr: 0x2400B8, symSize: 0x0 }
-  - { offset: 0x761A3, size: 0x8, addend: 0x0, symName: _fluid_log_user_data, symObjAddr: 0x66F0, symBinAddr: 0x2405B8, symSize: 0x0 }
+  - { offset: 0x761A3, size: 0x8, addend: 0x0, symName: _fluid_log_user_data, symObjAddr: 0x66F8, symBinAddr: 0x2405B8, symSize: 0x0 }
   - { offset: 0x761C4, size: 0x8, addend: 0x0, symName: _fluid_libname, symObjAddr: 0xDAC, symBinAddr: 0x172B90, symSize: 0x0 }
   - { offset: 0x761E0, size: 0x8, addend: 0x0, symName: _fluid_shell_parse_argv_internal, symObjAddr: 0x914, symBinAddr: 0x19A04, symSize: 0x2F0 }
   - { offset: 0x76798, size: 0x8, addend: 0x0, symName: _fluid_set_log_function, symObjAddr: 0x0, symBinAddr: 0x1915C, symSize: 0x34 }
@@ -479,8 +479,8 @@ relocations:
   - { offset: 0x81D01, size: 0x8, addend: 0x0, symName: _sfvio_read, symObjAddr: 0x3750, symBinAddr: 0x201D8, symSize: 0xCC }
   - { offset: 0x81DF7, size: 0x8, addend: 0x0, symName: _sfvio_tell, symObjAddr: 0x381C, symBinAddr: 0x202A4, symSize: 0x8 }
   - { offset: 0x81E5D, size: 0x8, addend: 0x0, symName: _fluid_samplecache_load, symObjAddr: 0x0, symBinAddr: 0x202AC, symSize: 0x29C }
-  - { offset: 0x81E84, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x2EA8, symBinAddr: 0x2405E8, symSize: 0x0 }
-  - { offset: 0x81EA5, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x2EA8, symBinAddr: 0x2405E8, symSize: 0x0 }
+  - { offset: 0x81E84, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x2EB0, symBinAddr: 0x2405E8, symSize: 0x0 }
+  - { offset: 0x81EA5, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x2EB0, symBinAddr: 0x2405E8, symSize: 0x0 }
   - { offset: 0x82501, size: 0x8, addend: 0x0, symName: _fluid_samplecache_load, symObjAddr: 0x0, symBinAddr: 0x202AC, symSize: 0x29C }
   - { offset: 0x82921, size: 0x8, addend: 0x0, symName: _fluid_samplecache_unload, symObjAddr: 0x29C, symBinAddr: 0x20548, symSize: 0xE0 }
   - { offset: 0x82A87, size: 0x8, addend: 0x0, symName: _fluid_adsr_env_set_data, symObjAddr: 0x0, symBinAddr: 0x20628, symSize: 0x24 }
@@ -495,7 +495,7 @@ relocations:
   - { offset: 0x835A5, size: 0x8, addend: 0x0, symName: _fluid_chorus_processreplace, symObjAddr: 0xC38, symBinAddr: 0x2127C, symSize: 0x31C }
   - { offset: 0x83700, size: 0x8, addend: 0x0, symName: _fluid_iir_filter_init_table, symObjAddr: 0x0, symBinAddr: 0x21598, symSize: 0x84 }
   - { offset: 0x8370E, size: 0x8, addend: 0x0, symName: _fluid_iir_filter_calc, symObjAddr: 0x8EC, symBinAddr: 0x21E84, symSize: 0x268 }
-  - { offset: 0x83732, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0xB1B0, symBinAddr: 0x2405F8, symSize: 0x0 }
+  - { offset: 0x83732, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0xB1B8, symBinAddr: 0x2405F8, symSize: 0x0 }
   - { offset: 0x84706, size: 0x8, addend: 0x0, symName: _fluid_iir_filter_init_table, symObjAddr: 0x0, symBinAddr: 0x21598, symSize: 0x84 }
   - { offset: 0x851BF, size: 0x8, addend: 0x0, symName: _fluid_iir_filter_apply, symObjAddr: 0x84, symBinAddr: 0x2161C, symSize: 0x868 }
   - { offset: 0x878CB, size: 0x8, addend: 0x0, symName: _fluid_iir_filter_init, symObjAddr: 0x0, symBinAddr: 0x220EC, symSize: 0x30 }
@@ -763,7 +763,7 @@ relocations:
   - { offset: 0xC1ABB, size: 0x8, addend: 0x0, symName: _fluid_event_get_scale, symObjAddr: 0x644, symBinAddr: 0x388C0, symSize: 0x8 }
   - { offset: 0xC1B0B, size: 0x8, addend: 0x0, symName: _fluid_gen_init, symObjAddr: 0x0, symBinAddr: 0x388C8, symSize: 0x148 }
   - { offset: 0xC1B18, size: 0x8, addend: 0x0, symName: _fluid_gen_name, symObjAddr: 0x1A0, symBinAddr: 0x38A44, symSize: 0x74 }
-  - { offset: 0xC1B3D, size: 0x8, addend: 0x0, symName: _fluid_gen_name.num, symObjAddr: 0x2DF6, symBinAddr: 0x240608, symSize: 0x0 }
+  - { offset: 0xC1B3D, size: 0x8, addend: 0x0, symName: _fluid_gen_name.num, symObjAddr: 0x2DFE, symBinAddr: 0x240608, symSize: 0x0 }
   - { offset: 0xC1B7C, size: 0x8, addend: 0x0, symName: _fluid_gen_info, symObjAddr: 0x528, symBinAddr: 0x224368, symSize: 0x0 }
   - { offset: 0xC1E6D, size: 0x8, addend: 0x0, symName: _fluid_gen_init, symObjAddr: 0x0, symBinAddr: 0x388C8, symSize: 0x148 }
   - { offset: 0xC1EAC, size: 0x8, addend: 0x0, symName: _fluid_gen_scale_nrpn, symObjAddr: 0x16C, symBinAddr: 0x38A10, symSize: 0x34 }
@@ -799,9 +799,9 @@ relocations:
   - { offset: 0xC3E19, size: 0x8, addend: 0x0, symName: _fluid_mod_has_dest, symObjAddr: 0x944, symBinAddr: 0x393FC, symSize: 0x10 }
   - { offset: 0xC3E97, size: 0x8, addend: 0x0, symName: _fluid_synth_settings, symObjAddr: 0x0, symBinAddr: 0x3940C, symSize: 0x6AC }
   - { offset: 0xC3EBE, size: 0x8, addend: 0x0, symName: _fluid_synth_reverb_set_param, symObjAddr: 0x9F10, symBinAddr: 0x42EF0, symSize: 0x120 }
-  - { offset: 0xC3EE6, size: 0x8, addend: 0x0, symName: _fluid_synth_reverb_set_param.name, symObjAddr: 0xE848, symBinAddr: 0x224B48, symSize: 0x0 }
+  - { offset: 0xC3EE6, size: 0x8, addend: 0x0, symName: _fluid_synth_reverb_set_param.name, symObjAddr: 0xE850, symBinAddr: 0x224B48, symSize: 0x0 }
   - { offset: 0xC3FFB, size: 0x8, addend: 0x0, symName: _fluid_synth_chorus_set_param, symObjAddr: 0xA56C, symBinAddr: 0x4354C, symSize: 0x188 }
-  - { offset: 0xC401C, size: 0x8, addend: 0x0, symName: _fluid_synth_chorus_set_param.name, symObjAddr: 0xE868, symBinAddr: 0x224B68, symSize: 0x0 }
+  - { offset: 0xC401C, size: 0x8, addend: 0x0, symName: _fluid_synth_chorus_set_param.name, symObjAddr: 0xE870, symBinAddr: 0x224B68, symSize: 0x0 }
   - { offset: 0xC413A, size: 0x8, addend: 0x0, symName: _default_vel2att_mod, symBinAddr: 0x2A0618, symSize: 0x0 }
   - { offset: 0xC4230, size: 0x8, addend: 0x0, symName: _default_vel2filter_mod, symBinAddr: 0x2A0640, symSize: 0x0 }
   - { offset: 0xC4246, size: 0x8, addend: 0x0, symName: _default_at2viblfo_mod, symBinAddr: 0x2A04D8, symSize: 0x0 }
@@ -816,10 +816,10 @@ relocations:
   - { offset: 0xC430C, size: 0x8, addend: 0x0, symName: _DLS_default_reverb_mod, symBinAddr: 0x2A0488, symSize: 0x0 }
   - { offset: 0xC4322, size: 0x8, addend: 0x0, symName: _DLS_default_chorus_mod, symBinAddr: 0x2A0438, symSize: 0x0 }
   - { offset: 0xC4338, size: 0x8, addend: 0x0, symName: _DLS_default_pitch_bend_mod, symBinAddr: 0x2A0460, symSize: 0x0 }
-  - { offset: 0xC434D, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x483A8, symBinAddr: 0x240618, symSize: 0x0 }
-  - { offset: 0xC4364, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x483A8, symBinAddr: 0x240618, symSize: 0x0 }
+  - { offset: 0xC434D, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x483B8, symBinAddr: 0x240618, symSize: 0x0 }
+  - { offset: 0xC4364, size: 0x8, addend: 0x0, symName: __MergedGlobals, symObjAddr: 0x483B8, symBinAddr: 0x240618, symSize: 0x0 }
   - { offset: 0xC4380, size: 0x8, addend: 0x0, symName: _fluid_synth_cc_LOCAL, symObjAddr: 0x3614, symBinAddr: 0x3C9DC, symSize: 0x884 }
-  - { offset: 0xC43A8, size: 0x8, addend: 0x0, symName: _fluid_synth_cc_LOCAL.poly_mono_str, symObjAddr: 0xE888, symBinAddr: 0x224B88, symSize: 0x0 }
+  - { offset: 0xC43A8, size: 0x8, addend: 0x0, symName: _fluid_synth_cc_LOCAL.poly_mono_str, symObjAddr: 0xE890, symBinAddr: 0x224B88, symSize: 0x0 }
   - { offset: 0xC4AC4, size: 0x8, addend: 0x0, symName: _fluid_synth_process_awe32_nrpn_LOCAL, symObjAddr: 0xCF40, symBinAddr: 0x45F20, symSize: 0x444 }
   - { offset: 0xC4AE8, size: 0x8, addend: 0x0, symName: _fluid_synth_process_awe32_nrpn_LOCAL.awe32_to_sf2_gen, symObjAddr: 0xD540, symBinAddr: 0x1731C8, symSize: 0x0 }
   - { offset: 0xC64A3, size: 0x8, addend: 0x0, symName: _fluid_synth_settings, symObjAddr: 0x0, symBinAddr: 0x3940C, symSize: 0x6AC }
@@ -1188,7 +1188,7 @@ relocations:
   - { offset: 0xFD4AB, size: 0x8, addend: 0x0, symName: __ZNSt3__128__exception_guard_exceptionsIZNS_5dequeI14_fluid_event_tNS_9allocatorIS2_EEE19__add_back_capacityEmEUlvE_ED1B9nqe220106Ev, symObjAddr: 0x22E0, symBinAddr: 0x532D0, symSize: 0x54 }
   - { offset: 0xFF988, size: 0x8, addend: 0x0, symName: _fluid_audio_driver_settings, symObjAddr: 0x0, symBinAddr: 0x542F0, symSize: 0x14C }
   - { offset: 0xFF9AF, size: 0x8, addend: 0x0, symName: _fluid_audio_drivers, symObjAddr: 0x548, symBinAddr: 0x224BA8, symSize: 0x0 }
-  - { offset: 0xFFB17, size: 0x8, addend: 0x0, symName: _fluid_adriver_disable_mask.0, symObjAddr: 0x2402, symBinAddr: 0x240648, symSize: 0x0 }
+  - { offset: 0xFFB17, size: 0x8, addend: 0x0, symName: _fluid_adriver_disable_mask.0, symObjAddr: 0x2412, symBinAddr: 0x240648, symSize: 0x0 }
   - { offset: 0xFFB45, size: 0x8, addend: 0x0, symName: _fluid_audio_driver_settings, symObjAddr: 0x0, symBinAddr: 0x542F0, symSize: 0x14C }
   - { offset: 0xFFD5D, size: 0x8, addend: 0x0, symName: _new_fluid_audio_driver, symObjAddr: 0x14C, symBinAddr: 0x5443C, symSize: 0x4C }
   - { offset: 0xFFDF5, size: 0x8, addend: 0x0, symName: _find_fluid_audio_driver, symObjAddr: 0x198, symBinAddr: 0x54488, symSize: 0x110 }
@@ -1201,7 +1201,7 @@ relocations:
   - { offset: 0x1003DD, size: 0x8, addend: 0x0, symName: _new_fluid_midi_driver, symObjAddr: 0xAC, symBinAddr: 0x54770, symSize: 0x178 }
   - { offset: 0x1005F7, size: 0x8, addend: 0x0, symName: _delete_fluid_midi_driver, symObjAddr: 0x224, symBinAddr: 0x548E8, symSize: 0x14 }
   - { offset: 0x10064C, size: 0x8, addend: 0x0, symName: _init_dither, symObjAddr: 0x0, symBinAddr: 0x548FC, symSize: 0xA0 }
-  - { offset: 0x100666, size: 0x8, addend: 0x0, symName: _rand_table, symObjAddr: 0x987C, symBinAddr: 0x242830, symSize: 0x0 }
+  - { offset: 0x100666, size: 0x8, addend: 0x0, symName: _rand_table, symObjAddr: 0x9884, symBinAddr: 0x242830, symSize: 0x0 }
   - { offset: 0x101387, size: 0x8, addend: 0x0, symName: _init_dither, symObjAddr: 0x0, symBinAddr: 0x548FC, symSize: 0xA0 }
   - { offset: 0x103316, size: 0x8, addend: 0x0, symName: _fluid_shell_settings, symObjAddr: 0x0, symBinAddr: 0x5499C, symSize: 0x50 }
   - { offset: 0x103349, size: 0x8, addend: 0x0, symName: _fluid_handle_resetbasicchannels, symObjAddr: 0x3638, symBinAddr: 0x57E30, symSize: 0x1E8 }

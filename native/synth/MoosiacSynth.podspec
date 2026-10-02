@@ -11,8 +11,8 @@ Pod::Spec.new do |s|
   s.homepage     = 'https://moosiac.app'
   # `apple/` is shared by both: the Objective-C++ wrapper calls nothing but
   # the FluidSynth C API and Foundation, neither of which differs between the
-  # two, so the same source compiles unchanged for both — only how libfluidsynth
-  # itself is linked differs below.
+  # two, so the same source compiles unchanged for both, against the same
+  # vendored framework.
   s.platforms    = { :osx => '14.0', :ios => '15.0' }
   s.source       = { :path => '.' }
   # `apple/` and nothing below it: `apple/**` would also match the 36 headers
@@ -26,26 +26,24 @@ Pod::Spec.new do |s|
   # The font the web plays, bundled: pressing Play needs no network.
   s.resources    = ['resources/FluidR3Mono_GM.sf3', 'resources/FluidR3Mono_License.md']
 
-  # macOS: libfluidsynth from Homebrew (`brew install fluid-synth`). A
-  # development link: a distributable build has to bundle the dylib and its
-  # dependencies (glib, libsndfile) into the app instead.
-  fluidsynth_prefix = ENV['FLUIDSYNTH_PREFIX'] || '/opt/homebrew'
-  s.osx.pod_target_xcconfig = {
-    'HEADER_SEARCH_PATHS' => "\"#{fluidsynth_prefix}/include\"",
-  }
-  s.osx.user_target_xcconfig = {
-    'OTHER_LDFLAGS' => "-L\"#{fluidsynth_prefix}/lib\" -lfluidsynth",
-  }
-
-  # iOS: the official prebuilt XCFramework FluidSynth publishes with every
-  # release (github.com/FluidSynth/fluidsynth/releases,
-  # fluidsynth-v2.6.1-iOS.zip) — device + simulator slices, vendored rather
-  # than built from source, the same way a distributable macOS build would
-  # have to. `fluid_coreaudio.c`'s non-HAL path (compiled into this binary)
-  # calls `setupAVAudioSession` itself on iOS, so nothing here configures a
-  # session by hand — `AVFoundation` is linked because that call lives there,
-  # `AudioToolbox` because the driver is an `AudioUnit`.
-  s.ios.vendored_frameworks = 'apple/Frameworks/FluidSynth.xcframework'
+  # FluidSynth on both platforms: apple/Frameworks/FluidSynth.xcframework,
+  # built from source with SF3 (Ogg Vorbis) support by
+  # scripts/build-fluidsynth-apple.sh — an iPhone/iPad slice, a simulator
+  # slice and a universal macOS slice. The official prebuilt framework is
+  # built without libsndfile and cannot read the bundled .sf3.
+  #
+  # macOS used to link Homebrew's libfluidsynth. That built only on a Mac with
+  # it installed: Xcode Cloud failed with "'fluidsynth.h' file not found",
+  # Homebrew's arm64-only copy left a universal archive with no Intel slice,
+  # and the shipped app would have looked for it under /opt/homebrew on the
+  # user's Mac. Vendored, the framework is embedded in the app like any other.
+  #
+  # `fluid_coreaudio.c`'s non-HAL path calls `setupAVAudioSession` itself on
+  # iOS, so nothing here configures a session by hand — `AVFoundation` is
+  # linked because that call lives there, `AudioToolbox` because the driver is
+  # an `AudioUnit`. The macOS slice links CoreAudio, AudioUnit and CoreMIDI
+  # itself.
+  s.vendored_frameworks = 'apple/Frameworks/FluidSynth.xcframework'
   s.ios.frameworks = ['AudioToolbox', 'AVFoundation', 'CoreAudio']
 
   s.dependency 'React-Core'

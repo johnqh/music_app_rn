@@ -40,7 +40,7 @@ import { bundledSoundfontPath, nativeSynthApi } from '@moosiac/synth';
  * The player for this platform.
  *
  * On macOS, libfluidsynth (`@moosiac/synth`'s shared `apple/` wrapper over
- * Homebrew's dylib), and on Windows TinySoundFont — the synthesizers the web
+ * the FluidSynth framework it vendors), and on Windows TinySoundFont — the synthesizers the web
  * plays through, driven by the same shared scheduler
  * (`SoundfontPlaybackEngine` over `NativeSynthBackend`). The per-note MP3
  * engine decoded every instrument before the first note and timed itself
@@ -72,10 +72,11 @@ function createPlayer(soundfont: SoundfontOptions): IMusicPlayer {
     Vorbis symbols — and `FluidR3Mono_GM.sf3` is Ogg-Vorbis-compressed, which
     only libsndfile can decode. So `fluid_synth_sfload` failed on every
     instrument load on iPhone and iPad ("Could not load the soundfont at
-    …/MoosiacRN.app/FluidR3Mono_GM.sf3"), while macOS, linking Homebrew's
+    …/MoosiacRN.app/FluidR3Mono_GM.sf3"), while macOS, then linking Homebrew's
     libsndfile-enabled fluidsynth, played the same file fine. The vendored
     framework is now built here with libsndfile, Ogg and Vorbis in it:
-    `native/synth/scripts/build-fluidsynth-ios.sh`. Replacing it with the
+    `native/synth/scripts/build-fluidsynth-apple.sh`, which builds the
+    macOS slice too. Replacing it with the
     official download again would bring the failure back.
 
     Android has no native module (`nativeSynthApi.isSupported()` is false
