@@ -29,10 +29,13 @@ export function SnapshotsSheet({
   open,
   document,
   onClose,
+  startCreating = false,
 }: {
   open: boolean;
   document: MusicDocument;
   onClose: () => void;
+  /** Opens on the create form. For a store screenshot. */
+  startCreating?: boolean;
 }) {
   const { t } = useTranslation();
   const context = useServerContext();
@@ -48,7 +51,11 @@ export function SnapshotsSheet({
       actions={[]}
     >
       {context ? (
-        <BoundSnapshots document={document} context={context} />
+        <BoundSnapshots
+          document={document}
+          context={context}
+          startCreating={startCreating}
+        />
       ) : (
         <Text className="text-muted-foreground text-base">
           {t('library.serverUnavailable')}
@@ -61,9 +68,11 @@ export function SnapshotsSheet({
 function BoundSnapshots({
   document,
   context,
+  startCreating,
 }: {
   document: MusicDocument;
   context: MusicHookContext;
+  startCreating: boolean;
 }) {
   const { store } = document;
   const origin = useStore(store, s => s.origin);
@@ -90,5 +99,11 @@ function BoundSnapshots({
   const snapshots = useProjectSnapshots(context, projectId, callbacks);
 
   if (!projectId) return null;
-  return <SnapshotsPanel snapshots={snapshots} projectName={title} />;
+  return (
+    <SnapshotsPanel
+      snapshots={snapshots}
+      projectName={title}
+      startCreating={startCreating}
+    />
+  );
 }

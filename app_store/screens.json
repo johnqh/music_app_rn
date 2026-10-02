@@ -1,9 +1,9 @@
 {
   "ios": {
     "iphone_6_9": {
-      "simulator": "iPhone 16 Plus",
-      "runtime": "iOS-18-6",
-      "resolution": "1290x2796"
+      "simulator": "iPhone 17 Pro Max",
+      "runtime": "iOS-26-0",
+      "resolution": "1320x2868"
     }
   },
   "ipados": {

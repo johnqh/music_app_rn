@@ -25,10 +25,28 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     self.window = window
     appDelegate.window = window
 
+    // A link that launched the app arrives with the scene, not in the
+    // application's launch options, which is where React Native's
+    // `Linking.getInitialURL()` looks for it.
+    var launchOptions = appDelegate.launchOptions ?? [:]
+    if let url = connectionOptions.urlContexts.first?.url {
+      launchOptions[.url] = url
+    }
+
     factory.startReactNative(
       withModuleName: "MoosiacRN",
       in: window,
-      launchOptions: appDelegate.launchOptions
+      launchOptions: launchOptions
     )
+  }
+
+  /// A link opened while the app runs — `moosiac://open?path=…`, or the store
+  /// screenshot links `app_store/scripts/capture.sh` sends. With a scene
+  /// delegate these arrive here rather than at the application delegate, so
+  /// React Native's `Linking` hears nothing unless they are handed on.
+  func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+    for context in URLContexts {
+      RCTLinkingManager.application(UIApplication.shared, open: context.url, options: [:])
+    }
   }
 }

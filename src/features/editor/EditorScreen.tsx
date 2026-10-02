@@ -43,6 +43,7 @@ import { prepareReplacement } from '@sudobility/music_editing';
 import type { ReplaceScope } from '@sudobility/music_types';
 import { GenerationOverlay } from '@/features/generation/GenerationOverlay';
 import { SnapshotsSheet } from '@/features/snapshots/SnapshotsSheet';
+import { useScreenshotScene } from '@/features/screenshots/screenshot-scene';
 import { useDocumentGeneration } from '@/features/generation/useDocumentGeneration';
 import { CreditPaywallSheet } from '@/features/credits/CreditPaywallSheet';
 import { useCreditBalance } from '@/features/credits/useCreditBalance';
@@ -533,6 +534,48 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
   const onShortcuts = useCallback(() => setShortcutsOpen(true), []);
 
   /*
+    A store screenshot (`ScreenshotLinks.tsx`): every sheet closed, the
+    track it names selected (or nothing), and the one sheet it asks for
+    open, so a shot does not depend on the one taken before it.
+
+    Create Snapshot is the snapshot history opened on its create form, so
+    it needs a project: the demo is one when the debug build is signed in
+    (`DevAutoSignIn`), and the shot is the bare editor when it is not.
+  */
+  const [printScope, setPrintScope] = useState<string | undefined>();
+  const [snapshotsCreate, setSnapshotsCreate] = useState(false);
+  useScreenshotScene(
+    'editor',
+    scene => {
+      setExportOpen(false);
+      setReplaceScope(null);
+      setPendingScope(null);
+      setPaywallOpen(false);
+      setShortcutsOpen(false);
+      setMasterOpen(false);
+      const editor = scene.screen === 'editor' ? scene : null;
+      const state = document.store.getState();
+      const track = editor?.track
+        ? state.score?.tracks[editor.track - 1]
+        : undefined;
+      if (track) {
+        state.setActiveTrack(track.id);
+        state.selectTrack(track.id);
+      } else {
+        state.clearSelection();
+      }
+      setPrintScope(track?.id);
+      setPrintOpen(editor?.sheet === 'print');
+      setGenerateTrackOpen(editor?.sheet === 'generate-track');
+      const createSnapshot =
+        editor?.sheet === 'create-snapshot' && projectId !== null;
+      setSnapshotsCreate(createSnapshot);
+      setSnapshotsOpen(createSnapshot);
+    },
+    document.id,
+  );
+
+  /*
     On iOS and Android the title bar is the navigator's header — the
     navigation bar and the top app bar — so it is handed over here, and
     `AppLayout` draws none of its own there.
@@ -618,6 +661,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
             visibleTrackIds={visibleTrackIds}
             onClose={() => setPrintOpen(false)}
             onPrint={runPrint}
+            initialScope={printScope}
           />
           <GenerateTrackSheet
             open={generateTrackOpen}
@@ -681,7 +725,11 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
           <SnapshotsSheet
             open={snapshotsOpen}
             document={document}
-            onClose={() => setSnapshotsOpen(false)}
+            startCreating={snapshotsCreate}
+            onClose={() => {
+              setSnapshotsOpen(false);
+              setSnapshotsCreate(false);
+            }}
           />
           <ExportSheet
             open={exportOpen}

@@ -23,6 +23,8 @@ import { DocumentsProvider } from '@/documents/DocumentsContext';
 import { Toasts } from '@/features/toasts/Toasts';
 import { MenuImportCommands } from '@/features/documents/MenuImportCommands';
 import { MenuFileCommands } from '@/features/documents/MenuFileCommands';
+import { ScreenshotLinks } from '@/features/screenshots/ScreenshotLinks';
+import { DevAutoSignIn } from '@/auth/DevAutoSignIn';
 import { WindowTitleSync } from '@/features/documents/WindowTitleSync';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PortalHost } from '@sudobility/components-rn';
@@ -30,6 +32,7 @@ import { ThemeVarsProvider } from '@/components/ThemeVarsProvider';
 import { ThemeProvider, useTheme } from '@/config/ThemeContext';
 import { useFormFactor } from '@sudobility/components-rn';
 import { AuthProvider } from '@/auth/AuthContext';
+import { EntityUserScope } from '@/features/account/EntityUserScope';
 import { Navigation } from './Navigation';
 
 /**
@@ -94,8 +97,14 @@ export default function App() {
                 ask whether there is an account.
               */}
               <AuthProvider>
-                <DocumentsProvider list={list} services={services}>
-                  {/*
+                {/*
+                  Every entity_client query is cached under the signed-in
+                  user, so one account's workspaces and keys never reach the
+                  next. Above the portal host, so a sheet sees it too.
+                */}
+                <EntityUserScope>
+                  <DocumentsProvider list={list} services={services}>
+                    {/*
                     Above everything that opens a picker: a portalled sheet
                     draws here, so it escapes the scrolling toolbar that would
                     otherwise clip it. Inside the data providers, not above
@@ -104,18 +113,29 @@ export default function App() {
                     New Project — failed with "No QueryClient set" when this
                     sat outside `QueryClientProvider`.
                   */}
-                  <PortalHost>
-                    {/*
+                    <PortalHost>
+                      {/*
                       A File-menu import makes a new document from whatever
                       screen is in front, so it can belong to none of them.
                     */}
-                    <MenuImportCommands />
-                    <MenuFileCommands />
-                    <WindowTitleSync />
-                    <Navigation />
-                    <Toasts />
-                  </PortalHost>
-                </DocumentsProvider>
+                      <MenuImportCommands />
+                      <MenuFileCommands />
+                      {/*
+                      Store-screenshot links, in a debug build only — the
+                      build `app_store/scripts/capture.sh` installs.
+                    */}
+                      {__DEV__ ? <ScreenshotLinks /> : null}
+                      {/*
+                      The test account from `.env`, in a debug build only:
+                      what lets the screenshot devices show what needs one.
+                    */}
+                      {__DEV__ ? <DevAutoSignIn /> : null}
+                      <WindowTitleSync />
+                      <Navigation />
+                      <Toasts />
+                    </PortalHost>
+                  </DocumentsProvider>
+                </EntityUserScope>
               </AuthProvider>
             </QueryClientProvider>
           </ThemeVarsProvider>

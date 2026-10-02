@@ -17,7 +17,6 @@ require('dotenv').config({
   quiet: true,
 });
 
-
 /**
  * Every name `src/config/constants.ts` reads. Listed, not everything in the
  * environment: whatever is inlined ships inside the app, and a shell's
@@ -51,6 +50,19 @@ const INLINED_ENV = [
   'VITE_SUPPORT_EMAIL',
 ];
 
+/**
+ * A test account the debug build signs in with by itself (`DevAutoSignIn`),
+ * so the screenshot devices and a fresh simulator are signed in without
+ * anybody typing a password into them.
+ *
+ * Inlined into **development bundles only**: Metro sets `BABEL_ENV` to
+ * `development` for a dev bundle and `production` otherwise, so a release
+ * bundle never contains the password, whatever `.env` says. The code that
+ * reads them is under `__DEV__` as well, but that alone would leave the
+ * strings in the bundle.
+ */
+const DEV_ONLY_ENV = ['DEV_SIGNIN_EMAIL', 'DEV_SIGNIN_PASSWORD'];
+
 /*
   A blank value is no value. `.env.example` lists every name with an empty
   right-hand side and promises "a value left blank means not configured" —
@@ -58,7 +70,7 @@ const INLINED_ENV = [
   `?? default` in the code that reads it. Unset, it inlines as `undefined`
   and the default applies.
 */
-for (const name of INLINED_ENV) {
+for (const name of [...INLINED_ENV, ...DEV_ONLY_ENV]) {
   if (process.env[name] === '') delete process.env[name];
 }
 
@@ -78,11 +90,15 @@ module.exports = function (api) {
     `.env` went on producing the bundle the old one made until somebody
     thought to clear the cache by hand.
   */
+  // A cache key of its own: a value read outside `using` would be the one
+  // from whichever bundle configured babel first, dev or release.
+  const devBundle = api.cache.using(
+    () => process.env.BABEL_ENV === 'development',
+  );
+  const inlined = devBundle ? [...INLINED_ENV, ...DEV_ONLY_ENV] : INLINED_ENV;
   api.cache.using(
     () =>
-      `${isMetro}:${INLINED_ENV.map(name => process.env[name] ?? '').join(
-        '|',
-      )}`,
+      `${isMetro}:${inlined.map(name => process.env[name] ?? '').join('|')}`,
   );
 
   return {
@@ -95,7 +111,7 @@ module.exports = function (api) {
       // Only under Metro: the tests read `CONSTANTS`' defaults, and must not
       // change with whatever this machine's `.env` happens to say.
       ...(isMetro
-        ? [['transform-inline-environment-variables', { include: INLINED_ENV }]]
+        ? [['transform-inline-environment-variables', { include: inlined }]]
         : []),
       /*
         zod v4 ships `export * as x from` in its ESM build, which Metro's

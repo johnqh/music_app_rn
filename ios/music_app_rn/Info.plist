@@ -24,6 +24,14 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
+			<string>app.moosiac.open</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>moosiac</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
 			<string>google-signin</string>
 			<key>CFBundleURLSchemes</key>
 			<array>

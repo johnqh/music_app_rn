@@ -11,6 +11,7 @@
  * dashboard makes a project on the server, and the macOS File menu makes a
  * local document — which is why generation can be switched off entirely.
  */
+import { useEffect } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Switch, Text } from '@sudobility/components-rn';
@@ -44,6 +45,11 @@ export type NewProjectSheetProps = {
    * that comes and goes teaches the reader nothing about where to find it.
    */
   generationAvailable?: boolean;
+  /**
+   * Switches Generate on each time the sheet opens. For a store screenshot
+   * (`ScreenshotLinks.tsx`); the toggle is otherwise the reader's.
+   */
+  generate?: boolean;
 };
 
 export function NewProjectSheet({
@@ -53,6 +59,7 @@ export function NewProjectSheet({
   submitting = false,
   outOfCredits = false,
   generationAvailable = true,
+  generate = false,
 }: NewProjectSheetProps) {
   const { t } = useTranslation();
   const {
@@ -69,6 +76,16 @@ export function NewProjectSheet({
     generationAvailable,
     onSubmit,
   });
+  /*
+    Through the toggle's own handler, so it adds the singer the toggle adds —
+    and only when off, since switching it on twice would add a second one.
+    On opening, and again if generation becomes available while open (a
+    sign-in landing after the sheet did) — not on every render, since the
+    reader may switch it off again.
+  */
+  useEffect(() => {
+    if (open && generate && !generating) setGenerating(true);
+  }, [open, generate, generationAvailable]);
 
   return (
     <FormModal

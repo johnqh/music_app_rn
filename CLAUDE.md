@@ -75,7 +75,7 @@ maths here, it belongs somewhere else.
   adapter is the whole of React Native support, and `CanvasScoreRenderer` runs
   unchanged. Drawing happens inside `createPicture`, so a scroll replays a
   recorded picture rather than re-running VexFlow.
-- **The reader is shown a *bar*; the code keeps `Measure`.** The shared
+- **The reader is shown a _bar_; the code keeps `Measure`.** The shared
   libraries already split it — `Measure` is the model type, `bar` is the number
   a reader is shown, which is why `barNumberAt` exists at all (a measure index
   is not a bar number, because a pickup has an index and no number). The copy
@@ -111,34 +111,34 @@ user's:**
   `ScoreCanvasHit`, `InspectorTab`/`INSPECTOR_TABS`, `EDIT_MODE_OPTIONS`,
   `QUANTIZE_GRIDS`, `SHORTCUT_GROUPS`, `DOCS_GROUPS`, `COMMAND_LABEL_KEYS`,
   `Toast`, `ClipboardData`, `DevSettings`, `PlayerFailure`, …) is imported
-  from music_types even when the package that *uses* it is another one.
+  from music*types even when the package that \_uses* it is another one.
 - **Pure helpers used by both frontend and backend live in `music_types`** —
   the format tables (`IMPORT_FORMATS`/`EXPORT_FORMATS`/`WRITABLE_EXPORT_FORMATS`,
   `AUDIO_IMPORT_EXTENSIONS`), `outOfRangeNoteIds`, the print paper and
   orientation options (`PAPER_OPTIONS`/`ORIENTATION_OPTIONS`).
 - **`music_editing` is for editing only, and depends on neither
   `music_codecs` nor `music_player`.** So it does not own playback
-  (`bindPlayer`/`PlayerBinding` are music_lib's), documents (`decideClose`,
+  (`bindPlayer`/`PlayerBinding` are music*lib's), documents (`decideClose`,
   `planExport` are music_lib's), docs content (`DOCS_TOPICS`,
   `docsGroupLabelKey`, `RESOURCE_GROUPS`, `hostOf`, `monogramFor` are
   music_lib's), the theme (`resolveThemeMode` is music_lib's) or keyboard
   drawing (`litKeys`/`samePitchSet`/`playingPitchesForTrack` are
   music_drawing's). It does own touch classification (`classifyPress`), since
-  deciding what a press *means* is editing.
+  deciding what a press \_means* is editing.
 - **No re-exports from old homes.** When something moves, every import here
   moves with it; an import from the old package is a compile error, not a
   deprecation.
 
 **Canvas geometry belongs to `music_drawing`; app layout geometry stays here.**
-The line is the canvas edge. Anything that reasons about the *drawn score* —
+The line is the canvas edge. Anything that reasons about the _drawn score_ —
 where a note went, which measure or track a point lands in, what pitch a stave
 position means, where the playing measure sits, the colours VexFlow draws with
 — is `music_drawing`'s, because the canvas is what that package owns and
 because two apps draw the same score. Anything that reasons about the app
-*around* the canvas is this app's: a scroll container, a panel, a sheet.
+_around_ the canvas is this app's: a scroll container, a panel, a sheet.
 
 That boundary is why tapping a note works here at all. It used to resolve only
-to a *measure*, because the hit-testing lived in music_app and nothing on this
+to a _measure_, because the hit-testing lived in music_app and nothing on this
 side could ask which note was under a finger — and because `ScoreView` built a
 new renderer for every frame, throwing away the bounding boxes with it. One
 renderer per view, and `hit-test` in the library, is what fixed it.
@@ -152,11 +152,11 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   does not have it. Three things in `jest.config.cjs` are load-bearing and each
   cost a debugging cycle. The **transform allow-list** must name every ESM-only
   dependency by hand (`immer`, `zustand`, `i18next`, every `@sudobility`
-  package) *and* allow for bun's `.bun/<pkg>@<ver>/node_modules/<pkg>` layout,
+  package) _and_ allow for bun's `.bun/<pkg>@<ver>/node_modules/<pkg>` layout,
   which the usual pattern misses. The **legacy Paper renderer is mapped to a
   stub**: its build asserts an exact React version and this app pins React to
   what react-native-macos requires, a patch ahead of what react-native's Paper
-  build was compiled against — so merely *loading* it throws, which
+  build was compiled against — so merely _loading_ it throws, which
   `Animated`'s native driver does through `RendererImplementation`. Nothing in
   the app reaches it (all three platforms run Fabric), so the stub removes a
   test-only path rather than hiding a real mismatch. And the **timeout is
@@ -165,14 +165,14 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   fourth is `jest.mocks.cjs`, which exists for native modules that **throw at
   import** rather than degrading — `AsyncStorage` is one, so anything reaching
   `ThemeContext` (and through it anything asking what colour scheme is in
-  force) fails to *load*, in a suite that has nothing to do with storage. The
+  force) fails to _load_, in a suite that has nothing to do with storage. The
   package ships its own in-memory mock; use it rather than stubbing methods.
 
 - **React, react-native and react-native-macos are one locked trio, and getting
   it wrong crashes the app at launch.** `react@19.1.4`, `react-native@0.81.6`,
   `react-native-macos@0.81.9` — the combination `react-native-macos` itself
-  peers. Each React Native ships a *renderer bundle compiled against one exact
-  React version* and asserts it at load: 0.81.5's wanted 19.1.0 while
+  peers. Each React Native ships a _renderer bundle compiled against one exact
+  React version_ and asserts it at load: 0.81.5's wanted 19.1.0 while
   react-native-macos wanted 19.1.4, so iOS and Android died on the first screen
   with **"Incompatible React versions: react: 19.1.4, react-native-renderer:
   19.1.0"** while macOS ran perfectly — a split that makes it look like an iOS
@@ -190,7 +190,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
 
 - **A `.test.tsx` using `jest.fn()` must `import { jest } from '@jest/globals'`,
   and forgetting it fails only in `typecheck`.** Jest injects the global at run
-  time, so the suite passes; `tsc` sees the ambient *namespace* and reports
+  time, so the suite passes; `tsc` sees the ambient _namespace_ and reports
   `TS2708: Cannot use namespace 'jest' as a value` — which means `bun run test`
   is green and `bun run verify` is red, and the failure names a file whose tests
   all passed a moment earlier. Every existing test file here has the import;
@@ -200,16 +200,16 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   `test-renderer`, whose `react-reconciler` is built for React **19.1.0**
   exactly, and this app is on 19.1.4 for react-native-macos. There is no
   stable 0.33.x reconciler for 19.1.4, so v14 cannot work here; v13 uses
-  `react-test-renderer`, which *is* published at 19.1.4. The visible symptom of
+  `react-test-renderer`, which _is_ published at 19.1.4. The visible symptom of
   getting this wrong is an `AggregateError` from `render` with no cause in it.
 
 - **Printing needs no PDF writer.** Every one of the three print services takes
-  a *drawing* and produces the document itself: `PrintedPdfDocument` hands back
+  a _drawing_ and produces the document itself: `PrintedPdfDocument` hands back
   a `Canvas` on Android, `UIPrintInteractionController` lays out page images on
   iOS, and `NSPrintOperation` calls `drawRect:` with a print context on macOS.
   So `print-pages.ts` renders each page into a Skia offscreen surface with the
   same renderer the editor draws with, and `native/print` hands the PNGs over.
-  Everything about *what* a printed page is — page mode, one ink, no gutter, no
+  Everything about _what_ a printed page is — page mode, one ink, no gutter, no
   editor state, paper sizes, margins, and page turns that land where the player
   has bars free — lives in `music_drawing` and is shared with the web app.
   Which score goes on paper (a part via `extractPart`, or the marked full
@@ -226,7 +226,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   Mac equivalent of that class. The Mac half is `native/file-picker`, a local
   autolinked module of about ten lines of AppKit, selected by
   `file-picker.macos.ts`. On a sandboxed build the panel is not a convenience:
-  it is where the *permission* to read the file comes from, which is why a path
+  it is where the _permission_ to read the file comes from, which is why a path
   from anywhere else cannot be opened.
 
 - **A project-level `platforms` entry replaces a package's own.** Listing
@@ -235,7 +235,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   declares for itself, and it disappeared from autolinking entirely — the pod
   was never installed, with no error anywhere, because `loadConfig` swallows a
   failed dependency in a bare `catch`. A package that declares its own
-  platforms needs no entry here; only add one to *remove* a platform it does
+  platforms needs no entry here; only add one to _remove_ a platform it does
   declare. Diagnose with `bunx react-native config | grep <package>`.
 
   A second trap in the same file: `podspecPath` is **absolute** and
@@ -251,15 +251,15 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   slices are built for **macCatalyst**, and vendors its FFmpeg xcframeworks
   under `s.ios` only. `DISABLE_AUDIOAPI_STATIC_EXTERNAL_LIBS=1` fixes the
   first; without `DISABLE_AUDIOAPI_FFMPEG=1` as well it merely swaps one link
-  error (*"built for 'macCatalyst'"*) for another (*"_swr_init … symbol(s) not
-  found"*), which reads like the fix regressing. Passing them to one
+  error (_"built for 'macCatalyst'"_) for another (_"\_swr_init … symbol(s) not
+  found"_), which reads like the fix regressing. Passing them to one
   `pod install` by hand leaves the next one producing a project that does not
   link.
 
-- **The generation rules are `music_client`'s.** Polling the *project* rather
+- **The generation rules are `music_client`'s.** Polling the _project_ rather
   than the job, comparing `updatedAt` strictly rather than for difference,
   reloading before unlocking, and slowing the cadence when nothing is running
-  are rules about *this server*, and both apps obey them — so
+  are rules about _this server_, and both apps obey them — so
   `useProjectGeneration` lives there and `useDocumentGeneration` here supplies
   only what differs: the per-document store, the client, a `flush` (the
   store's `saveNow`), and a `ForegroundPort` over `AppState` where the web app
@@ -275,9 +275,9 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   glyphs are data now.** `𝅝`, `𝄽`, `𝆔` and `𝄐` are outside the system font's
   coverage and draw as `?` boxes, where the single-codepoint `♩`, `♪`, `♭`, `♯`
   and `♮` are fine. So no notation mark is a character: `NOTATION_ICONS` in
-  music_types holds every one of them as shapes, `NotationIcon.tsx` replays
+  music*types holds every one of them as shapes, `NotationIcon.tsx` replays
   them with `react-native-svg`, and the web toolbar replays the same table —
-  a semiquaver here *is* the web's semiquaver rather than a lookalike. Reach
+  a semiquaver here \_is* the web's semiquaver rather than a lookalike. Reach
   for `NotationIcon` before reaching for a character; if a mark is missing from
   the table, add it there (authored in `music_app`'s `notation-icons.tsx` and
   generated, see that repo's CLAUDE.md) rather than finding a codepoint.
@@ -363,7 +363,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   after whatever instrument shared its number (Brush is kit 40; program 40 is
   Violin). It asks `isPercussionTrack` and offers `KIT_OPTIONS` instead — the
   same split the web makes, and the reason `setTrackInstrument` takes the
-  catalogue *value* rather than a number. And the Note tab **printed a literal
+  catalogue _value_ rather than a number. And the Note tab **printed a literal
   `1` for every note's voice**, which is right by coincidence on the default
   track and wrong the moment anybody uses the second; it reads `voiceNumberOf`
   now. Fields that were simply absent — octave, velocity, the tie toggles, the
@@ -371,24 +371,24 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   readout, the clef, the key and time signatures, Delete Track — are there too.
 - **Every inspector field answers for the whole selection, via `commonValue`.**
   Where the selected notes agree it shows the value; where they do not it reads
-  "Mixed" and setting it applies to all of them. A panel that showed the *first*
+  "Mixed" and setting it applies to all of them. A panel that showed the _first_
   note's value would say "Staccato" for a selection that is mostly not, and
   setting it would look like a no-op on the notes that already agreed.
 - **Pitch is edited through the display lens and never round-tripped.** The
   step, accidental and octave a reader sees on a transposing instrument or
   inside an `8va` are not what is stored, so a patch is applied to what is
-  *shown* and converted once by `setNotePitch`. Feeding the stored pitch back
+  _shown_ and converted once by `setNotePitch`. Feeding the stored pitch back
   through the lens moves it by the transposition every time the panel is
   touched — silently, since the note then draws exactly where it was.
 - **Replace lives on the property sheet's tabs, not on the toolbar.** The scope
-  *is* the tab: Replace Notes beside the note you selected, Replace Measures
+  _is_ the tab: Replace Notes beside the note you selected, Replace Measures
   beside the bars, Replace Track beside the part. On a toolbar all three are
   equally far from the thing they act on and the reader has to work out which
   region each one means from its name. It briefly sat in the toolbar's More
   menu here; the web has always put it in the tabs.
 - **Cut, copy, paste, clear and delete live on the long-press menu, not on the
   editing bar** — on both platforms. Four toolbar buttons that all act on
-  something already selected and none of which can say *what*: Delete means a
+  something already selected and none of which can say _what_: Delete means a
   track going, a bar going and the score renumbering, or notes going and the
   ones behind shifting forward. `ScoreActionsSheet` opens **on the object** and
   names it first, in small grey type above the entries. The sheet draws
@@ -462,17 +462,16 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   a score that had one showed a toggle whose next touch would have shortened it.
 - **The keyboard's show/hide control is the transport bar's rightmost button,
   and the keyboard draws nothing when collapsed.** It used to be a bar of the
-  keyboard's own — a whole row for one button, and the control that *reveals*
+  keyboard's own — a whole row for one button, and the control that _reveals_
   the keyboard sat inside the thing it reveals, so the row had to survive
   collapsing to stay reachable. The glyph is `PianoKeysIcon` from
   `NOTATION_ICONS`, so it is the same drawing the web toolbar shows: white,
   black, white, because three identical filled bars read as three black keys and
-  a black key only ever sits *between* two whites. `KeyboardPanel` carries a
+  a black key only ever sits _between_ two whites. `KeyboardPanel` carries a
   `testID` because its keys are not drawn until it has been measured and a test
   renderer measures nothing — there is no key to point at when asserting where
   the panel sits.
-- **The piano keyboard's range is the active track's instrument, not always all
-  88.** `KeyboardPanel` passes no range at one point in its life and
+- **The piano keyboard's range is the active track's instrument, not always all 88.** `KeyboardPanel` passes no range at one point in its life and
   `PianoKeyboard` fell back to `FULL_RANGE`, so a piccolo part offered three
   octaves that could never sound and a drum kit offered a piano's compass. The
   range comes from `trackKeyboardSpan` (music_drawing, the web keyboard's own
@@ -495,12 +494,12 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   zero, and `useProjectGeneration`'s `onStartError` seam exists so that lands as
   the paywall rather than as a string in the generation overlay. Returning true
   marks it handled, which is what leaves the inline message empty — the sheet is
-  the report (New Project decides the same through music_client's
+  the report (New Project decides the same through music*client's
   `classifyGenerationError`, and the gate itself is music_lib's
   `isOutOfCredits`), and showing both says the same thing twice in two registers.
   **Purchasing is deliberately not offered**: `consumables_pages` has no React
   Native build, so the sheet explains and points at the Credits screen rather
-  than half-implementing a store. The *balance* needs none of that —
+  than half-implementing a store. The \_balance* needs none of that —
   `ConsumablesApiClient` takes a base URL and a network client and nothing else,
   which is why `useCreditBalance` can read it with no purchase SDK and no pods.
 - **A component that renders must not reach for auth.** `NewProjectSheet`
@@ -548,7 +547,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   component exists on the web and not in RN, port it into
   `mail_box_components_rn` rather than reimplementing it here.
 - **Never size anything from `useWindowDimensions()`.** On macOS it reports the
-  *display*, not the app's window — measured: a 1280pt window on a 3440pt
+  _display_, not the app's window — measured: a 1280pt window on a 3440pt
   screen laid the keyboard out at 3440 and clipped it, so the app showed three
   octaves of an eighty-eight-key keyboard and a score whose bars ran off the
   right edge. The same bug appears in any resizable window. (It used to appear
@@ -591,7 +590,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   `printRenderOptions` uses: a **layout** option, so the 220 goes back to the
   music and the hit test, `contentSize`, the caret's `clipLeft` and the
   continuous-mode follow clearance all move with it. A canvas that only stopped
-  *painting* would leave the score inset by an invisible column.
+  _painting_ would leave the score inset by an invisible column.
   This replaced a 760×600 threshold that put the panel in a **strip beneath the
   score** on anything smaller. That rule made sense while a portrait tablet was
   possible; in landscape it is backwards — a column costs width, which is
@@ -600,9 +599,9 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   are gone; what is left is `features/layout/inspector-default.ts` —
   `INSPECTOR_COLUMN_WIDTH` (320, the `w-80`, now in the arithmetic),
   `MIN_SCORE_WIDTH` (480) and `inspectorOpensByDefault`, which decide only
-  whether it *opens* by default. **That helper must subtract the safe-area
+  whether it _opens_ by default. **That helper must subtract the safe-area
   insets, and it is a module of its own so vitest can say so.** `onLayout`
-  reports a view's own frame and `SafeAreaView` pads *inside* it, so the width
+  reports a view's own frame and `SafeAreaView` pads _inside_ it, so the width
   it is handed is the whole 874 of a landscape iPhone, not the 750 the content
   gets — and 874 − 320 clears 480 while 750 − 320 does not. Measured on the
   simulator with the insets left in: the panel opened by default on the phone,
@@ -632,8 +631,8 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   other test in the suite: nothing renders one, and the only symptom of a
   regression is that the music gets narrow one day. macOS is a desktop window
   and none of this applies to it.
-- **A failed save must leave the document dirty.** music_lib's saver clears
-  `dirty` only after a write succeeds *and* the score written is still the one
+- **A failed save must leave the document dirty.** music*lib's saver clears
+  `dirty` only after a write succeeds \_and* the score written is still the one
   open; the reverse leaves a document that looks safe to close after the write
   failed. `documents/document.test.ts` pins it for this app's wiring.
 - **A document from a newer format version is refused, not read hopefully.**
@@ -672,7 +671,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   The editor is the stack's `initialRouteName`, so there is nothing to pop and
   Back finishes the activity — reproduced on a Pixel 9 Pro XL: two notes, title
   bar reads "Unsaved", Back, launcher, relaunch, empty score, no prompt. The
-  `AppState` flush covers *backgrounding*, which a finished activity does not
+  `AppState` flush covers _backgrounding_, which a finished activity does not
   reliably reach. The decision is music_lib's `decideQuit` — the sibling of the
   `decideClose` a tab's × uses, which had no production caller at all — because
   Back at the root is a **quit** rather than a tab close and asks about every
@@ -691,7 +690,7 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   server that answers and refuses (`ApiError`) is reported, not hidden.
 - **A `.moo` is imported, not opened, because only macOS has a File menu.**
   `file.new`/`file.open` live on the menu bar, so a project file was a format
-  iOS and Android could *write* from the export sheet and then never read back.
+  iOS and Android could _write_ from the export sheet and then never read back.
   It is the fifth entry in the dashboard's Import menu now — reachable signed
   out, since a `.moo` is decoded on the device and needs no account — reading
   through music_lib's re-export of `parseProjectFile` rather than a call on
@@ -756,34 +755,34 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   re-downloads the project after a create or an open.
 
 - **The score-setup form draws music_lib's New Project draft.** `ScoreSetupFields` takes a `NewProjectFormDraft` and a `dispatch` over `reduceNewProjectDraft`; its tests build drafts through the reducer (fixed rng) and read the pickers' triggers, which print the chosen label — a native `Select`'s modal is not mounted in tests. Option lists come from `generationInstrumentOptionsFlat` and `labelledOptions` (with `NO_MARK`/`optionalToPicker`), tested upstream; rows are addressed by entry id and only style-essential rows lock.
-- **New Project opens on a piano, and used to open on a drum kit.** The initial roster was `INSTRUMENT_OPTIONS[0]`, which was the first *kit* — so native New Project started as a drum solo where the web one started on piano. It comes from `initialNewProjectDraft` now, which is what the web dialog uses.
+- **New Project opens on a piano, and used to open on a drum kit.** The initial roster was `INSTRUMENT_OPTIONS[0]`, which was the first _kit_ — so native New Project started as a drum solo where the web one started on piano. It comes from `initialNewProjectDraft` now, which is what the web dialog uses.
 - **The moods were rendered as their own raw values.** `bittersweet`, `upbeat` — labels written straight into the options with no key, which is the one class of missing translation `locale-parity` cannot see, since there is no key to be absent. They go through `moodLabelKey` (and complexity through `complexityLabelKey`) via `labelledOptions`, sorted by translated label. `generateScore.moodName.*` was missing from this app's locales entirely until the draft adoption — `keys-exist` cannot see a key built at runtime.
 - **Turning the Generate toggle on gives the roster a singer**, through `setGenerating` in music_lib's reducer, which tracks the added voice by entry id (`autoVocalId`) and takes back only that one. Same rules as the web dialog, because they are the web dialog's code.
 - **Replace and New Project defaults are music_lib's.** Replace opens on `defaultReplaceSubmission` (nothing preserved, moderate complexity, the default variant) with `REPLACE_PRESET_KEYS` translated under `replace.preset.<key>`; New Project sends `DEFAULT_GENERATION_VARIANT`. MIDI import number fields go through `parseNumericDraft` and `patchMidiImportOptions`, never `Number(text)` — a cleared field is not zero.
 
-- **`useServerContext` hands the hooks a token *getter* and the user id, never a token.** A captured token fails an hour into a session and read `null` for a signed-in user on the first render; `getToken` is awaited per request and `userId` decides synchronously whether a query may run. `siteAdmin` comes from music_client's `useSiteAdmin` over the same shape.
+- **`useServerContext` hands the hooks a token _getter_ and the user id, never a token.** A captured token fails an hour into a session and read `null` for a signed-in user on the first render; `getToken` is awaited per request and `userId` decides synchronously whether a query may run. `siteAdmin` comes from music_client's `useSiteAdmin` over the same shape.
 - **`publicServerContext()` exists so a public route does not drag in Firebase.** `useServerContext` reads the auth context, so importing it into a component pulls the whole auth stack into every test that renders it — which is how adding the preset picker broke two suites with "Cannot use import statement outside a module" from `firebase/app`. The presets route needs no identity, so it gets a context built straight from the network client with `token: null`, and `null` where there is no server at all.
 - **The preset picker is the server's list and this app's words**, the same contract the web dialog uses: `GET /public/presets?style=` says which briefs, `generateScore.preset.<key>` says what they read, and `preset-contract.test.ts` proves every brief the server could send has a translation in both languages. Rendered only when a list has arrived — a local document with no server gets no control rather than one that opens empty.
-- **`renderWithApp` mounts a `QueryClientProvider`, exactly as `App.tsx` does.** Without one, any component that reads server data throws "No QueryClient set", which takes the whole render down rather than leaving a value missing — so a component that merely *might* ask the server breaks every test that renders it. Fresh client per render, retries off, no cache between tests.
+- **`renderWithApp` mounts a `QueryClientProvider`, exactly as `App.tsx` does.** Without one, any component that reads server data throws "No QueryClient set", which takes the whole render down rather than leaving a value missing — so a component that merely _might_ ask the server breaks every test that renders it. Fresh client per render, retries off, no cache between tests.
 - **The default title follows the Generate toggle** — "New Score" / "Generated Score" — as the placeholder and as the fallback, and it reaches the project name and the request rather than the draft, so a blank field still leaves the score's own metadata at "Untitled".
 
 - **The lyric's subject sits under the Write-lyrics switch**, shown only while words are being written and blank-means-follow-the-prompt, exactly as the web dialog has it. `music_lib` drops it from the request unless the lyrics it describes were asked for, so neither app has to police it.
 
-- **A playback frame re-renders nothing but what changed.** `useScoreCanvas` hands out the picture, the cursor description and the scroll offset as *signals* (`createSignal`/`useSignal`), read by `ScoreView` and `PlaybackCursor` alone. They were state in `ScrollingScore`, so every change of lit notes re-rendered the whole score view — including `displayScore`'s scan of every note — measured at 7% of the JavaScript thread on a dense import, as much as half the painting it was only there to show. `ScrollingScore.test.tsx` pins that a new picture, cursor or scroll offset renders it zero times. The score reaches the canvas through `setStoredScore(score, pitchDisplay)`, which applies the lenses and the out-of-range scan once per score.
+- **A playback frame re-renders nothing but what changed.** `useScoreCanvas` hands out the picture, the cursor description and the scroll offset as _signals_ (`createSignal`/`useSignal`), read by `ScoreView` and `PlaybackCursor` alone. They were state in `ScrollingScore`, so every change of lit notes re-rendered the whole score view — including `displayScore`'s scan of every note — measured at 7% of the JavaScript thread on a dense import, as much as half the painting it was only there to show. `ScrollingScore.test.tsx` pins that a new picture, cursor or scroll offset renders it zero times. The score reaches the canvas through `setStoredScore(score, pitchDisplay)`, which applies the lenses and the out-of-range scan once per score.
 - **The notation paints in layers, and prepares the next window ahead.** The surface is `createSkiaLayeredPaint` from `music_drawing/skia`: a base `SkPicture` kept until anything but the lit notes changes, and a frame that replays it under the active track's notes, so a change of lit notes records one track rather than the window. Painting fell from 17% of the JavaScript thread to under 5% on the dense import. `prepare` builds the window following playback is about to scroll to, a column per task, so the system break does not also format it. See `music_drawing/docs/score-canvas.md`. **The page turn rides the cursor's own clock**: `ScoreCanvas.subscribeCursorSystem` announces a system crossing when the path swaps, and `bindPlaybackToCanvas` follows on that rather than waiting for the next 30Hz position report — the caret is placed in content coordinates, so a follow scroll that arrives late leaves it clipped outside the viewport, measured here at a median 66ms of invisibility per page turn (2.5% of playback) against 34ms after. `followTo`'s once-per-bar `followedMeasure` guard is what stops the report that arrives afterwards following the same bar twice. One artifact is left: the first path for a new system is interpolated across whole bars until that window's own paint records its note positions, so the caret hops 16–22px forward one frame after the turn.
-- **The first Skia picture can be dropped, so it is sent again.** `Canvas` ships a picture from a layout effect through reanimated's UI runtime (`runOnUI` → `SkiaViewApi.setJsiProperty`), which lands on the main thread some time after the commit that created the view — and one that arrives before that view's drawing surface is ready is discarded with no error and nothing to re-send it. That only shows on a canvas painted **once**, which is every score that fits the viewport: measured on this react-native-macos build, the eight-bar starting score came back blank on about one tab activation in two, a long score never (it repaints while scrolling and recovers), and any second picture — a zoom, a resize — drew it correctly. `ScoreView.tsx` re-renders for `RESEND_FRAMES` frames after the first picture exists, because a new `Canvas` render is what re-sends it; two spare sends at mount and nothing after, so playback pays nothing. **`SkiaViewApi.requestRedraw` (`ref.current.redraw()`) cannot work here** and was the first attempt: it asks the view to present the picture it *holds*, and the whole problem is that it never received one.
+- **The first Skia picture can be dropped, so it is sent again.** `Canvas` ships a picture from a layout effect through reanimated's UI runtime (`runOnUI` → `SkiaViewApi.setJsiProperty`), which lands on the main thread some time after the commit that created the view — and one that arrives before that view's drawing surface is ready is discarded with no error and nothing to re-send it. That only shows on a canvas painted **once**, which is every score that fits the viewport: measured on this react-native-macos build, the eight-bar starting score came back blank on about one tab activation in two, a long score never (it repaints while scrolling and recovers), and any second picture — a zoom, a resize — drew it correctly. `ScoreView.tsx` re-renders for `RESEND_FRAMES` frames after the first picture exists, because a new `Canvas` render is what re-sends it; two spare sends at mount and nothing after, so playback pays nothing. **`SkiaViewApi.requestRedraw` (`ref.current.redraw()`) cannot work here** and was the first attempt: it asks the view to present the picture it _holds_, and the whole problem is that it never received one.
 - **The macOS navigator draws no stack header, so the body has to offer the way back.** Every screen but the editor is pushed with `headerShown: true`, and on this react-native-macos / react-native-screens build that header is not drawn at all — measured on the accessibility tree: Settings and Docs expose their content and no back control of any kind, to the pointer or to VoiceOver. A Mac has no swipe-back either, so a pushed screen was a one-way trip out of which the app had to be relaunched. `ScreenBackBar.macos.tsx` draws the control the header would have (guarded on `canGoBack`, since the editor is the stack's first route); `ScreenBackBar.tsx` renders `null` on iOS and Android, whose navigator has a real header and a gesture, and a second one in the body would duplicate it. Two neighbouring facts about this build. **`accessibilityRole="tab"`/`"tablist"` map to nothing in AppKit** and arrive as `AXUnknown`, an element VoiceOver cannot press — measured on the tree, with `tab` the inspector's four segments were unpressable — so `SegmentedTabs.macos.tsx` uses `button` plus `accessibilityState.selected` and gives the group no role at all. And that control is drawn **in-app** rather than by `@react-native-segmented-control`, whose JS drawing moves its selected pill with `Animated.timing({useNativeDriver: true})`: a native-driven animation never reaches a view on this build (the same thing that makes the playhead an `NSView` of its own), so the pill sat on whichever tab was selected at mount while the label styling followed the real one — the strip said Track over the Note panel, with an invisible label where Note should have been.
 - **A legacy native view's colour prop must be processed by hand when it is declared `NSColor`.** React Native runs `processColor` only for props a view manager declares `UIColor`; `@moosiac/playhead` declares `lineColor` as `NSColor`, so the theme's CSS string reached AppKit as a string, converted to nil, and the caret drew transparent — invisible on the Mac from the day it began taking the theme's colour, with no error anywhere. The package's `index.js` now wraps the native component and processes the colour. Found by drawing a plain `View` at the cursor's props (visible) beside the native view (not).
 - **The keyboard is sized like the web's, from music_drawing.** `AppLayout` measures the score area and hands `KeyboardPanel` a `height` of `keyboardPanelHeight(score + keyboard as drawn)` — half the room they share, up to 160 — so on a short screen the two are the same height. White keys are `WHITE_KEY_WIDTH` (44): the panel is a horizontal `ScrollView` that centres a keyboard narrower than itself and opens a wider one at `keyboardScrollStart`. **A drag scrolls only from the strip under the keys** (`labelGutter`, which includes music_drawing's `KEYBOARD_SCROLL_STRIP`), through a `PanResponder` that calls `scrollTo`: a finger on the keys plays them, so on iOS and Android the `ScrollView`'s own dragging is off (`scrollEnabled` only on macOS/Windows, which keep trackpad and wheel scrolling), and on a desktop the strip is what a mouse drags. The drag has momentum and bounces at the ends — music_drawing's `KineticScroller`, shared by both apps — with overscroll drawn as a shift of the content, and the platform scrollbar is hidden for a 3px indicator (`keyboardScrollIndicator`).
-- **The keyboard ignores notes it does not show.** The player reports every track's sounding notes; `KeyboardPanel` compares the active track's lit keys with `samePitchSet` (music_drawing, shared with the web keyboard) against a ref *before* `setSounding` — an updater that returns the previous set still renders to find that out. Keys come from music_drawing's `keyboardKeys` (`fit: 'width'`) and fills from `keyboardKeyFill`; what is lit is music_drawing's `litKeys` (from `playingPitchesForTrack`; sounding only while playing, plus held keys). A pressed key auditions through music_types' `auditionVoiceFor(track)` — program and percussion flag together, a stray kit address resolved as playback resolves it.
-- **Every pressable control needs `onAccessibilityTap`, and on a Mac that is the *only* way in.** There is no synthesized-touch fallback on this build: an assistive activation arrives as `onAccessibilityTap` and never as `onPress`, so a control wired to the press handlers alone can be focused, read out, and never fire. Withheld while the control is disabled (`{...(disabled ? {} : { onAccessibilityTap: handler })}`), because `disabled` stops the press pair and would leave this the one way past the refusal. The piano keys were the sharp case and the one a press pair cannot express: they are press-and-hold, and the note's length comes from the held time — an activation has none, so it hands `playKeyGroup` a `heldMs` of **null** and the note is written at the toolbar's own note value. Everything else about it is the ordinary gesture's code — the same compass refusal, the same audition, the same `playKeyGroup` — because a second write path would be a second copy of the caret advance, the chord toggle and the edit lock. The audition alone needs a timer (`TAP_AUDITION_MS`): there is no moment the finger lifts, and switching the note off in the instant it started is a key that says its name and makes no sound.
-- **Navigation is two arrangements of one set of routes, and `hasTabBar()` is the one test** (`src/app/tab-bar.ts`). On iOS and Android Projects, Community, Docs, Resources and Settings are bottom tabs (`MainTabs.tsx`), the app opens on them, and everything else is pushed *above* the tab navigator — which is the whole of how an open project gets the full screen: a pushed screen covers the tab bar, so nothing hides it and nothing has to remember to show it again. On macOS and Windows there is no tab bar; the menu bar and the separate Projects window carry the same destinations and the app still opens on the editor. The route names are identical either way (`Dashboard` is Projects), so a screen inside the tabs navigates to a sibling by name under both. **From beside the tabs — the editor, the menu commands — use `goToTab`, never `navigate('Main', …)`**: React Navigation 7's `navigate` no longer goes back to a route already in the stack, so it would push a second copy of the tabs over the first; `goToTab` dispatches `popTo`. `sudojo_app_rn` is where the tab arrangement came from, but two things here have no counterpart there: it never hides its tab bar, and its master pane never collapses.
+- **The keyboard ignores notes it does not show.** The player reports every track's sounding notes; `KeyboardPanel` compares the active track's lit keys with `samePitchSet` (music*drawing, shared with the web keyboard) against a ref \_before* `setSounding` — an updater that returns the previous set still renders to find that out. Keys come from music_drawing's `keyboardKeys` (`fit: 'width'`) and fills from `keyboardKeyFill`; what is lit is music_drawing's `litKeys` (from `playingPitchesForTrack`; sounding only while playing, plus held keys). A pressed key auditions through music_types' `auditionVoiceFor(track)` — program and percussion flag together, a stray kit address resolved as playback resolves it.
+- **Every pressable control needs `onAccessibilityTap`, and on a Mac that is the _only_ way in.** There is no synthesized-touch fallback on this build: an assistive activation arrives as `onAccessibilityTap` and never as `onPress`, so a control wired to the press handlers alone can be focused, read out, and never fire. Withheld while the control is disabled (`{...(disabled ? {} : { onAccessibilityTap: handler })}`), because `disabled` stops the press pair and would leave this the one way past the refusal. The piano keys were the sharp case and the one a press pair cannot express: they are press-and-hold, and the note's length comes from the held time — an activation has none, so it hands `playKeyGroup` a `heldMs` of **null** and the note is written at the toolbar's own note value. Everything else about it is the ordinary gesture's code — the same compass refusal, the same audition, the same `playKeyGroup` — because a second write path would be a second copy of the caret advance, the chord toggle and the edit lock. The audition alone needs a timer (`TAP_AUDITION_MS`): there is no moment the finger lifts, and switching the note off in the instant it started is a key that says its name and makes no sound.
+- **Navigation is two arrangements of one set of routes, and `hasTabBar()` is the one test** (`src/app/tab-bar.ts`). On iOS and Android Projects, Community, Docs, Resources and Settings are bottom tabs (`MainTabs.tsx`), the app opens on them, and everything else is pushed _above_ the tab navigator — which is the whole of how an open project gets the full screen: a pushed screen covers the tab bar, so nothing hides it and nothing has to remember to show it again. On macOS and Windows there is no tab bar; the menu bar and the separate Projects window carry the same destinations and the app still opens on the editor. The route names are identical either way (`Dashboard` is Projects), so a screen inside the tabs navigates to a sibling by name under both. **From beside the tabs — the editor, the menu commands — use `goToTab`, never `navigate('Main', …)`**: React Navigation 7's `navigate` no longer goes back to a route already in the stack, so it would push a second copy of the tabs over the first; `goToTab` dispatches `popTo`. `sudojo_app_rn` is where the tab arrangement came from, but two things here have no counterpart there: it never hides its tab bar, and its master pane never collapses.
 - **The tab bar is the system's, and that pins two versions.** `MainTabs` uses `createNativeBottomTabNavigator` from `@react-navigation/bottom-tabs/unstable`, which hands the tabs to a `UITabBarController` on iOS and a Material bar on Android — on an iPad that is the floating bar at the top, where the JS navigator drew a phone's bar along the bottom. It needs `react-native-screens`' `Tabs`, and **`react-native-screens` 4.25+ requires React Native 0.82, 4.26+ requires 0.84** (its own README's table); on 0.81 `pod install` fails in codegen (`setToolbarMenuElementOptions must be of type React.ElementRef<>`). So `react-native-screens` is `~4.24.0` and `@react-navigation/bottom-tabs` is `~7.15.13`, the last line built against 4.24 — tilde on both, because a caret on either walks into the versions that do not build. Raise them together, and only with React Native. A system bar takes a platform image rather than a React view: SF Symbols on iOS, and `android/app/src/main/res/drawable/ic_tab_*.xml` on Android (the heroicon outlines as vector drawables). The tabs' own header is covered by the top bar on an iPad, so the screen title is the selected tab.
 - **One bar per row: where the tab bar is along the top it is overlaid on the tabs' own native bar, and where it is along the bottom each screen draws a titled bar of its own.** `MainTabs` shows the native header only under `hasTopTabBar()` (an iPad from iPadOS 18), with a blank title, since the tab bar floats across that row and names the screen; a split view's panels and a whole screen (`TitledScreen`: Community, Resources) then draw no bar (`hasPanelBar()` is false) and the detail is headed in its content, as on a desktop. Under a bottom tab bar (Android, an iPhone) the native header is off — it drew a blank 48dp strip on Android — and both of a split view's bars are titled, the list's with what it lists and the detail's with what was chosen, as is a whole screen's. Android's bar is 48 on a phone and 64 on a tablet; **a phone's status bar is hidden** (`ThemedStatusBar`), and because Android goes on reporting its inset, `TopClearance` clears no top edge on a phone. The native `SafeAreaView`, not the hook: the hook's inset reaches below an iPad's floating tab bar.
 - **Master/detail is `sudojo_app_rn`'s split view, on every device, with no narrow form** (`SplitViewContainer.tsx`). Projects, Docs and Settings each put a 320-point list beside a detail, and each panel is a navigation tree of its own (`NavigationIndependentTree`) with its own bar — the list titled with what it lists, the detail with what was chosen. Projects is one component in two places (`ProjectsSplitView`: the desktop Projects window and the Projects tab; what happens once a project is open is the caller's, `onProjectOpened`). There is no width breakpoint — `sudojo_app_rn` has one, read from `useWindowDimensions()`, which this app must never size from — because mobile is landscape-only and a desktop window is wide. **Inside a panel `useNavigation()` answers the panel's navigator, which has one screen**, so whatever leaves the split view is handed down: Docs and Settings take `navigation` and `route` as props rather than from hooks, and their tests render the real trees instead of stubbing `@react-navigation/native`. **The panels use the plain JS stack on every platform, and an iPad is why**: a native bar is laid out against the window, so under the iPad's floating tab bar each panel's bar stretched to twice its height and the list's title was not drawn at all. **The detail's bar is untitled under that tab bar** (`hasTopTabBar()`): the bar floats across the middle of the same row, the list's title shows beside it and the detail's would sit underneath it. Not `MasterDetailLayout` from `@sudobility/components-rn` — it sizes from `useWindowDimensions()` and wraps both halves in a `ScrollView`, which a pane holding a `FlatList` cannot sit inside. **Every detail pane brings its own scrolling** — `ScreenScaffold`, or a list — because `SplitPanel` cannot supply it: half of what it holds virtualize, and a list inside a scroll view draws nothing. `split-detail-scrolls.test.ts` reads each split view for what it puts in its detail panel and refuses a pane with no scroller. A pane that is also a pushable screen (Credits, sign-in inside Settings) is wrapped in `EmbeddedScreen`, which is what stops `ScreenScaffold` clearing a left cutout the list already cleared.
 - **In the editor the Projects sidebar is a popup, drawn in the editor's own tree** (`ProjectsPopup.tsx`, opened from the header's leading button beside the back control). Not a `Modal`: a `Modal` is a second native window with its own supported orientations, and this app is landscape-only. Choosing an item leaves for the Projects tab with that pane showing, carried as `{ pane, at }` — `at` tells one request from the next, since asking for the same pane twice is two requests.
-- **Under a tab bar one project is open at a time, and it outlives the editor.** `DocumentList`'s `single` (set from `hasTabBar()` in `appState.ts`) closes whatever was open when another document opens, so the editor there has no tab strip (`AppLayout` leaves `DocumentTabs` out) and no second document sitting unseen behind the first; a desktop build still holds several. The list closes without asking, as `close` always has, so every way of opening a document on those platforms goes through `useSingleDocumentGuard`: it **saves first and asks second** — a document with a file or a project to live in is written, and only work with nowhere to go is asked about, with `decideQuit` and the `ConfirmSheet` that Android's Back uses. Import is guarded *before* the file picker, since "no" after somebody has found their file is the question asked too late. Three things follow from the editor being a screen above the tabs. The scratch "Untitled" document is not made at launch there, since the app opens on Projects. The Projects list gains **Open project** while one is open, because an unsaved document behind the tabs had no other way back. And `UnsavedQuitGuard` is mounted on the tabs rather than in the editor, with `backBehavior="none"`: Back in the editor pops to the tabs, and the tabs are where Back finishes the activity. `AppLayout` also leaves the top inset to the navigator where it draws the header (`hasNativeHeader()`); clearing the status bar twice left an empty band under the header.
-- **Google and Apple sign-in borrow the native modules for a token and nothing else — and the how lives in `@sudobility/auth_lib/signin`, not here.** This app runs Firebase's JS SDK everywhere because the China proxy is a `fetch` wrapper the native SDKs never pass through; `sudojo_app_rn` still runs `@react-native-firebase` on mobile. `AuthContext` supplies only what is this app's — the `.env` values as a `SignInConfig`, `Platform.OS`, and the native modules as lazily `require`d bridges — and auth_lib's `googleSignInAvailable`/`appleSignInAvailable`/`googleCredential`/`appleCredential`/`createFirebaseJsAuth` do the rest (the desktops through `WebAuth`, which has no iOS or Android half, and are offered no Apple). Jest cannot read auth_lib's `exports` map, so `jest.config.cjs` maps `@sudobility/auth_lib/(oauth|signin)` to the dist files by path. **Both modules are `require`d inside the function that uses them, never `import()`ed**: Metro answers a dynamic import by fetching a second bundle when the button is pressed, which failed here with "Could not load bundle" on the sign-in screen. **`pod install` needs `GoogleUtilities` and `RecaptchaInterop` as modular headers** (`ios/Podfile`), or it refuses the whole install — and a refused install leaves the old Pods in place, so the app still builds and the new modules are simply not in it; check `Pods/Manifest.lock` for the module rather than trusting a green build. What each platform needs is in `.env.example`, grouped by platform. **`.env` is everything JavaScript reads**; `GoogleService-Info.plist` (in the Xcode target — it was on disk but not in the target for a long time, so nothing native ever saw it) and `google-services.json` (via the google-services Gradle plugin) configure **native Firebase only**: analytics, crashlytics, messaging and remote config on iOS and Android, started by `config/native-firebase.{ios,android}.ts` through `di_rn`'s `initializeRNApp` from `index.js`, with a desktop no-op. The Google sign-in module is always given `iosClientId` so it never reads the plist either. iOS and the desktops take the iOS-type client (`GOOGLE_OAUTH_CLIENT_ID_MACOS`; its reversed form is *derived* by auth_lib's `reversedGoogleClientId` rather than configured), Android the web-type client, and Android's Apple button a Services ID and redirect. The one value that cannot come from `.env` is iOS's Google URL scheme, hard-coded in `Info.plist`; `constants.test.tsx` checks it against the checkout's `.env`. iOS pods: Firebase is kept on CocoaPods (`$RNFirebaseDisableSPM`) with every pod a **static framework**, the same arrangement as sudojo_app_rn, because the prebuilt React core cannot link dynamic pods. A way that is not configured shows no button (`googleSignInAvailable`, `appleSignInAvailable`).
+- **Under a tab bar one project is open at a time, and it outlives the editor.** `DocumentList`'s `single` (set from `hasTabBar()` in `appState.ts`) closes whatever was open when another document opens, so the editor there has no tab strip (`AppLayout` leaves `DocumentTabs` out) and no second document sitting unseen behind the first; a desktop build still holds several. The list closes without asking, as `close` always has, so every way of opening a document on those platforms goes through `useSingleDocumentGuard`: it **saves first and asks second** — a document with a file or a project to live in is written, and only work with nowhere to go is asked about, with `decideQuit` and the `ConfirmSheet` that Android's Back uses. Import is guarded _before_ the file picker, since "no" after somebody has found their file is the question asked too late. Three things follow from the editor being a screen above the tabs. The scratch "Untitled" document is not made at launch there, since the app opens on Projects. The Projects list gains **Open project** while one is open, because an unsaved document behind the tabs had no other way back. And `UnsavedQuitGuard` is mounted on the tabs rather than in the editor, with `backBehavior="none"`: Back in the editor pops to the tabs, and the tabs are where Back finishes the activity. `AppLayout` also leaves the top inset to the navigator where it draws the header (`hasNativeHeader()`); clearing the status bar twice left an empty band under the header.
+- **Google and Apple sign-in borrow the native modules for a token and nothing else — and the how lives in `@sudobility/auth_lib/signin`, not here.** This app runs Firebase's JS SDK everywhere because the China proxy is a `fetch` wrapper the native SDKs never pass through; `sudojo_app_rn` still runs `@react-native-firebase` on mobile. `AuthContext` supplies only what is this app's — the `.env` values as a `SignInConfig`, `Platform.OS`, and the native modules as lazily `require`d bridges — and auth*lib's `googleSignInAvailable`/`appleSignInAvailable`/`googleCredential`/`appleCredential`/`createFirebaseJsAuth` do the rest (the desktops through `WebAuth`, which has no iOS or Android half, and are offered no Apple). Jest cannot read auth_lib's `exports` map, so `jest.config.cjs` maps `@sudobility/auth_lib/(oauth|signin)` to the dist files by path. **Both modules are `require`d inside the function that uses them, never `import()`ed**: Metro answers a dynamic import by fetching a second bundle when the button is pressed, which failed here with "Could not load bundle" on the sign-in screen. **`pod install` needs `GoogleUtilities` and `RecaptchaInterop` as modular headers** (`ios/Podfile`), or it refuses the whole install — and a refused install leaves the old Pods in place, so the app still builds and the new modules are simply not in it; check `Pods/Manifest.lock` for the module rather than trusting a green build. What each platform needs is in `.env.example`, grouped by platform. **`.env` is everything JavaScript reads**; `GoogleService-Info.plist` (in the Xcode target — it was on disk but not in the target for a long time, so nothing native ever saw it) and `google-services.json` (via the google-services Gradle plugin) configure **native Firebase only**: analytics, crashlytics, messaging and remote config on iOS and Android, started by `config/native-firebase.{ios,android}.ts` through `di_rn`'s `initializeRNApp` from `index.js`, with a desktop no-op. The Google sign-in module is always given `iosClientId` so it never reads the plist either. iOS and the desktops take the iOS-type client (`GOOGLE_OAUTH_CLIENT_ID_MACOS`; its reversed form is \_derived* by auth_lib's `reversedGoogleClientId` rather than configured), Android the web-type client, and Android's Apple button a Services ID and redirect. The one value that cannot come from `.env` is iOS's Google URL scheme, hard-coded in `Info.plist`; `constants.test.tsx` checks it against the checkout's `.env`. iOS pods: Firebase is kept on CocoaPods (`$RNFirebaseDisableSPM`) with every pod a **static framework**, the same arrangement as sudojo_app_rn, because the prebuilt React core cannot link dynamic pods. A way that is not configured shows no button (`googleSignInAvailable`, `appleSignInAvailable`).
 - **The Mac app is sandboxed, as the Mac App Store requires** (ITMS-90296 rejected build 1.0.1 (17) without it). `CODE_SIGN_ENTITLEMENTS` points at `macos/music_app_rn-macOS/music_app_rn.entitlements`: App Sandbox, network client, user-selected files read-write, and printing (`com.apple.security.print`; a sandboxed `NSPrintOperation` needs it). The same build also lacked `LSApplicationCategoryType` (ITMS-90242); the Mac `Info.plist` declares `public.app-category.music`. Under the sandbox the app's own files live in `~/Library/Containers/com.sudobility.moosiac/`. **Known gap:** recent documents are stored as plain paths, so a file the user opened from elsewhere opens fine in that session but is refused from Recents after a relaunch; reopening it needs a security-scoped bookmark saved by the file picker, which `@moosiac/file-picker` does not do yet.
 - **iOS plays through the native synthesizer, on a FluidSynth built here.** `createPlayer` hands `FluidR3Mono_GM.sf3` to `NativeSynthBackend` on macOS, Windows and iOS; Android has no native module and takes the MP3 sample engine. iOS was on the sample engine too, and it is why the first Play took so long: every instrument's pack was read, parsed and its 88 clips decoded in JavaScript when Play was pressed (measured in Hermes: ~1.7 s of blocking JS per pack for the read alone). The native module was already linked — it could not load the font, because **the XCFramework FluidSynth publishes is built with `-Denable-libsndfile=OFF`** (its own `contrib/ios_build.sh`) and SF3 is Ogg Vorbis. `native/synth/scripts/build-fluidsynth-apple.sh` builds the same framework with libsndfile in it, for iOS (device and simulator) and macOS (universal); macOS used to link Homebrew's libfluidsynth, which built only on a Mac that had it — Xcode Cloud's archive failed with "'fluidsynth.h' file not found", Homebrew's arm64-only copy left no Intel slice, and the shipped app would have looked for it under `/opt/homebrew`. Three things that script learned the hard way. **libsndfile's Xiph codecs are one switch**: without FLAC and Opus present it turns Vorbis off too, so all four are built though only Vorbis is wanted. **FluidSynth has to find libsndfile by its installed CMake config** (`CMAKE_FIND_PACKAGE_PREFER_CONFIG`): its fallback finder found the library, printed "Support for SF3 files: no", and left FLAC and Opus off the link line. **pkg-config answers for the Mac**, and offered Homebrew's macOS libsndfile to an iPad build until `PKG_CONFIG_LIBDIR` was pointed at the prefix. Measured in the simulator with a test program: the official framework fails `fluid_synth_sfload` on the bundled font, this one loads it in ~3.3 s and renders a note. **Replacing the framework is not enough to change the app**: `@moosiac/synth` is a `file:` dependency, so CocoaPods reads the copy in `node_modules` and Xcode keeps another in DerivedData — two rebuilds "succeeded" with the old binary still inside the app. The script prints the three commands; verify with `nm` on the binary inside the built `.app`.
 - **Settings lists the account first, and what it lists depends on who is signed in** (`settingsSectionsFor`). Signed out: Account — which is then the sign-in form — and Appearance. Signed in: Account, Credits, Credit history, API keys, Manage coupons (site administrators), Appearance — redeeming a coupon is a form on the Credits screen, under the balance it changes, not an entry of its own; the web dashboard's order, with the device's one section last. The account's sections talk to the server through `ConsumablesApiClient` and `EntityClient` directly (`useAccountClients`), as the balance always has: `consumables_client`'s hooks read a store only a purchase adapter initialises, and `entity_client`'s `useCurrentEntity` reads `localStorage`. **Every request they make has its trailing slash taken off** (`withoutTrailingSlash`): `ConsumablesApiClient` builds addresses with `new URL(…).toString()`, React Native's `URL` answers `…/balance/` where a browser's answers `…/balance`, and the server routes only the second — so every credits request this app had ever made was a 404 (44 of 44 in the API's log) and the balance read "—". API keys are the **personal** workspace's, since this app has no workspace picker. Score and About are gone from the list — written pitch is on the editing bar, and the build is stated at the foot of Appearance, which is now the only place it shows.
@@ -793,15 +792,45 @@ renderer per view, and `hit-test` in the library, is what fixed it.
 - **Colours and controls come from the design system, and `design-system.test.ts` scans for the ones that do not.** No hex literal, no Tailwind palette class (`text-amber-700`, `bg-black/30`), no CSS colour name on a colour prop, no `Text`/`TextInput`/`Switch` from `react-native`, and no `Pressable` outside the app's wrappers — each with an allow list that gives a reason per file and fails when an entry is no longer needed. What it was written after: a document tab strip in zinc literals that stayed a light band across a dark editor, title-bar glyphs in `color="white"` beside a title in `text-primary-foreground` (black in dark mode), and a save-state pill whose `text-warning` sat on the `View` — a `Text` inherits no colour from the view around it, so the words were drawn in `foreground` on the bar's red at 3.6:1. A value that must be passed (an SVG glyph, a navigator header) comes from `useNotationInk()`. **A row the library's `Select` sits in cannot be given a height from outside**: its trigger is wrapped in a bare `View`, so `h-full` has nothing to fill; `FieldSlot` (beside `FieldRow`) states the height for a field and buttons only.
 - **A documentation topic about the interface opens with a figure of the element it is about, captured from this app.** `src/features/docs/figures.ts` is a `Record` over `DOCS_TOPIC_IDS` — a new topic fails to compile until somebody decides whether it gets a picture, and `null` is that decision (the reference topics are live tables; `sharing` has none because a snapshot needs a server project and the figures are captured from a local document). The files are in `assets/docs/figures/`, twice the stated size in pixels, and `figure-assets.ts` holds the `require`s apart from the table so a test with no bundler can read it; `figures.test.ts` holds table, asset list and files to each other. The words under a figure are `docs.<topic>.figure`, the same in both apps (`docs-parity.test.ts`), so they name the element and not the app. **The frame has the size and the image fills it** (`DocsFigure.tsx`): `width`/`maxWidth`/`aspectRatio` on the `Image` itself drew it at the file's pixel size, wider than the pane. There is no capture script here as there is on the web — the simulator has no tap tool — so a figure is retaken by starting the app in the state wanted, `xcrun simctl io <udid> screenshot`, and cropping to the element.
 - **Controls that share a row share a height, and a `Select` is given it as a class.** `FieldRow` draws a field and its button; `FieldSlot` with `SLOT_FIELD_CLASS`/`SLOT_BUTTON_CLASS` is for the rows it cannot (a draft committed on blur, a button after a picker). A `Select` takes `SLOT_SELECT_CLASS` instead, because the library wraps its trigger in a view of its own and `h-full` has nothing to fill — it replaces the trigger's `min-h-[36px]`, which is only a class (and so replaceable) since components-rn stopped stating it as `style`. It is two whole literals chosen by platform, `MIN_TOUCH_TARGET` being 48 on Android; `field-row.test.ts` holds them to the constant. The inspector's time signature (field / picker) and the New Project instrument rows (picker, remove button) were the two rows still mixing 33, 36 and 32 points.
-- **A profile picture is chosen from the photo library on a phone or tablet, and from a file on a desktop** (`useAvatarPicker.ts`, `hasPhotoLibrary`). The file chooser opens on Files, where a phone keeps no pictures. `react-native-image-picker`'s `launchImageLibrary` presents the system's own picker — `PHPickerViewController` on iOS, the Photo Picker on Android — which runs outside the app and hands back only what was chosen, so **no photo permission is asked for at run time**; do not add `READ_MEDIA_IMAGES` for it. `NSPhotoLibraryUsageDescription` *is* declared, and must stay: App Store Connect scans the binary for code that can reach the photo library, finds it in the picker module, and rejects the upload without the key (ITMS-90683, build 1.0.1 (4)) whether or not the app ever asks. Declaring it shows no prompt. `NSMicrophoneUsageDescription` is there for the same reason: `react-native-audio-api` bundles an iOS recorder this app never starts, and its string says so. Never call `launchCamera` without adding the camera permission first. The module is iOS and Android only and is `require`d inside `pickPicturePath`, never imported; it needs no `react-native.config.js` entry, since its podspec is `:ios` and it ships no Windows code. It is a native module: adding it needs `pod install` and a rebuild, not a reload.
+- **A profile picture is chosen from the photo library on a phone or tablet, and from a file on a desktop** (`useAvatarPicker.ts`, `hasPhotoLibrary`). The file chooser opens on Files, where a phone keeps no pictures. `react-native-image-picker`'s `launchImageLibrary` presents the system's own picker — `PHPickerViewController` on iOS, the Photo Picker on Android — which runs outside the app and hands back only what was chosen, so **no photo permission is asked for at run time**; do not add `READ_MEDIA_IMAGES` for it. `NSPhotoLibraryUsageDescription` _is_ declared, and must stay: App Store Connect scans the binary for code that can reach the photo library, finds it in the picker module, and rejects the upload without the key (ITMS-90683, build 1.0.1 (4)) whether or not the app ever asks. Declaring it shows no prompt. `NSMicrophoneUsageDescription` is there for the same reason: `react-native-audio-api` bundles an iOS recorder this app never starts, and its string says so. Never call `launchCamera` without adding the camera permission first. The module is iOS and Android only and is `require`d inside `pickPicturePath`, never imported; it needs no `react-native.config.js` entry, since its podspec is `:ios` and it ships no Windows code. It is a native module: adding it needs `pod install` and a rebuild, not a reload.
 - **The reader's projects are tiles in a grid, with Duplicate and Delete on each** (`features/projects/ProjectTiles.tsx`), in My Projects and on the desktop dashboard alike — the web's Projects page. **How many across comes from the pane's own measured width** (`onLayout` → `tileGrid`), never the window's: the pane shares the window with a list on a tablet and is all of it on a phone. One column until measured; every tile the same width, the last row included; and the `FlatList` is keyed by its column count, since one cannot change how many it has. The actions are `PressableCard`'s `footer`, inside the card's frame and **outside its pressable part** — a button inside a button is one a screen reader cannot reach, and Delete must not also open the project. Delete asks first (`ConfirmSheet`) and **closes the project if it was the one open**; Duplicate copies on the server (`useDuplicateProject`) and opens nothing.
-- **Every format on Import opens the file picker, audio included.** `AudioImportSheet` used to answer with "sign in" or "not available" *instead of* the picker where a recording could not be sent, which read as the one format that was broken. It opens the picker whatever the answer will be, and says why not once a recording has been chosen; nothing is uploaded before that, so nothing is wasted but a choice.
-- **Android's tab icons are PNGs, and its labels are forced on.** The native tab bar takes an `image` icon through React Native's image loader, which reads bitmaps: handed the *name* of a vector drawable (`{ uri: 'ic_tab_docs' }`) it draws nothing and says nothing. And with more than three tabs Android shows a label only for the chosen one. Together that was a tab bar of five where four were invisible — found the first time the app was run on an Android tablet. The icons are `assets/tab-icons/*.png` at 1x/2x/3x, rendered from the vector drawables by `scripts/make-tab-icons.mjs` (re-run it after changing one), and `tabBarLabelVisibilityMode: 'labeled'` is set for the whole navigator. The status bar's ink is stated too (`ThemedStatusBar` in `App.tsx`): the default drew a light clock on the light background.
+- **Every format on Import opens the file picker, audio included.** `AudioImportSheet` used to answer with "sign in" or "not available" _instead of_ the picker where a recording could not be sent, which read as the one format that was broken. It opens the picker whatever the answer will be, and says why not once a recording has been chosen; nothing is uploaded before that, so nothing is wasted but a choice.
+- **Android's tab icons are PNGs, and its labels are forced on.** The native tab bar takes an `image` icon through React Native's image loader, which reads bitmaps: handed the _name_ of a vector drawable (`{ uri: 'ic_tab_docs' }`) it draws nothing and says nothing. And with more than three tabs Android shows a label only for the chosen one. Together that was a tab bar of five where four were invisible — found the first time the app was run on an Android tablet. The icons are `assets/tab-icons/*.png` at 1x/2x/3x, rendered from the vector drawables by `scripts/make-tab-icons.mjs` (re-run it after changing one), and `tabBarLabelVisibilityMode: 'labeled'` is set for the whole navigator. The status bar's ink is stated too (`ThemedStatusBar` in `App.tsx`): the default drew a light clock on the light background.
 - **Building for Android here:** `JAVA_HOME` is Homebrew's `openjdk@17` (there is no system Java, so `java` alone fails; `android/gradle.properties` already names it for Gradle), the emulators are `Pixel_Tablet` and `Pixel_10_Phone`, and the device needs `adb reverse tcp:8091 tcp:8091` for Metro and `tcp:8032` for the API. The first launch takes ~40 s to bundle and shows the launcher meanwhile.
 - **Which edges a screen clears is one rule, `useSafeEdges()` (`src/platform/safe-edges.ts`), and every screen reads it.** `{top, bottom, left, right}`: a desktop clears nothing; a tablet its top and bottom; a phone the notch's side and nothing else — a phone is held on its side here, its status bar is hidden (`ThemedStatusBar`), and the far side, which iOS insets all the same, is used to the edge. The rule is the pure `safeEdgesFor(formFactor, notch)` in `safe-edges-rule.ts` (type-only imports, so vitest can read it); the hook feeds it components-rn's `useFormFactor` and building_blocks_rn's `useNotchPosition`, which is native on iOS — iOS insets both sides of a landscape iPhone alike, so nothing in JavaScript can tell which side the island is on, and the old code that padded the left always was wrong whenever it was on the right. A `SafeAreaView` asks `useSafeEdgeList(among)` for the edges it is responsible for among those the rule names (a bar answers for the sides, a root for the top); a padding computed by hand checks `edges.left`/`edges.right` before adding an inset. **Two exceptions, both about a native bar having cleared the top already**: `AppLayout` asks for no top edge under a native header, and the split view's `TopClearance` asks for none under an iPad's top tab bar — clearing it again put a band of nothing between the tabs and the panels that Community, with no panels, never had. `safe-edges.windows.ts` answers none without the hooks that platform cannot load; tests stand the hook in with `safeEdgesFor(...)` for the device they mean, never mock `useNavigation`, and never re-derive the rule. **A tab screen reaches the app's navigator only from outside its own bar**: `TitledScreen` draws that bar with a navigator of its own, so a screen takes the app's navigator as a prop from its navigator, as Docs, Settings and Community do. **On iOS the tab screens run to the bottom edge under the floating tab bar**; only Android, whose bar is opaque, keeps a screen above it (`SCREEN_LAYOUT` in `MainTabs`).
 - **The Play button's spinner is the player's readiness, not the store's `synthLoad`** — the same music_player hook the web uses (`usePlaybackReadiness(getMusicPlayerIfInitialized())`), which starts the engine's bring-up the moment the button is on screen and shows a spinner, labelled "Preparing instruments", until it is up. `installTestAppServices` registers its player in the singleton too (last one wins there, where in the app the first does), and a fake player in a test carries `readiness` and `prepare`; `loadingPlayer` in `TransportBar.test.tsx` moves its readiness with what it emits, as the real player does.
 - **Metro reads `@sudobility/components-rn` from its `src/`, not its `dist/`** — the package's `react-native` field points there. A locally built copy has to have its `src/` synced into `node_modules` as well, or the app goes on running the published component while the tests, which read `dist`, pass against the new one.
 - **The track-info column is the whole thing or the instrument icons alone, switched by one toolbar control, and only the full one gives way to the inspector.** The pref (`trackInfo`, a device pref) still holds any of music_types' `TRACK_INFO_MODES`, `hidden` included, but the toolbar offers a single switch between `full` and `icon` — its label naming what tapping does, as the pitch switch beside it — since three buttons for a width was two too many. `trackInfoShown` in `AppLayout.tsx` then decides what is drawn: on a touch device the **full** column is still traded for the inspector, but the icon-only column stays beside it — it is 40 points, and it was the full column's 220 the trade was decided against. `ScrollingScore` takes `trackInfo`, not `showTrackInfo`. **A published score always draws the icons alone**, and beneath it the editor's own `TransportBar` whole — position, loop, metronome, speed, volume — in `readOnly`, which turns the tempo into a readout because it is the one control on the bar that edits the score; it plays that screen's own store through its own binding, the web page's arrangement.
+
+- **Store screenshots are driven by links, in a debug build only.**
+  `app_store/scripts/capture.sh` opens `moosiac:///<lang><path>` for each
+  entry of `app_store/paths.json` on a running app; the grammar is
+  `features/screenshots/screenshot-links.ts` (editor: `demo`, `keyboard`,
+  `spatial`, `play`, `track`, `sheet=print|generate-track|create-snapshot`;
+  `projects/new?generate=1`). `ScreenshotLinks.tsx`, mounted under `__DEV__`,
+  sets the language, opens the bundled demo score (`demo-score.ts`, eight bars
+  of MusicXML read through the real importer) and publishes a scene that the
+  editor, `AppLayout` and File ▸ New each apply once (`screenshot-scene.ts`).
+  **Every option is stated by every link**: an editor link that does not ask
+  for the keyboard hides it, and one that names no sheet closes the open one,
+  so a shot never depends on the one before it. A `paths.json` entry may be
+  `{"path", "delay"}` for a shot that needs longer than `--delay` (the Spatial
+  stage, which waits for the soundfont). **A debug build signs itself in** to
+  the test account `.env` names (`DEV_SIGNIN_EMAIL`/`DEV_SIGNIN_PASSWORD`,
+  `auth/DevAutoSignIn.tsx`), through the ordinary email provider, so New
+  Project's Generate is really available; `babel.config.js` inlines those two
+  into development bundles only, keyed on `BABEL_ENV`, so no release bundle
+  holds the password. Signed in, the demo is a **server project**: the
+  account's "Morning Light", created once and found by name on every later
+  launch with its score put back to the demo (its snapshots are kept), so
+  Generate Track and Create Snapshot — the snapshot history opened on its
+  create form (`SnapshotsPanel.startCreating`) — are the real thing. Signed
+  out, or with no server, it is a local document and the snapshot shot is the
+  bare editor. iOS needed `moosiac` in `CFBundleURLTypes` and
+  `SceneDelegate.scene(_:openURLContexts:)` handing links to
+  `RCTLinkingManager`: with a scene delegate, links never reach the
+  application delegate, so `Linking` heard nothing. Android has a `VIEW`
+  intent filter for the scheme.
 
 ## Patches
 
@@ -847,7 +876,7 @@ compiler was told. Pod sources land read-only, so it `chmod`s first.
 - `src/features/credits/` — the balance, and what happens when it runs out.
 - `src/screens/ResourcesScreen.tsx` / `AboutScreen.tsx` — the web's Resources
   and Home pages, in the form a native app can use: the link list
-  (`RESOURCE_GROUPS`) is shared from music_lib, and the home page's *content* is a section of Settings
+  (`RESOURCE_GROUPS`) is shared from music*lib, and the home page's \_content* is a section of Settings
   without the landing-page shape an installed app has already answered.
 - `src/components/controls/` — the controls the shared libraries cannot
   supply: `LevelSlider` (a slider painted like the web's, level and pan),

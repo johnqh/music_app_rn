@@ -1,8 +1,8 @@
 [
   "/editor?demo=1&keyboard=1",
-  "/editor?demo=1&spatial=1&play=1",
+  { "path": "/editor?demo=1&spatial=1&play=1", "delay": 15 },
   "/projects/new?generate=1",
   "/editor?demo=1&sheet=generate-track",
-  "/editor?demo=1&select=track:1&sheet=print",
+  "/editor?demo=1&track=2&sheet=print",
   "/editor?demo=1&sheet=create-snapshot"
 ]

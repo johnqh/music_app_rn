@@ -74,6 +74,15 @@ const ALLOWED_NON_UI = new Set([
   // against the extensions the app reads. Arrangement over the document and
   // import tables, and the same kind of platform glue as the menu bar.
   'src/app/open-links.ts',
+  // The store-screenshot links `app_store/scripts/capture.sh` sends, the
+  // scene they hand to the screens, and the score they open. Arrangement of
+  // this app's own screens for this app's own store listing: which sheet is
+  // open and which track is selected, never a rule about music. The demo
+  // score is data — notes typed in a compact form and written out as
+  // MusicXML for the importer, which is what turns notes into a `Score`.
+  'src/features/screenshots/screenshot-links.ts',
+  'src/features/screenshots/screenshot-scene.ts',
+  'src/features/screenshots/demo-score.ts',
   // Whether the inspector column starts open. **App layout geometry**, which
   // is the line music_drawing draws at the canvas edge: anything about the
   // *drawn score* is the library's, anything about the app around it stays

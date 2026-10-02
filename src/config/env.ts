@@ -92,3 +92,15 @@ export const SIGN_IN_CONFIG = {
   appleServiceId: env.APPLE_SERVICE_ID,
   appleRedirectUri: env.APPLE_REDIRECT_URI,
 };
+
+/**
+ * The test account a debug build signs in with by itself (`DevAutoSignIn`), or
+ * null when `.env` names none. Always null in a release build: `babel.config.js`
+ * inlines these two into development bundles only.
+ */
+export const DEV_SIGN_IN: { email: string; password: string } | null = (() => {
+  if (!__DEV__) return null;
+  const email = process.env.DEV_SIGNIN_EMAIL ?? '';
+  const password = process.env.DEV_SIGNIN_PASSWORD ?? '';
+  return email && password ? { email, password } : null;
+})();

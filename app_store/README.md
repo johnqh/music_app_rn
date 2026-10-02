@@ -78,15 +78,17 @@ Every script here is a 4-line wrapper that sets `APP_STORE_DIR` to this folder a
 
 ## Configuration
 
-| File                  | Purpose                                                            |
-| --------------------- | ------------------------------------------------------------------ |
-| `screens.json`        | Devices, simulators/emulators, and resolutions per platform        |
-| `languages.json`      | Languages to capture (e.g. `["en", "es"]`)                         |
-| `paths.json`          | Deep link paths for each screenshot (e.g. `/daily`, `/techniques`) |
-| `info.json`           | App metadata (bundle ID, scheme, store listings)                   |
-| `ExportOptions.plist` | iOS archive export config (signing, team ID)                       |
+| File                  | Purpose                                                                  |
+| --------------------- | ------------------------------------------------------------------------ |
+| `screens.json`        | Devices, simulators/emulators, and resolutions per platform              |
+| `languages.json`      | Languages to capture (e.g. `["en", "es"]`)                               |
+| `paths.json`          | One link per screenshot, opened as `moosiac:///<lang><path>` (see below) |
+| `info.json`           | App metadata (bundle ID, scheme, store listings)                         |
+| `ExportOptions.plist` | iOS archive export config (signing, team ID)                             |
 
-`ExportOptions-macOS.plist` is the macOS equivalent. Per-language store listing text and screenshot captions live in `screenshots/info/<lang>/{info,screens}.json` (translated by `bun run localize:store`); Google Play `shortDescription` must be ≤ 80 chars or `submit.sh --platforms google` fails with 403.
+`ExportOptions-macOS.plist` is the macOS equivalent. `paths.json` entries are strings, or `{ "path": "...", "delay": 15 }` for a shot that needs longer than `--delay` (the longer of the two applies). The link grammar is `src/features/screenshots/screenshot-links.ts`; the app acts on these links in debug builds only, and signs in to the `.env` test account (`DEV_SIGNIN_EMAIL`/`DEV_SIGNIN_PASSWORD`) so screens that need an account can be shown. Store languages are English and Chinese (`languages.json`), the two the app ships.
+
+Per-language store listing text and screenshot captions live in `screenshots/info/<lang>/{info,screens}.json` (translated by `bun run localize:store`); Google Play `shortDescription` must be ≤ 80 chars or `submit.sh --platforms google` fails with 403.
 
 ## Output
 
@@ -113,7 +115,7 @@ app_store/builds/release/   # Sudojo.xcarchive, Sudojo.ipa, app-release.aab
 | `--platform <name>` | Filter: `ios`, `ipados`, `android`. Repeatable.                         |
 | `--device <key>`    | Filter by device key (e.g. `iphone_6_9`). Repeatable.                   |
 | `--orientation <o>` | `portrait` (default) or `landscape`. Landscape applies to tablets only. |
-| `--delay <seconds>` | Wait time before each capture (default: 3).                             |
+| `--delay <seconds>` | Wait time before each capture (default: 8).                             |
 | `--skip-build`      | Skip the build step.                                                    |
 | `--skip-release`    | Only build debug artifacts.                                             |
 | `--dry-run`         | Print actions without executing.                                        |
@@ -143,5 +145,5 @@ app_store/builds/release/   # Sudojo.xcarchive, Sudojo.ipa, app-release.aab
 | ------------------- | ----------------------------------------- |
 | `--device <key>`    | Required. Device key from `screens.json`. |
 | `--orientation <o>` | `portrait` (default) or `landscape`.      |
-| `--delay <seconds>` | Wait time before capture (default: 3).    |
+| `--delay <seconds>` | Wait time before capture (default: 8).    |
 | `--dry-run`         | Print actions without executing.          |

@@ -21,7 +21,7 @@
  * - **Opening one branches rather than overwriting**; the tree is
  *   `snapshotTree`'s.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Spinner, Text } from '@sudobility/components-rn';
@@ -39,14 +39,32 @@ export type SnapshotsPanelProps = {
   snapshots: ProjectSnapshots;
   /** Half of the suggested public title. */
   projectName: string;
+  /**
+   * Opens the create form as soon as the panel is shown. For a store
+   * screenshot (`ScreenshotLinks.tsx`).
+   */
+  startCreating?: boolean;
 };
+
+/*
+  How long the create form waits for the sheet around it. Both are native
+  modals, and iOS will not present one while another is still animating in —
+  it logs a warning and shows nothing.
+*/
+const NESTED_SHEET_DELAY_MS = 500;
 
 export function SnapshotsPanel({
   snapshots,
   projectName,
+  startCreating = false,
 }: SnapshotsPanelProps) {
   const { t } = useTranslation();
   const [createOpen, setCreateOpen] = useState(false);
+  useEffect(() => {
+    if (!startCreating) return;
+    const timer = setTimeout(() => setCreateOpen(true), NESTED_SHEET_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [startCreating]);
   const [openOpen, setOpenOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

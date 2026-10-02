@@ -64,6 +64,7 @@ import {
 } from '@sudobility/music_editing';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
 import { SpatialSection } from '@/features/spatial/SpatialSection';
+import { useScreenshotScene } from '@/features/screenshots/screenshot-scene';
 import type { ScrollOffset } from '@/features/score/useScoreCanvas';
 import { TransportBar } from '@/features/transport/TransportBar';
 import { usePlayerBinding } from '@/features/transport/usePlayerBinding';
@@ -390,6 +391,25 @@ export function AppLayout({
     reporting failures as toasts — the web adapter's rules, not a copy of them.
   */
   const transport = usePlayerBinding(document.store);
+  /*
+    A store screenshot (`ScreenshotLinks.tsx`): the Spatial stage on or off
+    and the transport playing or stopped, as the scene states. After the
+    binding above, whose effect has to run first.
+  */
+  useScreenshotScene(
+    'layout',
+    scene => {
+      const editor = scene.screen === 'editor' ? scene : null;
+      setSpatialActive(editor?.spatial ?? false);
+      const playing = document.store.getState().state === 'playing';
+      if (editor?.play) {
+        if (!playing) void transport.togglePlay();
+      } else if (playing) {
+        transport.stop();
+      }
+    },
+    document.id,
+  );
 
   /**
    * Lyric entry in progress: the *active track's* notes in tick order, as they

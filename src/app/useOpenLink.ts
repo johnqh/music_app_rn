@@ -22,24 +22,23 @@ let launchLink: Promise<string | null> | null = null;
 const deliveredLaunchTo = new Set<string>();
 
 /**
- * Calls `handler` for each open link: the one that launched the app, then every
- * one that arrives while it runs.
+ * Calls `handler` with each URL the app is opened with: the one that launched
+ * it, then every one that arrives while it runs.
  *
- * Held in a ref like `useMenuCommand`, so a caller needn't memoize it. Two
- * listeners mount this — documents and imports — and each acts on its own kind.
+ * Held in a ref like `useMenuCommand`, so a caller needn't memoize it. Every
+ * listener reads the same launch link, delivered to each name once.
  */
-export function useOpenLink(
+export function useLinkUrls(
   /** Which listener this is; the launch link is delivered once per name. */
   name: string,
-  handler: (link: OpenLink) => void,
+  handler: (url: string) => void,
 ): void {
   const ref = useRef(handler);
   ref.current = handler;
   useEffect(() => {
     let live = true;
     const deliver = (url: string | null) => {
-      const link = url ? openLinkFor(url) : null;
-      if (live && link) ref.current(link);
+      if (live && url) ref.current(url);
     };
     launchLink ??= Linking.getInitialURL().catch(() => null);
     if (!deliveredLaunchTo.has(name)) {
@@ -54,4 +53,24 @@ export function useOpenLink(
       subscription.remove();
     };
   }, [name]);
+}
+
+/**
+ * Calls `handler` for each open link: the one that launched the app, then every
+ * one that arrives while it runs.
+ *
+ * Two listeners mount this — documents and imports — and each acts on its own
+ * kind. A URL that is not an open link is ignored.
+ */
+export function useOpenLink(
+  /** Which listener this is; the launch link is delivered once per name. */
+  name: string,
+  handler: (link: OpenLink) => void,
+): void {
+  const ref = useRef(handler);
+  ref.current = handler;
+  useLinkUrls(name, url => {
+    const link = openLinkFor(url);
+    if (link) ref.current(link);
+  });
 }

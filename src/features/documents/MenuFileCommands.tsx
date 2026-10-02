@@ -44,6 +44,7 @@ import {
   useDocumentList,
   useDocumentServices,
 } from '@/documents/DocumentsContext';
+import { useScreenshotScene } from '@/features/screenshots/screenshot-scene';
 import { NewProjectSheet } from '@/features/projects/NewProjectSheet';
 import {
   ServerProjectCreationFeedback,
@@ -79,6 +80,17 @@ export function MenuFileCommands() {
   const serverContext = useServerContext();
   const canGenerate = user !== null && serverContext !== null;
   const [failure, setFailure] = useState<string | null>(null);
+  /*
+    A store screenshot of New Project with Generate on
+    (`ScreenshotLinks.tsx`); any other scene closes the sheet. Generate needs
+    an account like any other time — a debug build signs in to the `.env`
+    test account by itself (`DevAutoSignIn`).
+  */
+  const [screenshotGenerate, setScreenshotGenerate] = useState(false);
+  useScreenshotScene('new-project-sheet', scene => {
+    setScreenshotGenerate(scene.screen === 'new-project' && scene.generate);
+    setNewOpen(scene.screen === 'new-project');
+  });
 
   /**
    * Writes the document somewhere the user picks.
@@ -189,9 +201,13 @@ export function MenuFileCommands() {
         // A model writes into a project on the server, so generating needs an
         // account; a blank score stays a local document either way.
         generationAvailable={canGenerate}
+        generate={screenshotGenerate}
         submitting={creation.creating}
         outOfCredits={creation.outOfCredits}
-        onClose={() => setNewOpen(false)}
+        onClose={() => {
+          setNewOpen(false);
+          setScreenshotGenerate(false);
+        }}
         onSubmit={submission => {
           if (submission.kind === 'blank') {
             setNewOpen(false);

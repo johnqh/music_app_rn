@@ -19,7 +19,7 @@
  * (`defaultPaperSizeFor`). What to print and which way up are held here: they
  * are about this printout, not the printer.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Select } from '@sudobility/components-rn';
@@ -43,6 +43,11 @@ export type PrintSheetProps = {
   visibleTrackIds: readonly string[];
   onClose: () => void;
   onPrint: (options: PrintPlanOptions) => void;
+  /**
+   * The track whose part the sheet opens on, each time it opens; the whole
+   * score when absent. Set by a store screenshot (`ScreenshotLinks.tsx`).
+   */
+  initialScope?: string;
 };
 
 export function PrintSheet({
@@ -51,9 +56,13 @@ export function PrintSheet({
   visibleTrackIds,
   onClose,
   onPrint,
+  initialScope,
 }: PrintSheetProps) {
   const { t } = useTranslation();
   const [scope, setScope] = useState<string>(WHOLE_SCORE);
+  useEffect(() => {
+    if (open && initialScope) setScope(initialScope);
+  }, [open, initialScope]);
   const chosenPaper = useDevicePrefs(s => s.paperSize);
   const [devicePaper] = useState(() =>
     defaultPaperSizeFor(getDeviceLocaleTags()),

@@ -25,6 +25,17 @@
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />
         </intent-filter>
+        <!--
+          moosiac:// links: the store screenshot links app_store/scripts/capture.sh
+          sends with `am start -a VIEW`. singleTask delivers one to the running
+          activity, where React Native's Linking hears it.
+        -->
+        <intent-filter>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.DEFAULT" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="moosiac" />
+        </intent-filter>
       </activity>
     </application>
 </manifest>

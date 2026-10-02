@@ -48,71 +48,6 @@
       "code": "zh",
       "name": "Chinese (Simplified)",
       "primary": false
-    },
-    {
-      "code": "zh-Hant",
-      "name": "Chinese (Traditional)",
-      "primary": false
-    },
-    {
-      "code": "ja",
-      "name": "Japanese",
-      "primary": false
-    },
-    {
-      "code": "ko",
-      "name": "Korean",
-      "primary": false
-    },
-    {
-      "code": "es",
-      "name": "Spanish",
-      "primary": false
-    },
-    {
-      "code": "fr",
-      "name": "French",
-      "primary": false
-    },
-    {
-      "code": "de",
-      "name": "German",
-      "primary": false
-    },
-    {
-      "code": "pt",
-      "name": "Portuguese",
-      "primary": false
-    },
-    {
-      "code": "it",
-      "name": "Italian",
-      "primary": false
-    },
-    {
-      "code": "ru",
-      "name": "Russian",
-      "primary": false
-    },
-    {
-      "code": "sv",
-      "name": "Swedish",
-      "primary": false
-    },
-    {
-      "code": "th",
-      "name": "Thai",
-      "primary": false
-    },
-    {
-      "code": "uk",
-      "name": "Ukrainian",
-      "primary": false
-    },
-    {
-      "code": "vi",
-      "name": "Vietnamese",
-      "primary": false
     }
   ],
   "appleAppStore": {
@@ -171,90 +106,70 @@
           {
             "type": "Contact Info",
             "subtype": "Email Address",
-            "purposes": [
-              "App Functionality"
-            ],
+            "purposes": ["App Functionality"],
             "linked": true,
             "tracking": false
           },
           {
             "type": "Contact Info",
             "subtype": "Name",
-            "purposes": [
-              "App Functionality"
-            ],
+            "purposes": ["App Functionality"],
             "linked": true,
             "tracking": false
           },
           {
             "type": "Identifiers",
             "subtype": "User ID",
-            "purposes": [
-              "App Functionality"
-            ],
+            "purposes": ["App Functionality"],
             "linked": true,
             "tracking": false
           },
           {
             "type": "User Content",
             "subtype": "Photos or Videos",
-            "purposes": [
-              "App Functionality"
-            ],
+            "purposes": ["App Functionality"],
             "linked": true,
             "tracking": false
           },
           {
             "type": "User Content",
             "subtype": "Audio Data",
-            "purposes": [
-              "App Functionality"
-            ],
+            "purposes": ["App Functionality"],
             "linked": true,
             "tracking": false
           },
           {
             "type": "User Content",
             "subtype": "Other User Content",
-            "purposes": [
-              "App Functionality"
-            ],
+            "purposes": ["App Functionality"],
             "linked": true,
             "tracking": false
           },
           {
             "type": "Purchases",
             "subtype": "Purchase History",
-            "purposes": [
-              "App Functionality"
-            ],
+            "purposes": ["App Functionality"],
             "linked": true,
             "tracking": false
           },
           {
             "type": "Usage Data",
             "subtype": "Product Interaction",
-            "purposes": [
-              "Analytics"
-            ],
+            "purposes": ["Analytics"],
             "linked": true,
             "tracking": false
           },
           {
             "type": "Diagnostics",
             "subtype": "Crash Data",
-            "purposes": [
-              "Analytics"
-            ],
+            "purposes": ["Analytics"],
             "linked": false,
             "tracking": false
           },
           {
             "type": "Diagnostics",
             "subtype": "Performance Data",
-            "purposes": [
-              "Analytics"
-            ],
+            "purposes": ["Analytics"],
             "linked": false,
             "tracking": false
           }
@@ -264,9 +179,7 @@
     "platforms": {
       "ios": {
         "minimumOsVersion": "15.1",
-        "devices": [
-          "iPhone"
-        ],
+        "devices": ["iPhone"],
         "orientation": "landscape",
         "supportsAppleWatch": false,
         "supportsGameCenter": false,
@@ -274,9 +187,7 @@
       },
       "ipados": {
         "minimumOsVersion": "15.1",
-        "devices": [
-          "iPad"
-        ],
+        "devices": ["iPad"],
         "orientation": "landscape",
         "supportsMultitasking": false,
         "supportsSplitView": false,
@@ -284,10 +195,7 @@
       },
       "macos": {
         "minimumOsVersion": "14.0",
-        "architectures": [
-          "arm64",
-          "x86_64"
-        ],
+        "architectures": ["arm64", "x86_64"],
         "category": "Music",
         "subcategory": null,
         "sandboxed": true,
@@ -312,9 +220,7 @@
         "userInteraction": "yes"
       },
       "expectedRating": "Everyone",
-      "interactiveElements": [
-        "Users Interact"
-      ]
+      "interactiveElements": ["Users Interact"]
     },
     "dataSafety": {
       "overview": {
@@ -332,10 +238,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "App functionality",
-            "Account management"
-          ],
+          "purpose": ["App functionality", "Account management"],
           "ephemeral": false
         },
         {
@@ -344,10 +247,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "App functionality",
-            "Account management"
-          ],
+          "purpose": ["App functionality", "Account management"],
           "ephemeral": false
         },
         {
@@ -356,10 +256,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "App functionality",
-            "Account management"
-          ],
+          "purpose": ["App functionality", "Account management"],
           "ephemeral": false
         },
         {
@@ -368,10 +265,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "App functionality",
-            "Account management"
-          ],
+          "purpose": ["App functionality", "Account management"],
           "ephemeral": false
         },
         {
@@ -380,9 +274,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "App functionality"
-          ],
+          "purpose": ["App functionality"],
           "ephemeral": false
         },
         {
@@ -391,9 +283,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "App functionality"
-          ],
+          "purpose": ["App functionality"],
           "ephemeral": false
         },
         {
@@ -402,9 +292,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "App functionality"
-          ],
+          "purpose": ["App functionality"],
           "ephemeral": false
         },
         {
@@ -413,9 +301,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "Analytics"
-          ],
+          "purpose": ["Analytics"],
           "ephemeral": false
         },
         {
@@ -424,9 +310,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "App functionality"
-          ],
+          "purpose": ["App functionality"],
           "ephemeral": false
         },
         {
@@ -435,9 +319,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "Analytics"
-          ],
+          "purpose": ["Analytics"],
           "ephemeral": false
         },
         {
@@ -446,9 +328,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "Analytics"
-          ],
+          "purpose": ["Analytics"],
           "ephemeral": false
         },
         {
@@ -457,9 +337,7 @@
           "collected": true,
           "shared": false,
           "required": false,
-          "purpose": [
-            "Analytics"
-          ],
+          "purpose": ["Analytics"],
           "ephemeral": false
         }
       ]
@@ -510,10 +388,7 @@
     },
     "systemRequirements": {
       "minimumOs": "Windows 10 version 17763.0",
-      "architecture": [
-        "x64",
-        "ARM64"
-      ]
+      "architecture": ["x64", "ARM64"]
     }
   }
 }
