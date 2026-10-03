@@ -42,6 +42,7 @@ import {
 import { SyncToServerButton } from '@/features/documents/SyncToServerButton';
 import { ScreenScaffold, ServerUnavailable } from './ScreenScaffold';
 import { SignInRequired } from '@/features/account/SignInRequired';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 export type DashboardScreenProps = {
   /**
@@ -121,7 +122,7 @@ function ProjectList({
   onOpenCredits: () => void;
 }) {
   const { t } = useTranslation();
-  const { data, isLoading, error, refetch } = useProjects(context);
+  const { data, isLoading, isFetching, error, refetch } = useProjects(context);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   /**
    * Turns what the sheet asked for into a project on the server, then opens it.
@@ -133,15 +134,22 @@ function ProjectList({
    */
   const creation = useServerProjectCreation();
   const { create } = creation;
+  /*
+    Create spins from the press until the project is in the list and about to
+    open — the list's refetch is part of the wait — and the sheet stays up
+    meanwhile, so the reader is never left looking at nothing happening.
+  */
+  const creating = usePendingAction();
+  const runCreate = creating.run;
   const createProject = useCallback(
-    async (submission: NewProjectSubmission) => {
-      const projectId = await create(submission);
-      setNewProjectOpen(false);
-      if (projectId === null) return;
-      await refetch();
-      onOpened(projectId);
-    },
-    [create, refetch, onOpened],
+    (submission: NewProjectSubmission) =>
+      runCreate(async () => {
+        const projectId = await create(submission);
+        if (projectId !== null) await refetch();
+        setNewProjectOpen(false);
+        if (projectId !== null) onOpened(projectId);
+      }),
+    [create, refetch, onOpened, runCreate],
   );
 
   /**
@@ -180,7 +188,9 @@ function ProjectList({
     return (
       <ScreenScaffold title={t('nav.projects')}>
         <Text className="text-destructive">{t('errors.loadProjects')}</Text>
-        <Button onPress={() => void refetch()}>{t('library.retry')}</Button>
+        <Button loading={isFetching} onPress={() => void refetch()}>
+          {t('library.retry')}
+        </Button>
       </ScreenScaffold>
     );
   }
@@ -209,7 +219,7 @@ function ProjectList({
       />
       <NewProjectSheet
         open={newProjectOpen}
-        submitting={creation.creating}
+        submitting={creating.pending}
         // Only reached with a server context, so there is a server.
         account={{ ...creation.account, serverAvailable: true }}
         onOpenCredits={() => {

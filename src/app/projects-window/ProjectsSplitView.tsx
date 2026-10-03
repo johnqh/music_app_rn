@@ -51,6 +51,7 @@ import { TemplatePane } from './TemplatePane';
 import { ImportPane } from './ImportPane';
 import { OpenDocumentsPane } from './OpenDocumentsPane';
 import type { PaneKey } from './paneKey';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 export type ProjectsSplitViewProps = {
   /** A document was opened, and is the active one: show it. */
@@ -88,6 +89,10 @@ export function ProjectsSplitView({
   // remembering to add the subscription back.
   useActiveDocument();
   const creation = useServerProjectCreation();
+  // Create spins from the press until the new project is open: the creation
+  // and the read of what it made are one wait.
+  const creatingNew = usePendingAction();
+  const runCreateNew = creatingNew.run;
   const signedIn = user !== null;
   /*
     Signed in, the reader's own projects are what they came for, so the list
@@ -170,16 +175,18 @@ export function ProjectsSplitView({
         projectOpened();
         return;
       }
-      void creation.create(submission).then(projectId => {
+      void runCreateNew(async () => {
+        const projectId = await creation.create(submission);
         if (projectId === null) return;
-        openProjectInto(list, services, projectId)
-          .then(() => projectOpened())
-          .catch((error: unknown) =>
-            setFailure(error instanceof Error ? error.message : String(error)),
-          );
+        try {
+          await openProjectInto(list, services, projectId);
+          projectOpened();
+        } catch (error) {
+          setFailure(error instanceof Error ? error.message : String(error));
+        }
       });
     },
-    [list, services, creation, projectOpened],
+    [list, services, creation, projectOpened, runCreateNew],
   );
 
   const chooseTemplate = useCallback(
@@ -226,7 +233,7 @@ export function ProjectsSplitView({
             {selected === 'new' ? (
               <NewPane
                 account={newProjectAccount}
-                submitting={creation.creating}
+                submitting={creatingNew.pending}
                 onOpenCredits={onOpenCredits}
                 onSubmit={submission => guard(() => submitNew(submission))}
               />

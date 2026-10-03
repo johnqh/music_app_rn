@@ -47,6 +47,8 @@ export type NewProjectSheetProps = {
   generate?: boolean;
 };
 
+function ignore(): void {}
+
 export function NewProjectSheet({
   open,
   onClose,
@@ -82,11 +84,19 @@ export function NewProjectSheet({
     <FormModal
       visible={open}
       title={t('newProject.title')}
-      onClose={onClose}
+      // While Create spins the sheet stays up: nothing on it answers until
+      // the project exists (or was refused), Android's Back included.
+      onClose={submitting ? ignore : onClose}
+      saving={submitting}
       size="large"
       closeAriaLabel={t('common.closeDialog')}
       actions={[
-        { label: t('common.cancel'), onPress: onClose, variant: 'ghost' },
+        {
+          label: t('common.cancel'),
+          onPress: onClose,
+          variant: 'ghost',
+          disabled: submitting,
+        },
         {
           label: t('dashboard.create'),
           onPress: () => {

@@ -6,7 +6,7 @@
  * escape. Mirrors the web panel's tests, so the two cannot drift apart.
  */
 import { jest } from '@jest/globals';
-import { fireEvent } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
 import type { GenerationRecord } from '@sudobility/music_types';
 import { regenerateWithLocks } from '@sudobility/music_lib';
 import { renderWithApp } from '@/test/render';
@@ -44,7 +44,7 @@ describe('GenerationChoices', () => {
     expect(view.queryByLabelText('Keep Lyrics')).toBeNull();
   });
 
-  it('generates again keeping exactly the locked choices, after asking', () => {
+  it('generates again keeping exactly the locked choices, after asking', async () => {
     const onGenerateAgain = jest.fn<(keys: string[]) => void>();
     const view = renderWithApp(
       <GenerationChoices
@@ -58,13 +58,52 @@ describe('GenerationChoices', () => {
     // Nothing is sent until the reader confirms the whole score is replaced.
     expect(onGenerateAgain).not.toHaveBeenCalled();
     const confirm = view.getAllByText('Generate again');
-    fireEvent.press(confirm[confirm.length - 1]!);
+    await act(async () => {
+      fireEvent.press(confirm[confirm.length - 1]!);
+    });
     expect(onGenerateAgain).toHaveBeenCalledWith(['groove']);
     // And those keys, through the shared builder, pin exactly that choice.
     const keys = onGenerateAgain.mock.calls[0]![0] as never;
     expect(regenerateWithLocks(record, keys).choices).toEqual({
       groove: 'songo',
     });
+  });
+
+  it('keeps the question up, its confirm spinning, until the job is accepted', async () => {
+    let release = () => {};
+    const onGenerateAgain = jest.fn(
+      () =>
+        new Promise<void>(resolve => {
+          release = resolve;
+        }),
+    );
+    const view = renderWithApp(
+      <GenerationChoices
+        record={record}
+        generating={false}
+        onGenerateAgain={onGenerateAgain}
+      />,
+    );
+    fireEvent.press(view.getByText('Generate again'));
+    const confirm = () =>
+      view.getAllByRole('button', { name: 'Generate again' }).at(-1)!;
+    await act(async () => {
+      fireEvent.press(confirm());
+    });
+    expect(confirm().props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    await act(async () => {
+      fireEvent.press(confirm());
+    });
+    expect(onGenerateAgain).toHaveBeenCalledTimes(1);
+    expect(view.getByText(/replace/i)).toBeTruthy();
+    await act(async () => {
+      release();
+    });
+    expect(
+      view.getAllByRole('button', { name: 'Generate again' }),
+    ).toHaveLength(1);
   });
 
   it('quotes generating again at bars times tracks', () => {

@@ -7,8 +7,8 @@
  * the images to the platform's print service. Nothing writes a PDF — every one
  * of the three services takes a drawing and produces the document itself.
  *
- * Rendering is synchronous and can take a moment on a long score, so callers
- * should show that something is happening before calling this.
+ * Rendering a long score takes a while — seconds on a phone — so it yields
+ * between pages, and the caller shows a spinner on the CTA that started it.
  */
 import { isSupported, printPages } from '@moosiac/print';
 import { printPlan } from '@sudobility/music_drawing';
@@ -23,6 +23,18 @@ export function canPrint(): boolean {
   return isSupported();
 }
 
+export type PrintHooks = {
+  /**
+   * Runs after the pages are drawn and before the print dialog is asked for.
+   * The caller closes its print-options sheet here and resolves once it is
+   * gone: the dialog must never be presented over a sheet that is about to
+   * leave, which takes the dialog down with it (see `MoosiacPrint.mm`).
+   */
+  beforeDialog?: () => Promise<void> | void;
+  /** Asked between pages; true abandons the print as `'cancelled'`. */
+  isCancelled?: () => boolean;
+};
+
 /**
  * Prints `score` (the stored score) with the reader's choices, resolving how
  * it ended.
@@ -34,11 +46,14 @@ export function canPrint(): boolean {
 export async function printScore(
   score: Score,
   options: PrintPlanOptions = {},
+  hooks: PrintHooks = {},
 ): Promise<PrintResult> {
   const plan = printPlan(score, options);
-  const pages = plan ? renderPrintPages(plan) : [];
+  const pages = plan ? await renderPrintPages(plan, hooks.isCancelled) : [];
+  if (pages === null) return 'cancelled';
   if (pages.length === 0) throw new Error('There was nothing to print.');
+  await hooks.beforeDialog?.();
   const jobName = score.metadata.title?.trim() || 'Score';
-  const printed = await printPages(jobName, [...pages]);
+  const printed = await printPages(jobName, pages);
   return printed ? 'printed' : 'cancelled';
 }

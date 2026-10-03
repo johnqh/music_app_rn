@@ -11,17 +11,20 @@ import { createEmptyScore } from '@sudobility/music_types';
 
 const printPages =
   vi.fn<(name: string, pages: unknown[]) => Promise<boolean>>();
-const renderPrintPages = vi.fn((_plan: { trackIds: readonly string[] }) => [
-  { base64: 'AAA', width: 1000, height: 1400 },
-]);
+const renderPrintPages = vi.fn(
+  async (_plan: { trackIds: readonly string[] }, isCancelled?: () => boolean) =>
+    isCancelled?.() ? null : [{ base64: 'AAA', width: 1000, height: 1400 }],
+);
 
 vi.mock('@moosiac/print', () => ({
   isSupported: () => true,
   printPages: (name: string, pages: unknown[]) => printPages(name, pages),
 }));
 vi.mock('./print-pages.js', () => ({
-  renderPrintPages: (plan: { trackIds: readonly string[] }) =>
-    renderPrintPages(plan),
+  renderPrintPages: (
+    plan: { trackIds: readonly string[] },
+    isCancelled?: () => boolean,
+  ) => renderPrintPages(plan, isCancelled),
 }));
 
 const { printScore } = await import('./print-service.js');
@@ -32,6 +35,44 @@ beforeEach(() => {
 });
 
 describe('printScore', () => {
+  it('asks for the dialog only after the pages are drawn and the sheet is gone', async () => {
+    const order: string[] = [];
+    renderPrintPages.mockImplementationOnce(async () => {
+      order.push('render');
+      return [{ base64: 'AAA', width: 1000, height: 1400 }];
+    });
+    printPages.mockImplementation(async () => {
+      order.push('dialog');
+      return true;
+    });
+    await printScore(
+      createEmptyScore({ title: 'A' }),
+      {},
+      {
+        beforeDialog: async () => {
+          order.push('sheet closed');
+        },
+      },
+    );
+    expect(order).toEqual(['render', 'sheet closed', 'dialog']);
+  });
+
+  it('abandons a print cancelled while drawing, without a dialog', async () => {
+    const beforeDialog = vi.fn();
+    await expect(
+      printScore(
+        createEmptyScore({ title: 'A' }),
+        {},
+        {
+          isCancelled: () => true,
+          beforeDialog,
+        },
+      ),
+    ).resolves.toBe('cancelled');
+    expect(beforeDialog).not.toHaveBeenCalled();
+    expect(printPages).not.toHaveBeenCalled();
+  });
+
   it('reports a cancelled dialog as cancelled, not as a failure', async () => {
     printPages.mockResolvedValue(false);
     await expect(printScore(createEmptyScore({ title: 'A' }))).resolves.toBe(
@@ -63,7 +104,7 @@ describe('printScore', () => {
   });
 
   it('refuses when there is nothing to print', async () => {
-    renderPrintPages.mockReturnValueOnce([]);
+    renderPrintPages.mockResolvedValueOnce([]);
     printPages.mockResolvedValue(true);
     await expect(printScore(createEmptyScore({ title: 'A' }))).rejects.toThrow(
       /nothing to print/i,

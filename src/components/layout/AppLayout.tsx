@@ -147,6 +147,8 @@ export type AppLayoutProps = {
   document: MusicDocument;
   onSave: () => void;
   onExport: () => void;
+  /** An export is being written. See `TitleBar`. */
+  exporting?: boolean;
   /** Opens Settings. See `TitleBar`. */
   onSettings: () => void;
   /** Opens the projects list — the only route to New Project and to imports. */
@@ -203,7 +205,7 @@ export type AppLayoutProps = {
   /** Asks the server for one more track, matched to this score. */
   onGenerateTrack?: () => void;
   /** Generates the bars just inserted by the editor toolbar. */
-  onGenerateInsertedBars?: () => void;
+  onGenerateInsertedBars?: () => void | Promise<void>;
   /** Prints. Absent on a build with no print service to talk to. */
   onPrint?: () => void;
   /** True while the pages are being rendered, which is not instant. */
@@ -250,6 +252,7 @@ export function AppLayout({
   document,
   onSave,
   onExport,
+  exporting = false,
   onSettings,
   onDocuments,
   onShortcuts,
@@ -613,6 +616,7 @@ export function AppLayout({
             document={document}
             onSave={onSave}
             onExport={onExport}
+            exporting={exporting}
             onSettings={onSettings}
             onDocuments={onDocuments}
             {...(onShortcuts ? { onShortcuts } : {})}

@@ -41,7 +41,14 @@ export type CreateSnapshotSheetProps = {
   defaultPublisherName?: string;
   onCreate: (name: string, publisherName?: string, publicName?: string) => void;
   onClose: () => void;
+  /**
+   * The snapshot is being written. Create spins and the sheet stays up, every
+   * way out of it refused, until the server has answered.
+   */
+  busy?: boolean;
 };
+
+function ignore(): void {}
 
 export function CreateSnapshotSheet({
   open,
@@ -50,6 +57,7 @@ export function CreateSnapshotSheet({
   defaultPublisherName,
   onCreate,
   onClose,
+  busy = false,
 }: CreateSnapshotSheetProps) {
   const { t } = useTranslation();
   // Global creation order, not per-branch: "Version 4" off "Version 2" reads
@@ -91,13 +99,20 @@ export function CreateSnapshotSheet({
     <FormModal
       visible={open}
       title={t('snapshot.createTitle')}
-      onClose={onClose}
+      onClose={busy ? ignore : onClose}
+      saving={busy}
       closeAriaLabel={t('common.closeDialog')}
       actions={[
-        { label: t('common.cancel'), onPress: onClose, variant: 'ghost' },
+        {
+          label: t('common.cancel'),
+          onPress: onClose,
+          variant: 'ghost',
+          disabled: busy,
+        },
         {
           label: t('snapshot.createTitle'),
           disabled: !canCreate,
+          loading: busy,
           onPress: () => {
             trackButtonClick('create_snapshot', { publish });
             onCreate(
@@ -173,6 +188,8 @@ export type OpenSnapshotSheetProps = {
   onOpen: (snapshotId: string) => void;
   onSnapshotFirst: () => void;
   onClose: () => void;
+  /** The snapshot is being opened: Open spins and the sheet stays up. */
+  busy?: boolean;
 };
 
 /** How far each generation is indented. */
@@ -184,6 +201,7 @@ export function OpenSnapshotSheet({
   onOpen,
   onSnapshotFirst,
   onClose,
+  busy = false,
 }: OpenSnapshotSheetProps) {
   const { t } = useTranslation();
   const [selected, setSelected] = useState<string | null>(null);
@@ -192,7 +210,8 @@ export function OpenSnapshotSheet({
     <FormModal
       visible={open}
       title={t('snapshot.openTitle')}
-      onClose={onClose}
+      onClose={busy ? ignore : onClose}
+      saving={busy}
       size="large"
       closeAriaLabel={t('common.closeDialog')}
       actions={[
@@ -200,13 +219,20 @@ export function OpenSnapshotSheet({
           label: t('snapshot.snapshotFirst'),
           onPress: onSnapshotFirst,
           variant: 'ghost',
+          disabled: busy,
         },
-        { label: t('common.cancel'), onPress: onClose, variant: 'ghost' },
+        {
+          label: t('common.cancel'),
+          onPress: onClose,
+          variant: 'ghost',
+          disabled: busy,
+        },
         {
           label: t('snapshot.open'),
           // The live project is in the tree so the branch point is visible;
           // it is not something you can "open", since you are already in it.
           disabled: selected === null || selected === LIVE_NODE_ID,
+          loading: busy,
           onPress: () => {
             if (selected && selected !== LIVE_NODE_ID) onOpen(selected);
           },

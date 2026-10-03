@@ -16,7 +16,7 @@
  *
  * Where several documents may be open this asks nothing and runs the action.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { decideQuit } from '@sudobility/music_lib';
@@ -36,6 +36,9 @@ export function useSingleDocumentGuard(single: boolean): SingleDocumentGuard {
   const { t } = useTranslation();
   const list = useDocumentList();
   const [pending, setPending] = useState<Pending | null>(null);
+  // A second request while the first is still saving is the same press
+  // twice, and would run its action twice.
+  const flushing = useRef(false);
 
   const guard = useCallback(
     (action: () => void) => {
@@ -43,18 +46,25 @@ export function useSingleDocumentGuard(single: boolean): SingleDocumentGuard {
         action();
         return;
       }
-      void list.flushAll().then(() => {
-        const decision = decideQuit(
-          list.state.documents.map(document => document.store.getState()),
-        );
-        if (decision.kind === 'close') action();
-        else {
-          setPending({
-            titles: decision.documents.map(state => state.title),
-            action,
-          });
-        }
-      });
+      if (flushing.current) return;
+      flushing.current = true;
+      void list
+        .flushAll()
+        .finally(() => {
+          flushing.current = false;
+        })
+        .then(() => {
+          const decision = decideQuit(
+            list.state.documents.map(document => document.store.getState()),
+          );
+          if (decision.kind === 'close') action();
+          else {
+            setPending({
+              titles: decision.documents.map(state => state.title),
+              action,
+            });
+          }
+        });
     },
     [single, list],
   );

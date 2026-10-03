@@ -56,9 +56,16 @@ export type ReplaceMusicSheetProps = {
   canSubmit: boolean;
   onClose: () => void;
   onSubmit: (submission: ReplaceSubmission) => void;
+  /**
+   * The job is being started. Replace spins and the sheet stays up, every
+   * way out refused, until the server has answered.
+   */
+  submitting?: boolean;
   /** The bars the region touches times its tracks: what the server bills. */
   estimatedCredits?: number;
 };
+
+function ignore(): void {}
 
 const TITLE_KEY: Record<ReplaceScope, string> = {
   notes: 'replace.notesTitle',
@@ -72,6 +79,7 @@ export function ReplaceMusicSheet({
   canSubmit,
   onClose,
   onSubmit,
+  submitting = false,
   estimatedCredits = 0,
 }: ReplaceMusicSheetProps) {
   const { t, i18n } = useTranslation();
@@ -112,14 +120,21 @@ export function ReplaceMusicSheet({
     <FormModal
       visible={open}
       title={t(TITLE_KEY[scope])}
-      onClose={onClose}
+      onClose={submitting ? ignore : onClose}
+      saving={submitting}
       size="large"
       closeAriaLabel={t('common.closeDialog')}
       actions={[
-        { label: t('common.cancel'), onPress: onClose, variant: 'ghost' },
+        {
+          label: t('common.cancel'),
+          onPress: onClose,
+          variant: 'ghost',
+          disabled: submitting,
+        },
         {
           label: t('replace.action'),
           disabled: !canSubmit || submission === null,
+          loading: submitting,
           onPress: () => {
             if (canSubmit && submission) onSubmit(submission);
           },

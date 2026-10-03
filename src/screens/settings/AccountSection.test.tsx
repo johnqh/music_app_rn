@@ -17,13 +17,16 @@ const mockUpload = jest.fn();
 const mockRemove = jest.fn();
 const mockPick = jest.fn<() => Promise<unknown>>();
 let mockFails = false;
+/** When set, every write waits on this rather than answering at once. */
+let mockHold: Promise<void> | null = null;
 
 function mockMutation(spy: (variables: unknown) => void) {
   return {
     isPending: false,
-    mutate: (variables: unknown, options?: { onError?: () => void }) => {
+    mutateAsync: async (variables: unknown) => {
       spy(variables);
-      if (mockFails) options?.onError?.();
+      if (mockHold) await mockHold;
+      if (mockFails) throw new Error('refused');
     },
   };
 }
@@ -71,6 +74,7 @@ beforeEach(() => {
   mockRemove.mockReset();
   mockPick.mockReset();
   mockFails = false;
+  mockHold = null;
 });
 
 describe('AccountSection', () => {
@@ -95,19 +99,51 @@ describe('AccountSection', () => {
     expect(mockUpdate).not.toHaveBeenCalled();
   });
 
-  it('saves the name without the spaces around it', () => {
+  it('saves the name without the spaces around it', async () => {
     const view = renderWithApp(<AccountSection />);
     fireEvent.changeText(view.getByLabelText('Nickname'), '  Ada Lovelace  ');
-    fireEvent.press(view.getByLabelText('Save'));
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('Save'));
+    });
     expect(mockUpdate).toHaveBeenCalledWith({ nickname: 'Ada Lovelace' });
   });
 
-  it('takes the name away when the field is emptied', () => {
+  it('spins on Save while the name is being written, and saves it once', async () => {
+    let release = () => {};
+    mockHold = new Promise<void>(resolve => {
+      release = resolve;
+    });
+    const view = renderWithApp(<AccountSection />);
+    fireEvent.changeText(view.getByLabelText('Nickname'), 'Grace');
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('Save'));
+    });
+    const save = view.getByLabelText('Save');
+    expect(save.props.accessibilityState).toMatchObject({ disabled: true });
+    // The picture's controls wait too: one profile write at a time.
+    expect(
+      view.getByLabelText('Choose picture').props.accessibilityState,
+    ).toMatchObject({ disabled: true });
+    await act(async () => {
+      fireEvent.press(save);
+    });
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release();
+    });
+    expect(
+      view.getByLabelText('Choose picture').props.accessibilityState,
+    ).toMatchObject({ disabled: false });
+  });
+
+  it('takes the name away when the field is emptied', async () => {
     // Null, not an empty string: the server refuses a name of nothing, and
     // the publish sheet goes back to offering the last name used.
     const view = renderWithApp(<AccountSection />);
     fireEvent.changeText(view.getByLabelText('Nickname'), '   ');
-    fireEvent.press(view.getByLabelText('Save'));
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('Save'));
+    });
     expect(mockUpdate).toHaveBeenCalledWith({ nickname: null });
   });
 
@@ -145,13 +181,15 @@ describe('AccountSection', () => {
     expect(mockUpload).not.toHaveBeenCalled();
   });
 
-  it('shows the picture and offers to remove it, once there is one', () => {
+  it('shows the picture and offers to remove it, once there is one', async () => {
     mockProfile.mockReturnValue({ nickname: 'Ada', avatarId: 'abc123' });
     const view = renderWithApp(<AccountSection />);
     expect(view.getByLabelText('Profile picture').props.source).toEqual({
       uri: 'https://api.test/avatars/abc123',
     });
-    fireEvent.press(view.getByLabelText('Remove picture'));
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('Remove picture'));
+    });
     expect(mockRemove).toHaveBeenCalled();
   });
 
@@ -160,11 +198,13 @@ describe('AccountSection', () => {
     expect(view.queryByLabelText('Remove picture')).toBeNull();
   });
 
-  it('says so when the server refuses', () => {
+  it('says so when the server refuses', async () => {
     mockFails = true;
     const view = renderWithApp(<AccountSection />);
     fireEvent.changeText(view.getByLabelText('Nickname'), 'Grace');
-    fireEvent.press(view.getByLabelText('Save'));
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('Save'));
+    });
     expect(view.getByText('Could not save your profile.')).toBeTruthy();
   });
 });

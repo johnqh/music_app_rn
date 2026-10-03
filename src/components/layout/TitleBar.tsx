@@ -29,6 +29,7 @@ import {
 } from 'react-native-heroicons/outline';
 import type { SaveState as DocumentSaveState } from '@sudobility/music_lib';
 import { IconButton } from './IconButton';
+import { useNotationInk } from '@/components/icons/notation-ink';
 import type { MusicDocument } from '@/documents/document';
 
 /** Matches the web app's `ICON_GLYPH_CLASS` sizing. */
@@ -38,6 +39,8 @@ export type TitleBarProps = {
   document: MusicDocument;
   onSave: () => void;
   onExport: () => void;
+  /** An export is being written: the Export button spins and refuses. */
+  exporting?: boolean;
   /**
    * Opens Settings — required, not optional, because it is the only way there.
    *
@@ -76,6 +79,7 @@ export function TitleBar({
   document,
   onSave,
   onExport,
+  exporting = false,
   onSettings,
   onDocuments,
   onShortcuts,
@@ -90,6 +94,7 @@ export function TitleBar({
         document={document}
         onSave={onSave}
         onExport={onExport}
+        exporting={exporting}
         {...(onSnapshots ? { onSnapshots } : {})}
         {...(onPrint ? { onPrint } : {})}
         printing={printing}
@@ -141,7 +146,13 @@ export function TitleBarTitle({ document }: { document: MusicDocument }) {
 
 export type TitleBarDocumentActionsProps = Pick<
   TitleBarProps,
-  'document' | 'onSave' | 'onExport' | 'onSnapshots' | 'onPrint' | 'printing'
+  | 'document'
+  | 'onSave'
+  | 'onExport'
+  | 'exporting'
+  | 'onSnapshots'
+  | 'onPrint'
+  | 'printing'
 >;
 
 /** What operates on the *document*: save, undo, redo, export, print, snapshots. */
@@ -149,6 +160,7 @@ export function TitleBarDocumentActions({
   document,
   onSave,
   onExport,
+  exporting = false,
   onSnapshots,
   onPrint,
   printing = false,
@@ -158,16 +170,20 @@ export function TitleBarDocumentActions({
   const canUndo = useStore(document.store, s => s.canUndo);
   const canRedo = useStore(document.store, s => s.canRedo);
   const playing = useStore(document.store, s => s.state) === 'playing';
+  const ink = useNotationInk();
 
   const undo = useCallback(() => document.store.getState().undo(), [document]);
   const redo = useCallback(() => document.store.getState().redo(), [document]);
 
   return (
     <View className="flex-row items-center gap-1">
+      {/* Any write in flight — this button's or the autosave's — is the wait
+          this button would start, so it spins for both. */}
       <IconButton
         label={t('editor.saveNow')}
         onPress={onSave}
-        disabled={saveState === 'saving'}
+        loading={saveState === 'saving'}
+        spinnerColor={ink.onPrimary}
       >
         <ArrowDownTrayIcon
           size={ICON_SIZE}
@@ -194,7 +210,16 @@ export function TitleBarDocumentActions({
           className="text-primary-foreground"
         />
       </IconButton>
-      <IconButton label={t('editor.export')} onPress={onExport}>
+      {/* The export sheet closes before the file is written — what follows
+          it is the share sheet or the hidden-tracks question, neither of
+          which can be raised over a sheet still dismissing — so the wait is
+          shown here, on the control that started it. */}
+      <IconButton
+        label={t('editor.export')}
+        onPress={onExport}
+        loading={exporting}
+        spinnerColor={ink.onPrimary}
+      >
         <DocumentArrowDownIcon
           size={ICON_SIZE}
           className="text-primary-foreground"

@@ -18,6 +18,7 @@ import { Text } from '@sudobility/components-rn';
 import { FieldRow } from '@/components/controls/FieldRow';
 import { useAuth } from '@/auth/AuthContext';
 import { useConsumablesClient } from '@/features/account/useAccountClients';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 export function RedeemCouponForm({
   onRedeemed,
@@ -29,7 +30,7 @@ export function RedeemCouponForm({
   const { getToken } = useAuth();
   const client = useConsumablesClient(getToken);
   const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
+  const redeeming = usePendingAction();
   const [done, setDone] = useState<{ credits: number; balance: number } | null>(
     null,
   );
@@ -37,20 +38,19 @@ export function RedeemCouponForm({
 
   if (!client) return null;
 
-  const redeem = () => {
-    setBusy(true);
-    setDone(null);
-    setFailed(false);
-    void client
-      .redeemCreditCoupon(code.trim())
-      .then(result => {
+  const redeem = () =>
+    void redeeming.run(async () => {
+      setDone(null);
+      setFailed(false);
+      try {
+        const result = await client.redeemCreditCoupon(code.trim());
         setDone(result);
         setCode('');
         onRedeemed?.();
-      })
-      .catch(() => setFailed(true))
-      .finally(() => setBusy(false));
-  };
+      } catch {
+        setFailed(true);
+      }
+    });
 
   return (
     <View className="border-border gap-3 border-t pt-4">
@@ -64,7 +64,8 @@ export function RedeemCouponForm({
           onChangeText={setCode}
           action={t('coupons.redeem')}
           onAction={redeem}
-          actionDisabled={busy || code.trim() === ''}
+          actionDisabled={code.trim() === ''}
+          actionLoading={redeeming.pending}
           input={{ autoCapitalize: 'characters', autoCorrect: false }}
         />
       </View>

@@ -44,7 +44,7 @@ function ProjectListing({
   onOpen: (id: string) => void;
 }) {
   const { t } = useTranslation();
-  const { data, isLoading, error, refetch } = useProjects(context);
+  const { data, isLoading, isFetching, error, refetch } = useProjects(context);
 
   if (isLoading) {
     return (
@@ -60,6 +60,9 @@ function ProjectListing({
         <Button
           variant="link"
           textClassName="text-base"
+          // The retry is a wait like any other: it spins until the list
+          // answers, and cannot be pressed into a second request meanwhile.
+          loading={isFetching}
           onPress={() => void refetch()}
         >
           {t('library.retry')}

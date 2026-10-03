@@ -81,6 +81,7 @@ export function ImportPane({ onOpened, guard = unguarded }: ImportPaneProps) {
     <>
       <FlatList
         data={OFFERED}
+        extraData={`${importer.importing}:${uploading}`}
         keyExtractor={(item: OfferedFormat) => item.value}
         accessibilityLabel={t('dashboard.importFormat')}
         contentContainerClassName="gap-2 p-6"
@@ -91,7 +92,16 @@ export function ImportPane({ onOpened, guard = unguarded }: ImportPaneProps) {
               else void run(item.value as ImportFormat);
             });
           return (
-            <PressableCard label={t(item.labelKey)} onPress={choose}>
+            <PressableCard
+              label={t(item.labelKey)}
+              onPress={choose}
+              loading={
+                item.value === 'audio'
+                  ? uploading
+                  : importer.importing === item.value
+              }
+              disabled={importer.importing !== null || uploading}
+            >
               <Text className="text-foreground font-medium">
                 {t(item.labelKey)}
               </Text>

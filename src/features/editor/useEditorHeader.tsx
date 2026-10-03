@@ -60,6 +60,7 @@ export function useEditorHeader(
     document,
     onSave,
     onExport,
+    exporting = false,
     onSettings,
     onDocuments,
     onShortcuts,
@@ -121,6 +122,7 @@ export function useEditorHeader(
             document={document}
             onSave={onSave}
             onExport={onExport}
+            exporting={exporting}
             {...(onSnapshots ? { onSnapshots } : {})}
             {...(onPrint ? { onPrint } : {})}
             printing={printing}
@@ -142,6 +144,7 @@ export function useEditorHeader(
     document,
     onSave,
     onExport,
+    exporting,
     onSettings,
     onDocuments,
     onShortcuts,

@@ -23,7 +23,7 @@
  * paywall an open form is one more thing in the way, and a failure dialog over
  * a sheet is two stacked modals.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
 import {
@@ -66,11 +66,16 @@ export function useServerProjectCreation(): ServerProjectCreation {
     [signedIn, balance, siteAdmin],
   );
   const [creating, setCreating] = useState(false);
+  // The refusal of a second Create while the first is in flight: a ref,
+  // because two presses inside one frame both read `creating` as false.
+  const inFlight = useRef(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
 
   const create = useCallback(
     async (submission: NewProjectSubmission): Promise<string | null> => {
+      if (inFlight.current) return null;
+      inFlight.current = true;
       const client = getMusicClient();
       setCreating(true);
       try {
@@ -96,6 +101,7 @@ export function useServerProjectCreation(): ServerProjectCreation {
         }
         return null;
       } finally {
+        inFlight.current = false;
         setCreating(false);
       }
     },

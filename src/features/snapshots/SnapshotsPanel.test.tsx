@@ -71,6 +71,35 @@ describe('SnapshotsPanel', () => {
     });
   });
 
+  it('keeps the create form up, Create spinning, until the snapshot exists', async () => {
+    let release: (value: null) => void = () => {};
+    const snapshots = fakeSnapshots({
+      create: jest.fn(
+        () =>
+          new Promise<null>(resolve => {
+            release = resolve;
+          }),
+      ),
+    });
+    const view = renderWithApp(
+      <SnapshotsPanel snapshots={snapshots} projectName="Quartet" />,
+    );
+    await createFrom(view);
+    const create = () => view.getByRole('button', { name: 'Create snapshot' });
+    expect(create().props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    // A second press is the same snapshot twice; it is refused.
+    await act(async () => {
+      fireEvent.press(create());
+    });
+    expect(snapshots.create).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release(null);
+    });
+    expect(view.queryByRole('button', { name: 'Create snapshot' })).toBeNull();
+  });
+
   it('reports a failed write rather than swallowing it', async () => {
     const snapshots = fakeSnapshots({
       create: jest.fn(async () => {

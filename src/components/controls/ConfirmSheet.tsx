@@ -21,9 +21,17 @@ export type ConfirmSheetProps = {
   confirmLabel: string;
   /** Paints the confirm button as the dangerous answer. */
   destructive?: boolean;
+  /**
+   * The confirmed work is under way. The confirm button spins, and nothing on
+   * the sheet — confirm, Cancel or the × — answers until it is done: the sheet
+   * stays up so the reader sees the wait on the control they pressed.
+   */
+  busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 };
+
+function ignore(): void {}
 
 export function ConfirmSheet({
   open,
@@ -31,6 +39,7 @@ export function ConfirmSheet({
   message,
   confirmLabel,
   destructive = false,
+  busy = false,
   onConfirm,
   onCancel,
 }: ConfirmSheetProps) {
@@ -39,13 +48,21 @@ export function ConfirmSheet({
     <FormModal
       visible={open}
       title={title}
-      onClose={onCancel}
+      // Android's Back reaches `onClose` whatever `saving` says.
+      onClose={busy ? ignore : onCancel}
+      saving={busy}
       actions={[
-        { label: t('common.cancel'), onPress: onCancel, variant: 'ghost' },
+        {
+          label: t('common.cancel'),
+          onPress: onCancel,
+          variant: 'ghost',
+          disabled: busy,
+        },
         {
           label: confirmLabel,
           onPress: onConfirm,
           variant: destructive ? 'destructive' : 'primary',
+          loading: busy,
         },
       ]}
       closeAriaLabel={t('common.closeDialog')}

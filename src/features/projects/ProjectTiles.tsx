@@ -29,6 +29,7 @@ import {
 import type { MusicHookContext } from '@sudobility/music_client';
 import type { ProjectSummary } from '@sudobility/music_types';
 import { ConfirmSheet } from '@/components/controls/ConfirmSheet';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 import { PressableCard } from '@/components/controls/PressableCard';
 import { useContentPadding } from '@/components/layout/EmbeddedScreen';
 import { useDocumentList } from '@/documents/DocumentsContext';
@@ -99,26 +100,37 @@ export function ProjectTiles({
   const padding = useContentPadding(SCREEN_PADDING);
   const { columns, tileWidth } = tileGrid(width, padding);
 
-  const duplicateProject = async (project: ProjectSummary) => {
-    setProblem(null);
-    try {
-      await duplicate.mutateAsync({ id: project.id });
-    } catch {
-      setProblem(t('errors.duplicateProject'));
-    }
-  };
+  // Which tile's Duplicate / Delete is waiting on the server: that one spins,
+  // and no tile starts a second one meanwhile.
+  const duplicating = usePendingAction<string>();
+  const deleting = usePendingAction<string>();
 
-  const deleteProject = async (project: ProjectSummary) => {
-    setPendingDelete(null);
-    setProblem(null);
-    try {
-      await remove.mutateAsync(project.id);
-      const open = list.findOpen({ kind: 'project', projectId: project.id });
-      if (open) list.close(open.id);
-    } catch {
-      setProblem(t('errors.deleteProject'));
-    }
-  };
+  const duplicateProject = (project: ProjectSummary) =>
+    duplicating.run(async () => {
+      setProblem(null);
+      try {
+        await duplicate.mutateAsync({ id: project.id });
+      } catch {
+        setProblem(t('errors.duplicateProject'));
+      }
+    }, project.id);
+
+  // The confirm sheet stays up, its Delete spinning, until the server has
+  // answered: closing it first left nothing on screen saying anything was
+  // happening.
+  const deleteProject = (project: ProjectSummary) =>
+    deleting.run(async () => {
+      setProblem(null);
+      try {
+        await remove.mutateAsync(project.id);
+        const open = list.findOpen({ kind: 'project', projectId: project.id });
+        if (open) list.close(open.id);
+      } catch {
+        setProblem(t('errors.deleteProject'));
+      } finally {
+        setPendingDelete(null);
+      }
+    }, project.id);
 
   return (
     <View className="flex-1" onLayout={onLayout} testID="project-tiles">
@@ -127,6 +139,7 @@ export function ProjectTiles({
         // a different list.
         key={columns}
         data={projects}
+        extraData={`${duplicating.pendingKey}:${deleting.pendingKey}`}
         numColumns={columns}
         keyExtractor={(project: ProjectSummary) => project.id}
         accessibilityLabel={t('dashboard.myProjects')}
@@ -170,7 +183,8 @@ export function ProjectTiles({
                     <Button
                       variant="ghost"
                       size="sm"
-                      disabled={duplicate.isPending}
+                      disabled={duplicating.pending}
+                      loading={duplicating.pendingKey === item.id}
                       accessibilityLabel={t('dashboard.duplicateProject', {
                         name: item.name,
                       })}
@@ -182,7 +196,8 @@ export function ProjectTiles({
                       variant="ghost"
                       size="sm"
                       textClassName="text-destructive"
-                      disabled={remove.isPending}
+                      disabled={deleting.pending}
+                      loading={deleting.pendingKey === item.id}
                       accessibilityLabel={t('dashboard.deleteProject', {
                         name: item.name,
                       })}
@@ -217,6 +232,7 @@ export function ProjectTiles({
         })}
         confirmLabel={t('common.delete')}
         destructive
+        busy={deleting.pending}
         onConfirm={() => {
           if (pendingDelete) void deleteProject(pendingDelete);
         }}

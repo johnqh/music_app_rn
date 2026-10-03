@@ -21,25 +21,30 @@ import {
   useDocumentList,
   useDocumentServices,
 } from '@/documents/DocumentsContext';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 export function RecentDocuments({ keyValue }: { keyValue: KeyValueStore }) {
   const list = useDocumentList();
   const services = useDocumentServices();
   const [recent, setRecent] = useState<RecentDocument[]>([]);
+  // Reading a file is a wait: the entry chosen spins, and none opens twice.
+  const opening = usePendingAction<string>();
 
   useEffect(() => {
     void loadRecent(keyValue).then(setRecent);
   }, [keyValue]);
 
-  async function open(entry: RecentDocument) {
-    try {
-      const opened = await openFileInto(list, services, entry.handle);
-      recordRecent(keyValue, opened.store.getState());
-    } catch {
-      // A file that has gone away should leave the list rather than sit there
-      // failing every time it is tapped.
-      setRecent(await forgetRecent(keyValue, entry.uri));
-    }
+  function open(entry: RecentDocument) {
+    return opening.run(async () => {
+      try {
+        const opened = await openFileInto(list, services, entry.handle);
+        recordRecent(keyValue, opened.store.getState());
+      } catch {
+        // A file that has gone away should leave the list rather than sit
+        // there failing every time it is tapped.
+        setRecent(await forgetRecent(keyValue, entry.uri));
+      }
+    }, entry.uri);
   }
 
   if (recent.length === 0) return null;
@@ -53,6 +58,8 @@ export function RecentDocuments({ keyValue }: { keyValue: KeyValueStore }) {
           key={entry.uri}
           variant="ghost"
           accessibilityLabel={entry.title}
+          disabled={opening.pending}
+          loading={opening.pendingKey === entry.uri}
           onPress={() => void open(entry)}
         >
           {entry.title}

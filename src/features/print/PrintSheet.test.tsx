@@ -46,6 +46,25 @@ describe('PrintSheet', () => {
     });
   });
 
+  it('spins on Print while the pages are drawn, and cannot print twice', () => {
+    const score = createEmptyScore({ title: 'A' });
+    const onPrint = jest.fn();
+    const view = renderWithApp(
+      <PrintSheet
+        open
+        printing
+        score={score}
+        visibleTrackIds={[score.tracks[0]!.id]}
+        onClose={jest.fn()}
+        onPrint={onPrint}
+      />,
+    );
+    const print = view.getByRole('button', { name: 'Print' });
+    expect(print.props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(print);
+    expect(onPrint).not.toHaveBeenCalled();
+  });
+
   it('remembers a paper chosen here for the next printout', () => {
     devicePrefs.getState().setPaperSize('letter');
     const view = renderWithApp(

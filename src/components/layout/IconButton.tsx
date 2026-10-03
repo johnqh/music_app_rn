@@ -7,8 +7,9 @@
  * height.
  */
 import type { ReactNode } from 'react';
-import { Platform, Pressable } from 'react-native';
+import { ActivityIndicator, Platform, Pressable } from 'react-native';
 import { touchSlop } from '@sudobility/components-rn';
+import { useNotationInk } from '@/components/icons/notation-ink';
 
 export type IconButtonProps = {
   /**
@@ -37,6 +38,18 @@ export type IconButtonProps = {
    * inverse ink when on.
    */
   fill?: boolean;
+  /**
+   * The button's work is under way: the glyph becomes a spinner, the button
+   * refuses a second press (and the assistive activation with it), and
+   * `busy` is reported to the accessibility layer.
+   */
+  loading?: boolean;
+  /**
+   * The spinner's ink. A colour must be passed rather than inherited, so it
+   * comes from `useNotationInk()`: the bar's ordinary `foreground` unless the
+   * button sits on `bg-primary` (the title bar), which passes `onPrimary`.
+   */
+  spinnerColor?: string;
   children: ReactNode;
 };
 
@@ -102,6 +115,8 @@ const SLOP = touchSlop(DRAWN_SIZE, DRAWN_SIZE);
  */
 const RIPPLE = { borderless: true, radius: DRAWN_SIZE / 2 } as const;
 const PRESSED_OPACITY = Platform.OS === 'ios' ? 0.4 : 1;
+/** The glyph's own box, so a spinning button keeps the bar's rhythm. */
+const SPINNER_STYLE = { width: 18, height: 18 } as const;
 
 export function IconButton({
   label,
@@ -110,29 +125,44 @@ export function IconButton({
   disabled = false,
   selected = false,
   fill = false,
+  loading = false,
+  spinnerColor,
   children,
 }: IconButtonProps) {
+  const ink = useNotationInk();
+  // Waiting is refusing: a second press while the first is in flight is the
+  // double submit the spinner exists to prevent. Drawn at full strength,
+  // though — a spinner at 40% reads as a control that is off.
+  const inert = disabled || loading;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       {...(hint ? { accessibilityHint: hint } : {})}
-      accessibilityState={{ disabled, selected }}
+      accessibilityState={{ disabled: inert, selected, busy: loading }}
       onPress={onPress}
       // macOS has no synthesized-touch fallback for an assistive press, so a
       // VoiceOver press would otherwise do nothing.
-      {...(disabled ? {} : { onAccessibilityTap: onPress })}
-      disabled={disabled}
+      {...(inert ? {} : { onAccessibilityTap: onPress })}
+      disabled={inert}
       hitSlop={SLOP}
       android_ripple={RIPPLE}
       className={
         disabled ? DISABLED : selected ? (fill ? FILLED : SELECTED) : BASE
       }
       style={({ pressed }) =>
-        pressed && !disabled ? { opacity: PRESSED_OPACITY } : null
+        pressed && !inert ? { opacity: PRESSED_OPACITY } : null
       }
     >
-      {children}
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={spinnerColor ?? ink.foreground}
+          style={SPINNER_STYLE}
+        />
+      ) : (
+        children
+      )}
     </Pressable>
   );
 }

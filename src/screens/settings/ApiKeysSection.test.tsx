@@ -6,7 +6,7 @@
  * and put away.
  */
 import { jest } from '@jest/globals';
-import { fireEvent } from '@testing-library/react-native';
+import { act, fireEvent } from '@testing-library/react-native';
 import { renderWithApp } from '@/test/render';
 
 const mockEntities = jest.fn<() => unknown>();
@@ -14,6 +14,8 @@ const mockKeys = jest.fn<(slug: string | null) => unknown>();
 const mockCreate = jest.fn();
 const mockRevoke = jest.fn();
 let mockCreated: unknown = null;
+/** When set, a create waits on this rather than answering at once. */
+let mockHold: Promise<void> | null = null;
 
 jest.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({ getToken: async () => 'token' }),
@@ -28,17 +30,15 @@ jest.mock(
     useEntityApiKeys: (_client: unknown, slug: string | null) => mockKeys(slug),
     useCreateApiKey: () => ({
       isPending: false,
-      mutate: (
-        variables: unknown,
-        options?: { onSuccess?: (key: unknown) => void },
-      ) => {
+      mutateAsync: async (variables: unknown) => {
         mockCreate(variables);
-        options?.onSuccess?.(mockCreated);
+        if (mockHold) await mockHold;
+        return mockCreated;
       },
     }),
     useRevokeApiKey: () => ({
       isPending: false,
-      mutate: (variables: unknown) => mockRevoke(variables),
+      mutateAsync: async (variables: unknown) => mockRevoke(variables),
     }),
   }),
   { virtual: true },
@@ -56,6 +56,7 @@ beforeEach(() => {
   mockCreate.mockReset();
   mockRevoke.mockReset();
   mockCreated = { keyName: 'Deploy', key: 'sk_live_secret' };
+  mockHold = null;
 });
 
 describe('ApiKeysSection', () => {
@@ -71,10 +72,12 @@ describe('ApiKeysSection', () => {
     expect(view.queryByLabelText('Create key')).toBeNull();
   });
 
-  it('creates a key under the name given, and shows its secret', () => {
+  it('creates a key under the name given, and shows its secret', async () => {
     const view = renderWithApp(<ApiKeysSection />);
     fireEvent.changeText(view.getByLabelText('Key name'), '  Deploy ');
-    fireEvent.press(view.getByLabelText('Create key'));
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('Create key'));
+    });
     expect(mockCreate).toHaveBeenCalledWith({
       entitySlug: 'ada',
       request: { key_name: 'Deploy' },
@@ -85,15 +88,39 @@ describe('ApiKeysSection', () => {
     ).toBeTruthy();
   });
 
-  it('puts the secret away when asked, for good', () => {
+  it('spins on Create while the key is being made, and makes one', async () => {
+    let release = () => {};
+    mockHold = new Promise<void>(resolve => {
+      release = resolve;
+    });
     const view = renderWithApp(<ApiKeysSection />);
     fireEvent.changeText(view.getByLabelText('Key name'), 'Deploy');
-    fireEvent.press(view.getByLabelText('Create key'));
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('Create key'));
+    });
+    const create = view.getByLabelText('Create key');
+    expect(create.props.accessibilityState).toMatchObject({ disabled: true });
+    await act(async () => {
+      fireEvent.press(create);
+    });
+    expect(mockCreate).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release();
+    });
+    expect(view.getByText('sk_live_secret')).toBeTruthy();
+  });
+
+  it('puts the secret away when asked, for good', async () => {
+    const view = renderWithApp(<ApiKeysSection />);
+    fireEvent.changeText(view.getByLabelText('Key name'), 'Deploy');
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('Create key'));
+    });
     fireEvent.press(view.getByLabelText('Hide'));
     expect(view.queryByText('sk_live_secret')).toBeNull();
   });
 
-  it('lists each key by its prefix, never its secret, and revokes by name', () => {
+  it('lists each key by its prefix, never its secret, and revokes by name', async () => {
     mockKeys.mockReturnValue({
       data: [
         {
@@ -119,7 +146,9 @@ describe('ApiKeysSection', () => {
     expect(view.getByText(/sk_live_zz… · Revoked/)).toBeTruthy();
     // A revoked key has nothing left to revoke.
     expect(view.queryByLabelText('Revoke Old')).toBeNull();
-    fireEvent.press(view.getByLabelText('Revoke Deploy'));
+    await act(async () => {
+      fireEvent.press(view.getByLabelText('Revoke Deploy'));
+    });
     expect(mockRevoke).toHaveBeenCalledWith({ entitySlug: 'ada', keyId: 'k1' });
   });
 });

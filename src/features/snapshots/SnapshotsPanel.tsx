@@ -33,6 +33,7 @@ import {
   SLOT_BUTTON_CLASS,
   SLOT_FIELD_CLASS,
 } from '@/components/controls/FieldRow';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 export type SnapshotsPanelProps = {
   /** `useProjectSnapshots` for this project. */
@@ -66,15 +67,29 @@ export function SnapshotsPanel({
     return () => clearTimeout(timer);
   }, [startCreating]);
   const [openOpen, setOpenOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // One snapshot write at a time; the control that started it spins (an
+  // unpublish is keyed by the snapshot it withdraws).
+  const pending = usePendingAction<string>();
+  const busy = pending.pending;
 
-  const run = (work: () => Promise<unknown>): void => {
-    setBusy(true);
-    setError(null);
-    void work()
-      .catch(e => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setBusy(false));
+  const report = (e: unknown) =>
+    setError(e instanceof Error ? e.message : String(e));
+  const run = (
+    key: string,
+    work: () => Promise<unknown>,
+    after?: () => void,
+  ): void => {
+    void pending.run(async () => {
+      setError(null);
+      try {
+        await work();
+      } catch (e) {
+        report(e);
+      } finally {
+        after?.();
+      }
+    }, key);
   };
 
   const list = snapshots.snapshots;
@@ -133,9 +148,14 @@ export function SnapshotsPanel({
                   accessibilityLabel={t('snapshot.publicNameFor', {
                     name: snapshot.name,
                   })}
-                  onCommit={publicName =>
-                    run(() => snapshots.rename(snapshot.id, publicName))
-                  }
+                  onCommit={publicName => {
+                    // A field committed on blur, not a call to action: it
+                    // has nothing to spin and is not refused by one.
+                    setError(null);
+                    void snapshots
+                      .rename(snapshot.id, publicName)
+                      .catch(report);
+                  }}
                 />
               </FieldSlot>
               <FieldSlot>
@@ -143,7 +163,12 @@ export function SnapshotsPanel({
                   variant="ghost"
                   className={SLOT_BUTTON_CLASS}
                   disabled={busy}
-                  onPress={() => run(() => snapshots.unpublish(snapshot.id))}
+                  loading={pending.pendingKey === `unpublish:${snapshot.id}`}
+                  onPress={() =>
+                    run(`unpublish:${snapshot.id}`, () =>
+                      snapshots.unpublish(snapshot.id),
+                    )
+                  }
                 >
                   {t('snapshot.unpublish')}
                 </Button>
@@ -169,19 +194,25 @@ export function SnapshotsPanel({
           ? { defaultPublisherName: snapshots.defaultPublisherName }
           : {})}
         onClose={() => setCreateOpen(false)}
+        busy={pending.pendingKey === 'create'}
         onCreate={(name, publisherName, publicName) =>
-          run(async () => {
-            setCreateOpen(false);
-            // Published in the same step it is created, because that is how
-            // the sheet asks it: publishing is a tick on the create form
-            // rather than a second trip through a list.
-            await snapshots.create({
-              name,
-              ...(publisherName && publicName
-                ? { publish: { publisherName, publicName } }
-                : {}),
-            });
-          })
+          // The sheet stays up, Create spinning, until the server answers;
+          // either way it then closes, and a failure is reported here.
+          run(
+            'create',
+            async () => {
+              // Published in the same step it is created, because that is how
+              // the sheet asks it: publishing is a tick on the create form
+              // rather than a second trip through a list.
+              await snapshots.create({
+                name,
+                ...(publisherName && publicName
+                  ? { publish: { publisherName, publicName } }
+                  : {}),
+              });
+            },
+            () => setCreateOpen(false),
+          )
         }
       />
 
@@ -189,16 +220,18 @@ export function SnapshotsPanel({
         open={openOpen}
         nodes={snapshots.nodes}
         onClose={() => setOpenOpen(false)}
+        busy={pending.pendingKey === 'open'}
         onSnapshotFirst={() => {
           // The non-destructive escape: keep the current work, then come back.
           setOpenOpen(false);
           setCreateOpen(true);
         }}
         onOpen={snapshotId =>
-          run(async () => {
-            setOpenOpen(false);
-            await snapshots.open(snapshotId);
-          })
+          run(
+            'open',
+            () => snapshots.open(snapshotId),
+            () => setOpenOpen(false),
+          )
         }
       />
     </View>

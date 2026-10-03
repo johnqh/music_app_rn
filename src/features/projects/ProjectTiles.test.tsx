@@ -101,6 +101,76 @@ describe('a project tile', () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  it('spins on the Duplicate pressed until the copy exists, and copies once', async () => {
+    let release: (value: unknown) => void = () => {};
+    mockDuplicate.mockReturnValue(
+      new Promise(resolve => {
+        release = resolve;
+      }),
+    );
+    const { view } = setup();
+    const duplicate = () =>
+      view.getByLabelText('Duplicate project: Morning Song');
+    await act(async () => {
+      fireEvent.press(duplicate());
+    });
+    expect(duplicate().props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    // No other tile starts a copy meanwhile either.
+    expect(
+      view.getByLabelText('Duplicate project: Evening Song').props
+        .accessibilityState,
+    ).toMatchObject({ disabled: true });
+    await act(async () => {
+      fireEvent.press(duplicate());
+    });
+    expect(mockDuplicate).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      release({});
+    });
+    expect(duplicate().props.accessibilityState).toMatchObject({
+      disabled: false,
+    });
+  });
+
+  it('keeps the question up, its Delete spinning, until the server answers', async () => {
+    let release: (value: unknown) => void = () => {};
+    mockDelete.mockReturnValue(
+      new Promise(resolve => {
+        release = resolve;
+      }),
+    );
+    const { view } = setup();
+    fireEvent.press(view.getByLabelText('Delete project: Evening Song'));
+    const confirm = () =>
+      view.getAllByRole('button', { name: 'Delete' }).at(-1)!;
+    await act(async () => {
+      fireEvent.press(confirm());
+    });
+    // Still asking — and nothing on the sheet answers while it waits.
+    expect(
+      view.getByText('Delete "Evening Song"? This cannot be undone.'),
+    ).toBeTruthy();
+    expect(confirm().props.accessibilityState).toMatchObject({
+      disabled: true,
+    });
+    fireEvent.press(view.getByText('Cancel'));
+    await act(async () => {
+      fireEvent.press(confirm());
+    });
+    expect(mockDelete).toHaveBeenCalledTimes(1);
+    expect(
+      view.getByText('Delete "Evening Song"? This cannot be undone.'),
+    ).toBeTruthy();
+    await act(async () => {
+      release({});
+    });
+    expect(
+      view.queryByText('Delete "Evening Song"? This cannot be undone.'),
+    ).toBeNull();
+  });
+
   it('asks before deleting, and deletes nothing if the answer is no', () => {
     const { view } = setup();
     fireEvent.press(view.getByLabelText('Delete project: Evening Song'));

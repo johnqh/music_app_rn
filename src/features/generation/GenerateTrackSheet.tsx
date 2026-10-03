@@ -43,13 +43,22 @@ export type GenerateTrackSheetProps = {
   score: Score;
   onClose: () => void;
   onSubmit: (request: GenerateTrackRequest) => void;
+  /**
+   * The job is being started (the pending edit written, the job posted).
+   * Generate spins and the sheet stays up, every way out refused, until the
+   * server has answered.
+   */
+  submitting?: boolean;
 };
+
+function ignore(): void {}
 
 export function GenerateTrackSheet({
   open,
   score,
   onClose,
   onSubmit,
+  submitting = false,
 }: GenerateTrackSheetProps) {
   const { t } = useTranslation();
   const [prompt, setPrompt] = useState('');
@@ -65,13 +74,20 @@ export function GenerateTrackSheet({
     <FormModal
       visible={open}
       title={t('generateTrack.title')}
-      onClose={onClose}
+      onClose={submitting ? ignore : onClose}
+      saving={submitting}
       closeAriaLabel={t('common.closeDialog')}
       actions={[
-        { label: t('common.cancel'), onPress: onClose, variant: 'ghost' },
+        {
+          label: t('common.cancel'),
+          onPress: onClose,
+          variant: 'ghost',
+          disabled: submitting,
+        },
         {
           label: t('generate.action'),
           disabled: trimmed === '',
+          loading: submitting,
           onPress: () =>
             onSubmit(
               buildGenerateTrackRequest(

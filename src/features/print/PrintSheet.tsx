@@ -41,8 +41,16 @@ export type PrintSheetProps = {
   score: Score;
   /** What the whole score prints; hidden tracks stay off the paper. */
   visibleTrackIds: readonly string[];
+  /** Cancel, the close button, Back — and, while drawing, abandons the print. */
   onClose: () => void;
   onPrint: (options: PrintPlanOptions) => void;
+  /**
+   * The pages are being drawn. The sheet stays up with Print spinning until
+   * they are, then the caller closes it and asks for the print dialog: a long
+   * score takes seconds, and a sheet that closed at once left the reader
+   * staring at a frozen editor with no sign anything was happening.
+   */
+  printing?: boolean;
   /**
    * The track whose part the sheet opens on, each time it opens; the whole
    * score when absent. Set by a store screenshot (`ScreenshotLinks.tsx`).
@@ -57,6 +65,7 @@ export function PrintSheet({
   onClose,
   onPrint,
   initialScope,
+  printing = false,
 }: PrintSheetProps) {
   const { t } = useTranslation();
   const [scope, setScope] = useState<string>(WHOLE_SCORE);
@@ -88,6 +97,7 @@ export function PrintSheet({
         { label: t('common.cancel'), onPress: onClose, variant: 'ghost' },
         {
           label: t('print.action'),
+          loading: printing,
           onPress: () =>
             onPrint({
               scope: effectiveScope,

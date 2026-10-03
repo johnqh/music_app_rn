@@ -10,14 +10,22 @@ export type InsertBarsSheetResult = {
   generate: boolean;
 };
 
+function ignore(): void {}
+
 export function InsertBarsSheet({
   open,
   onClose,
   onSubmit,
+  submitting = false,
 }: {
   open: boolean;
   onClose: () => void;
   onSubmit: (result: InsertBarsSheetResult) => void;
+  /**
+   * The inserted bars' generation is being started: Insert spins and the
+   * sheet stays up, every way out refused, until the server has answered.
+   */
+  submitting?: boolean;
 }) {
   const { t } = useTranslation();
   const [count, setCount] = useState('4');
@@ -40,7 +48,8 @@ export function InsertBarsSheet({
   return (
     <FormModal
       visible={open}
-      onClose={onClose}
+      onClose={submitting ? ignore : onClose}
+      saving={submitting}
       title={t('editor.insertBarsTitle')}
       onSave={submit}
       saveLabel={t('editor.insertBars')}

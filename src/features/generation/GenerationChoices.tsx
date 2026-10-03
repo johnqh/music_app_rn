@@ -31,13 +31,17 @@ import {
 import type { LockableChoice } from '@sudobility/music_lib';
 import type { GenerationRecord } from '@sudobility/music_types';
 import { ConfirmSheet } from '@/components/controls/ConfirmSheet';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 export type GenerationChoicesProps = {
   record: GenerationRecord;
   /** True while a job owns the project: nothing can be started then. */
   generating: boolean;
-  /** The locked choices, in the order they are shown. */
-  onGenerateAgain: (lockedKeys: LockableChoice[]) => void;
+  /**
+   * The locked choices, in the order they are shown. Answers once the job has
+   * been accepted (or refused): until then the confirm spins and stays up.
+   */
+  onGenerateAgain: (lockedKeys: LockableChoice[]) => void | Promise<void>;
 };
 
 export function GenerationChoices({
@@ -48,6 +52,7 @@ export function GenerationChoices({
   const { t } = useTranslation();
   const [locked, setLocked] = useState<ReadonlySet<LockableChoice>>(new Set());
   const [confirming, setConfirming] = useState(false);
+  const starting = usePendingAction();
 
   const rows = lockableChoiceRows(record);
   // The same request again, so the same bill: its bars times its tracks.
@@ -91,6 +96,7 @@ export function GenerationChoices({
           variant="secondary"
           size="sm"
           disabled={generating}
+          loading={starting.pending}
           onPress={() => setConfirming(true)}
         >
           {locked.size > 0
@@ -109,11 +115,17 @@ export function GenerationChoices({
         message={t('generationChoices.confirmMessage')}
         confirmLabel={t('generationChoices.confirm')}
         destructive
+        busy={starting.pending}
         onCancel={() => setConfirming(false)}
-        onConfirm={() => {
-          setConfirming(false);
-          onGenerateAgain(rows.filter(key => locked.has(key)));
-        }}
+        onConfirm={() =>
+          void starting.run(async () => {
+            try {
+              await onGenerateAgain(rows.filter(key => locked.has(key)));
+            } finally {
+              setConfirming(false);
+            }
+          })
+        }
       />
     </View>
   );

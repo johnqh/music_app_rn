@@ -27,6 +27,7 @@ import {
 import { getAppServices, libraryCopy } from '@/config/initialize';
 import { trackButtonClick, trackError, trackEvent } from '@/analytics';
 import { MidiImportSheet } from './MidiImportSheet';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 /**
  * A failure, in the reader's language where the failure has a reason.
@@ -70,6 +71,14 @@ export function useImport(options: UseImportOptions = {}) {
   const services = useDocumentServices();
   const [warnings, setWarnings] = useState<readonly string[] | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  /*
+    Which format is being imported, from the press to the document (or the
+    MIDI wizard) being there. Choosing a file and decoding it — or, signed in,
+    making a server project of it — is a wait; the control that started it
+    spins through it, and a second import is refused meanwhile.
+  */
+  const pending = usePendingAction<ImportFormat>();
+  const runPending = pending.run;
 
   /**
    * A MIDI file that has been read and analysed but not yet imported.
@@ -121,26 +130,29 @@ export function useImport(options: UseImportOptions = {}) {
    */
   const importFile = useCallback(
     async (format: ImportFormat, uri: string): Promise<void> => {
-      try {
-        if (format === 'midi') {
-          // Analysed here rather than inside the sheet: reading the file can
-          // fail, and a failure belongs in this hook's own report rather than
-          // inside a modal that has already opened.
-          const bytes = await createImportSource().readBytes(uri);
-          setPendingMidi({
-            uri,
-            summary: getAppServices().io.analyzeMidi(bytes),
-          });
-          return;
+      await runPending(async () => {
+        try {
+          if (format === 'midi') {
+            // Analysed here rather than inside the sheet: reading the file can
+            // fail, and a failure belongs in this hook's own report rather than
+            // inside a modal that has already opened.
+            const bytes = await createImportSource().readBytes(uri);
+            setPendingMidi({
+              uri,
+              summary: getAppServices().io.analyzeMidi(bytes),
+            });
+            return;
+          }
+          await finish(format, uri);
+        } catch (error) {
+          const message =
+            error instanceof Error ? error.message : String(error);
+          trackError(message, 'import_failed');
+          setFailure(message);
         }
-        await finish(format, uri);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        trackError(message, 'import_failed');
-        setFailure(message);
-      }
+      }, format);
     },
-    [finish],
+    [finish, runPending],
   );
 
   const run = useCallback(
@@ -150,31 +162,45 @@ export function useImport(options: UseImportOptions = {}) {
         setFailure(t('import.unsupported'));
         return;
       }
-      try {
-        const uri = await picker.pickFile(IMPORT_EXTENSIONS[format]);
-        // Cancelling is an ordinary outcome, not a failure to report.
-        if (!uri) return;
-        trackButtonClick('import', { format });
-        await importFile(format, uri);
-      } catch (error) {
-        setFailure(error instanceof Error ? error.message : String(error));
-      }
+      let uri: string | null = null;
+      // Pending through the picker too: a second press while the chooser is
+      // up would raise a second chooser.
+      await runPending(async () => {
+        try {
+          uri = await picker.pickFile(IMPORT_EXTENSIONS[format]);
+        } catch (error) {
+          setFailure(error instanceof Error ? error.message : String(error));
+        }
+      }, format);
+      // Cancelling is an ordinary outcome, not a failure to report.
+      if (!uri) return;
+      trackButtonClick('import', { format });
+      await importFile(format, uri);
     },
-    [t, importFile],
+    [t, importFile, runPending],
   );
 
+  // The wizard stays up, Import spinning, until the document is there.
   const confirmMidi = useCallback(
     (options: MidiImportOptions): void => {
-      const pending = pendingMidi;
-      setPendingMidi(null);
-      if (pending) void finish('midi', pending.uri, options);
+      const chosen = pendingMidi;
+      if (!chosen) return;
+      void runPending(async () => {
+        try {
+          await finish('midi', chosen.uri, options);
+        } finally {
+          setPendingMidi(null);
+        }
+      }, 'midi');
     },
-    [pendingMidi, finish],
+    [pendingMidi, finish, runPending],
   );
 
   return {
     run,
     importFile,
+    /** The format being imported, or null. */
+    importing: pending.pendingKey,
     warnings,
     failure,
     setWarnings,
@@ -219,6 +245,7 @@ export function ImportFeedback({ state }: { state: ImportState }) {
         summary={pendingMidi?.summary ?? null}
         onCancel={cancelMidi}
         onImport={confirmMidi}
+        importing={state.importing === 'midi' && pendingMidi !== null}
       />
       <FormModal
         visible={warnings !== null}

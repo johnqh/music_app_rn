@@ -26,6 +26,8 @@ export type FieldRowProps = {
   onAction: () => void;
   /** The button is drawn but refuses: nothing to act on, or already acting. */
   actionDisabled?: boolean;
+  /** The button's work is under way: it spins and refuses a second press. */
+  actionLoading?: boolean;
   /** Passed to the field: keyboard, capitalisation, length. */
   input?: Omit<
     ComponentProps<typeof Input>,
@@ -41,6 +43,7 @@ export function FieldRow({
   action,
   onAction,
   actionDisabled = false,
+  actionLoading = false,
   input,
 }: FieldRowProps) {
   return (
@@ -59,6 +62,7 @@ export function FieldRow({
         <Button
           onPress={onAction}
           disabled={actionDisabled}
+          loading={actionLoading}
           accessibilityLabel={action}
           className="h-full"
         >

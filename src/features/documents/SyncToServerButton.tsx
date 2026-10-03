@@ -20,6 +20,7 @@ import type { DocumentStore } from '@sudobility/music_lib';
 import { getMusicClient } from '@/config/server';
 import { useAuth } from '@/auth/AuthContext';
 import { useActiveDocument } from '@/documents/DocumentsContext';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 export function SyncToServerButton() {
   const document = useActiveDocument();
@@ -41,7 +42,7 @@ function SyncDocument({ store }: { store: DocumentStore }) {
   const { t } = useTranslation();
   const origin = useStore(store, s => s.origin);
   const serverAvailable = useStore(store, s => s.serverAvailable);
-  const [busy, setBusy] = useState(false);
+  const syncing = usePendingAction();
   const [error, setError] = useState<string | null>(null);
 
   if (!serverAvailable || origin.kind === 'project') return null;
@@ -50,16 +51,17 @@ function SyncDocument({ store }: { store: DocumentStore }) {
     <View className="gap-1">
       <Button
         variant="secondary"
-        loading={busy}
-        onPress={() => {
-          setBusy(true);
-          setError(null);
-          void store
-            .getState()
-            .syncToServer()
-            .catch(e => setError(e instanceof Error ? e.message : String(e)))
-            .finally(() => setBusy(false));
-        }}
+        loading={syncing.pending}
+        onPress={() =>
+          void syncing.run(async () => {
+            setError(null);
+            try {
+              await store.getState().syncToServer();
+            } catch (e) {
+              setError(e instanceof Error ? e.message : String(e));
+            }
+          })
+        }
       >
         {t('dashboard.syncToServer')}
       </Button>

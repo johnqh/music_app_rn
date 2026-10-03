@@ -127,6 +127,7 @@ import type {
   QuantizeGrid,
 } from '@sudobility/music_types';
 import type { LayoutMode } from '@sudobility/music_types';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 const ICON_SIZE = 18;
 
@@ -159,8 +160,11 @@ export type EditorToolbarProps = {
    * only difference is who writes the notes.
    */
   onGenerateTrack?: () => void;
-  /** Starts AI generation for the newly inserted bars. */
-  onGenerateInsertedBars?: () => void;
+  /**
+   * Starts AI generation for the newly inserted bars. Answers once the job
+   * has been posted; the insert sheet waits on it with its button spinning.
+   */
+  onGenerateInsertedBars?: () => void | Promise<void>;
 };
 
 export function EditorToolbar({
@@ -201,6 +205,10 @@ export function EditorToolbar({
   const [goToBarOpen, setGoToBarOpen] = useState(false);
   const [addTrackOpen, setAddTrackOpen] = useState(false);
   const [insertBarsOpen, setInsertBarsOpen] = useState(false);
+  // Insert-and-generate and Quantize both answer later than the press; each
+  // spins on its own control and refuses a second press meanwhile.
+  const inserting = usePendingAction();
+  const quantizing = usePendingAction();
 
   /*
     The mode a write will actually use: stack on a part that cannot play a
@@ -294,24 +302,28 @@ export function EditorToolbar({
     });
   };
 
-  const insertBars = (result: InsertBarsSheetResult): void => {
-    const inserted = insertBlankMeasuresAtCaret(
-      store,
-      result.count,
-      result.position,
-    );
-    setInsertBarsOpen(false);
-    if (!inserted || !result.generate || !onGenerateInsertedBars) return;
-    const nextScore = store.getState().score;
-    const measureIds =
-      nextScore?.tracks.flatMap(track =>
-        track.measures
-          .slice(inserted.startIndex, inserted.startIndex + inserted.count)
-          .map(measure => measure.id),
-      ) ?? [];
-    store.getState().selectMeasures(measureIds);
-    onGenerateInsertedBars();
-  };
+  const insertBars = (result: InsertBarsSheetResult): void =>
+    void inserting.run(async () => {
+      try {
+        const inserted = insertBlankMeasuresAtCaret(
+          store,
+          result.count,
+          result.position,
+        );
+        if (!inserted || !result.generate || !onGenerateInsertedBars) return;
+        const nextScore = store.getState().score;
+        const measureIds =
+          nextScore?.tracks.flatMap(track =>
+            track.measures
+              .slice(inserted.startIndex, inserted.startIndex + inserted.count)
+              .map(measure => measure.id),
+          ) ?? [];
+        store.getState().selectMeasures(measureIds);
+        await onGenerateInsertedBars();
+      } finally {
+        setInsertBarsOpen(false);
+      }
+    });
 
   return (
     /*
@@ -642,7 +654,12 @@ export function EditorToolbar({
           label={t('editor.quantize')}
           hint={t('editor.quantizeHint')}
           disabled={!available.quantize}
-          onPress={() => void quantizeSelectionToGrid(store, quantizeGrid)}
+          loading={quantizing.pending}
+          onPress={() =>
+            void quantizing.run(() =>
+              quantizeSelectionToGrid(store, quantizeGrid),
+            )
+          }
         />
 
         <Divider />
@@ -867,6 +884,7 @@ export function EditorToolbar({
         open={insertBarsOpen}
         onClose={() => setInsertBarsOpen(false)}
         onSubmit={insertBars}
+        submitting={inserting.pending}
       />
     </View>
   );
@@ -901,6 +919,7 @@ function GlyphChip({
   hint,
   selected = false,
   disabled = false,
+  loading = false,
   onPress,
 }: {
   icon: NotationIconName;
@@ -908,6 +927,8 @@ function GlyphChip({
   hint?: string;
   selected?: boolean;
   disabled?: boolean;
+  /** The chip's work is under way: it spins and refuses a second press. */
+  loading?: boolean;
   onPress: () => void;
 }) {
   const ink = useNotationInk();
@@ -917,6 +938,7 @@ function GlyphChip({
       {...(hint ? { hint } : {})}
       selected={selected}
       disabled={disabled}
+      loading={loading}
       onPress={onPress}
     >
       <View className={selected ? 'bg-primary rounded p-0.5' : 'rounded p-0.5'}>

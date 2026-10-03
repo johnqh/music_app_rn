@@ -14,6 +14,7 @@ import { useAuth } from '@/auth/AuthContext';
 import { useConsumablesClient } from '@/features/account/useAccountClients';
 import { SelectableText } from '@/components/controls/SelectableText';
 import { ScreenScaffold, ServerUnavailable } from '../ScreenScaffold';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 /** A calendar date, as the field asks for one. */
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -27,7 +28,7 @@ export function ManageCouponsSection() {
   const [credits, setCredits] = useState('');
   const [expires, setExpires] = useState('');
   const [email, setEmail] = useState('');
-  const [busy, setBusy] = useState(false);
+  const creating = usePendingAction();
   const [created, setCreated] = useState<string | null>(null);
   const [createFailed, setCreateFailed] = useState(false);
 
@@ -53,27 +54,26 @@ export function ManageCouponsSection() {
   const valid =
     Number.isInteger(amount) && amount > 0 && DATE.test(expires.trim());
 
-  const create = () => {
-    setBusy(true);
-    setCreated(null);
-    setCreateFailed(false);
-    void client
-      .createCreditCoupon({
-        credits: amount,
-        // The end of the day named, so a coupon "until the 5th" works on it.
-        expires_at: new Date(`${expires.trim()}T23:59:59`).toISOString(),
-        email: email.trim() === '' ? null : email.trim(),
-      })
-      .then(coupon => {
+  const create = () =>
+    void creating.run(async () => {
+      setCreated(null);
+      setCreateFailed(false);
+      try {
+        const coupon = await client.createCreditCoupon({
+          credits: amount,
+          // The end of the day named, so a coupon "until the 5th" works on it.
+          expires_at: new Date(`${expires.trim()}T23:59:59`).toISOString(),
+          email: email.trim() === '' ? null : email.trim(),
+        });
         setCreated(coupon.code);
         setCredits('');
         setExpires('');
         setEmail('');
         load();
-      })
-      .catch(() => setCreateFailed(true))
-      .finally(() => setBusy(false));
-  };
+      } catch {
+        setCreateFailed(true);
+      }
+    });
 
   return (
     <ScreenScaffold>
@@ -109,7 +109,8 @@ export function ManageCouponsSection() {
         </Text>
         <Button
           onPress={create}
-          disabled={busy || !valid}
+          disabled={!valid}
+          loading={creating.pending}
           accessibilityLabel={t('coupons.create')}
         >
           {t('coupons.create')}

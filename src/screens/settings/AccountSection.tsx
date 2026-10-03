@@ -32,6 +32,7 @@ import { useServerContext } from '@/config/useServerContext';
 import { useAvatarPicker } from '@/features/account/useAvatarPicker';
 import { ScreenScaffold, ServerUnavailable } from '../ScreenScaffold';
 import { SignInPage } from '@/features/account/SignInPage';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 /** The picture's drawn size, in points. */
 const PICTURE_SIZE = 72;
@@ -63,6 +64,7 @@ export function AccountSection() {
 function Identity() {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
+  const signingOut = usePendingAction();
   return (
     <View className="border-border flex-row items-center justify-between gap-3 border-b pb-3">
       <Text className="text-foreground flex-1 text-base" numberOfLines={1}>
@@ -71,10 +73,13 @@ function Identity() {
       <Button
         size="sm"
         variant="outline"
-        onPress={() => {
-          trackButtonClick('sign_out');
-          void signOut();
-        }}
+        loading={signingOut.pending}
+        onPress={() =>
+          void signingOut.run(async () => {
+            trackButtonClick('sign_out');
+            await signOut();
+          })
+        }
       >
         {t('nav.signOut')}
       </Button>
@@ -98,33 +103,45 @@ function Profile({ context }: { context: MusicHookContext }) {
   const [problem, setProblem] = useState<string | null>(null);
 
   const trimmed = nickname.trim();
-  const busy = update.isPending || upload.isPending || remove.isPending;
+  // One profile write at a time; the control that started it spins.
+  const writing = usePendingAction<'nickname' | 'picture' | 'remove'>();
+  const busy = writing.pending;
   const avatarId = profile.data?.avatarId ?? null;
   const pictureUrl = avatarId
     ? getMusicClient()?.avatarUrl(avatarId) ?? null
     : null;
   const failed = () => setProblem(t('account.saveFailed'));
 
-  const saveNickname = () => {
-    setProblem(null);
-    update.mutate(
-      { nickname: trimmed === '' ? null : trimmed },
-      { onError: failed },
-    );
-  };
+  const saveNickname = () =>
+    void writing.run(async () => {
+      setProblem(null);
+      try {
+        await update.mutateAsync({ nickname: trimmed === '' ? null : trimmed });
+      } catch {
+        failed();
+      }
+    }, 'nickname');
 
-  const choosePicture = async () => {
-    setProblem(null);
-    let file;
-    try {
-      file = await picker.pick();
-    } catch {
-      setProblem(t('account.pictureUnsupported'));
-      return;
-    }
-    // Null is the reader closing the chooser.
-    if (file) upload.mutate({ file, filename: file.name }, { onError: failed });
-  };
+  // Pending from the chooser opening to the upload's answer: the picture is
+  // cropped and reduced on the device before it is sent, and both are a wait.
+  const choosePicture = () =>
+    writing.run(async () => {
+      setProblem(null);
+      let file;
+      try {
+        file = await picker.pick();
+      } catch {
+        setProblem(t('account.pictureUnsupported'));
+        return;
+      }
+      // Null is the reader closing the chooser.
+      if (!file) return;
+      try {
+        await upload.mutateAsync({ file, filename: file.name });
+      } catch {
+        failed();
+      }
+    }, 'picture');
 
   return (
     <>
@@ -139,6 +156,7 @@ function Profile({ context }: { context: MusicHookContext }) {
           action={t('common.save')}
           onAction={saveNickname}
           actionDisabled={busy || profile.isLoading || trimmed === saved}
+          actionLoading={writing.pendingKey === 'nickname'}
           input={{
             maxLength: NICKNAME_MAX_LENGTH,
             editable: !profile.isLoading,
@@ -179,6 +197,7 @@ function Profile({ context }: { context: MusicHookContext }) {
               <Button
                 variant="outline"
                 disabled={busy}
+                loading={writing.pendingKey === 'picture'}
                 onPress={() => void choosePicture()}
                 accessibilityLabel={t('account.choosePicture')}
               >
@@ -189,10 +208,17 @@ function Profile({ context }: { context: MusicHookContext }) {
               <Button
                 variant="outline"
                 disabled={busy}
-                onPress={() => {
-                  setProblem(null);
-                  remove.mutate(undefined, { onError: failed });
-                }}
+                loading={writing.pendingKey === 'remove'}
+                onPress={() =>
+                  void writing.run(async () => {
+                    setProblem(null);
+                    try {
+                      await remove.mutateAsync(undefined);
+                    } catch {
+                      failed();
+                    }
+                  }, 'remove')
+                }
                 accessibilityLabel={t('account.removePicture')}
               >
                 {t('account.removePicture')}

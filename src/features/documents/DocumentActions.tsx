@@ -21,6 +21,7 @@ import {
 import { newDocument } from '@/documents/document';
 import type { MusicDocument } from '@/documents/document';
 import { WRITABLE_EXPORT_FORMATS } from '@sudobility/music_types';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 export function DocumentActions({
   document,
@@ -46,14 +47,18 @@ export function DocumentActions({
     }
   }
 
-  async function exportAs(format: ExportFormat) {
-    if (!document) return;
-    setError(null);
-    try {
-      await exportDocument(document, getAppServices().io, format);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
+  // One export at a time; the format being written spins.
+  const exporting = usePendingAction<ExportFormat>();
+  function exportAs(format: ExportFormat) {
+    if (!document) return Promise.resolve(undefined);
+    return exporting.run(async () => {
+      setError(null);
+      try {
+        await exportDocument(document, getAppServices().io, format);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    }, format);
   }
 
   function create() {
@@ -92,7 +97,8 @@ export function DocumentActions({
           key={format}
           variant="secondary"
           accessibilityLabel={t('document.exportAs', { format: t(labelKey) })}
-          disabled={!document}
+          disabled={!document || exporting.pending}
+          loading={exporting.pendingKey === format}
           onPress={() => void exportAs(format)}
         >
           {t(labelKey)}

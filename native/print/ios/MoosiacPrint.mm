@@ -61,17 +61,29 @@ static BOOL MoosiacPrintSomethingPresented(void)
 
 /**
  * Runs `present` once nothing is presented over the app, checking every
- * 50ms. The first check waits a beat as well: the JS side closes its sheet
- * and asks for the print in one go, so the sheet may not have begun leaving
- * when this arrives. After two seconds it presents regardless, rather than
- * leave a print that never appears.
+ * 50ms; the first check waits a beat as well, since the JS side closes its
+ * sheet just before it asks for the print.
+ *
+ * **It never presents over something still on screen.** It used to give up
+ * after two seconds and present regardless — and on a long score the sheet's
+ * close reached UIKit later than that, so the dialog went up over the sheet,
+ * the sheet left, took the dialog with it, and the window was left blank.
+ * Measured on an iPhone 17 Pro simulator with a 21-page print. If the app is
+ * still covered after `attemptsLeft` checks, `busy` runs instead: a print that
+ * says it could not open is recoverable, a blank screen is not.
  */
-static void MoosiacPrintWhenSettled(NSInteger attemptsLeft, dispatch_block_t present)
+static void MoosiacPrintWhenSettled(NSInteger attemptsLeft,
+                                    dispatch_block_t present,
+                                    dispatch_block_t busy)
 {
   dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(50 * NSEC_PER_MSEC)),
                  dispatch_get_main_queue(), ^{
-                   if (attemptsLeft > 0 && MoosiacPrintSomethingPresented()) {
-                     MoosiacPrintWhenSettled(attemptsLeft - 1, present);
+                   if (MoosiacPrintSomethingPresented()) {
+                     if (attemptsLeft > 0) {
+                       MoosiacPrintWhenSettled(attemptsLeft - 1, present, busy);
+                     } else {
+                       busy();
+                     }
                      return;
                    }
                    present();
@@ -106,7 +118,8 @@ RCT_EXPORT_METHOD(printPages:(NSString *)jobName
   */
   controller.printingItems = images;
 
-  MoosiacPrintWhenSettled(40, ^{
+  // Up to ten seconds for the options sheet to finish leaving.
+  MoosiacPrintWhenSettled(200, ^{
     [controller presentAnimated:YES
               completionHandler:^(UIPrintInteractionController *_Nonnull c,
                                   BOOL completed,
@@ -118,6 +131,10 @@ RCT_EXPORT_METHOD(printPages:(NSString *)jobName
                 // Cancelling is an ordinary outcome, not an error.
                 resolve(@(completed));
               }];
+  }, ^{
+    reject(@"print_busy",
+           @"The print dialog could not open because another window is still on screen.",
+           nil);
   });
 }
 

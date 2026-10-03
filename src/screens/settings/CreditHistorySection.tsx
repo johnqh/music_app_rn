@@ -129,7 +129,9 @@ function History<T>({
         {title}
       </Text>
       {state.rows.map(render)}
-      {state.loading ? (
+      {/* The first page has no control to spin; a later one is the Load
+          more button's own wait. */}
+      {state.loading && state.rows.length === 0 ? (
         <View className="items-center py-3">
           <Spinner />
         </View>
@@ -142,9 +144,10 @@ function History<T>({
       {!state.loading && !state.failed && state.rows.length === 0 ? (
         <Text className="text-muted-foreground py-2 text-base">{empty}</Text>
       ) : null}
-      {state.more && !state.loading ? (
+      {state.more ? (
         <Button
           variant="outline"
+          loading={state.loading}
           onPress={() => state.fetchFrom(state.rows.length)}
         >
           {t('history.loadMore')}

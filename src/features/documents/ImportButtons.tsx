@@ -14,7 +14,7 @@
 import { useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Select } from '@sudobility/components-rn';
+import { Button, Select } from '@sudobility/components-rn';
 import type { NativeUploadFile } from '@sudobility/music_client';
 import type { ImportFormat } from '@/documents/import';
 import { ImportFeedback, useImport } from './useImport';
@@ -93,6 +93,8 @@ export type ImportButtonsProps = {
   onTranscribeAudio?: (file: NativeUploadFile) => Promise<void> | void;
 };
 
+function ignore(): void {}
+
 export function ImportButtons({ onTranscribeAudio }: ImportButtonsProps = {}) {
   const { t } = useTranslation();
   // The same runner the macOS File menu uses, so the two cannot decode a file
@@ -108,17 +110,33 @@ export function ImportButtons({ onTranscribeAudio }: ImportButtonsProps = {}) {
         Held with no `value`, so the trigger goes on reading "Import" rather
         than becoming the last format chosen — this is a menu, not a setting.
       */}
-      <Select
-        accessibilityLabel={t('dashboard.importFormat')}
-        placeholder={t('dashboard.import')}
-        options={OFFERED.map(o => ({ value: o.value, label: t(o.labelKey) }))}
-        onValueChange={value => {
-          // Audio is not a `run(format)` import: it uploads to the server
-          // rather than decoding locally, so it opens a sheet of its own.
-          if (value === 'audio') setAudioOpen(true);
-          else void run(value as ImportFormat);
-        }}
-      />
+      {importer.importing !== null || uploading ? (
+        /*
+          The import under way is this control's wait: it becomes a spinning
+          button that refuses, rather than a menu that would start a second
+          import over the first. A `Select` has no busy state to show.
+        */
+        <Button
+          variant="outline"
+          loading
+          accessibilityLabel={t('dashboard.importFormat')}
+          onPress={ignore}
+        >
+          {t('dashboard.import')}
+        </Button>
+      ) : (
+        <Select
+          accessibilityLabel={t('dashboard.importFormat')}
+          placeholder={t('dashboard.import')}
+          options={OFFERED.map(o => ({ value: o.value, label: t(o.labelKey) }))}
+          onValueChange={value => {
+            // Audio is not a `run(format)` import: it uploads to the server
+            // rather than decoding locally, so it opens a sheet of its own.
+            if (value === 'audio') setAudioOpen(true);
+            else void run(value as ImportFormat);
+          }}
+        />
+      )}
 
       <AudioImportSheet
         open={audioOpen}

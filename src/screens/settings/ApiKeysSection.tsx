@@ -14,6 +14,7 @@ import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, Spinner, Text } from '@sudobility/components-rn';
 import { FieldRow } from '@/components/controls/FieldRow';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 import {
   useCreateApiKey,
   useEntities,
@@ -56,6 +57,8 @@ function Keys({ client }: { client: EntityClient }) {
   const [name, setName] = useState('');
   const [revealed, setRevealed] = useState<CreatedEntityApiKey | null>(null);
   const [failed, setFailed] = useState(false);
+  const creating = usePendingAction();
+  const revoking = usePendingAction<string>();
 
   if (entities.isLoading) {
     return (
@@ -76,19 +79,20 @@ function Keys({ client }: { client: EntityClient }) {
     );
   }
 
-  const submit = () => {
-    setFailed(false);
-    create.mutate(
-      { entitySlug: slug, request: { key_name: name.trim() } },
-      {
-        onSuccess: key => {
-          setRevealed(key);
-          setName('');
-        },
-        onError: () => setFailed(true),
-      },
-    );
-  };
+  const submit = () =>
+    void creating.run(async () => {
+      setFailed(false);
+      try {
+        const key = await create.mutateAsync({
+          entitySlug: slug,
+          request: { key_name: name.trim() },
+        });
+        setRevealed(key);
+        setName('');
+      } catch {
+        setFailed(true);
+      }
+    });
 
   return (
     <ScreenScaffold>
@@ -124,7 +128,8 @@ function Keys({ client }: { client: EntityClient }) {
         onChangeText={setName}
         action={t('apiKeys.create')}
         onAction={submit}
-        actionDisabled={create.isPending || name.trim() === ''}
+        actionDisabled={name.trim() === ''}
+        actionLoading={creating.pending}
         input={{ maxLength: 100 }}
       />
 
@@ -170,14 +175,21 @@ function Keys({ client }: { client: EntityClient }) {
               <Button
                 size="sm"
                 variant="outline"
-                disabled={revoke.isPending}
-                onPress={() => {
-                  setFailed(false);
-                  revoke.mutate(
-                    { entitySlug: slug, keyId: key.id },
-                    { onError: () => setFailed(true) },
-                  );
-                }}
+                disabled={revoking.pending}
+                loading={revoking.pendingKey === key.id}
+                onPress={() =>
+                  void revoking.run(async () => {
+                    setFailed(false);
+                    try {
+                      await revoke.mutateAsync({
+                        entitySlug: slug,
+                        keyId: key.id,
+                      });
+                    } catch {
+                      setFailed(true);
+                    }
+                  }, key.id)
+                }
                 accessibilityLabel={t('apiKeys.revokeNamed', {
                   name: key.keyName,
                 })}

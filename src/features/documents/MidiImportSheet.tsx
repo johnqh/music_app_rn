@@ -55,13 +55,21 @@ export type MidiImportSheetProps = {
   summary: MidiSummary | null;
   onCancel: () => void;
   onImport: (options: MidiImportOptions) => void;
+  /**
+   * The import is under way: Import spins and the sheet stays up, every way
+   * out refused, until the document is there.
+   */
+  importing?: boolean;
 };
+
+function ignore(): void {}
 
 export function MidiImportSheet({
   open,
   summary,
   onCancel,
   onImport,
+  importing = false,
 }: MidiImportSheetProps) {
   const { t } = useTranslation();
   const [options, setOptions] = useState<MidiImportOptions | null>(null);
@@ -109,13 +117,20 @@ export function MidiImportSheet({
     <FormModal
       visible={open}
       title={t('importMidi.fileKind')}
-      onClose={onCancel}
+      onClose={importing ? ignore : onCancel}
+      saving={importing}
       actions={[
-        { label: t('common.cancel'), onPress: onCancel, variant: 'ghost' },
+        {
+          label: t('common.cancel'),
+          onPress: onCancel,
+          variant: 'ghost',
+          disabled: importing,
+        },
         {
           label: t('dashboard.importMidi'),
           onPress: () => onImport(options),
           variant: 'primary',
+          loading: importing,
           // Importing nothing produces an empty score, which is not what
           // anybody means by it.
           ...(canImportMidi(options) ? {} : { disabled: true }),

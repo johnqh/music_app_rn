@@ -80,6 +80,7 @@ import type { RootStackParamList } from '@/app/Navigation';
 import type { MusicDocument } from '@/documents/document';
 import type { ScrollOffset } from '@/features/score/useScoreCanvas';
 import type { ExportScope } from '@sudobility/music_types';
+import { usePendingAction } from '@/components/controls/usePendingAction';
 
 const keyValue = createKeyValueStore();
 
@@ -183,10 +184,16 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
    * under the score's title where it does not (iOS and Android, which have no
    * save panel to raise). A failure is reported by the store's own toast.
    */
+  /*
+    One save at a time: a second press while the first is choosing a place or
+    writing is refused (the button spins on the store's `saveState` meanwhile).
+  */
+  const saving = usePendingAction();
+  const runSave = saving.run;
   const onSave = useCallback(() => {
-    trackButtonClick('save');
-    const state = document.store.getState();
-    void (async () => {
+    void runSave(async () => {
+      trackButtonClick('save');
+      const state = document.store.getState();
       if (state.origin.kind !== 'unsaved') {
         await state.saveNow();
         return;
@@ -197,8 +204,8 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
         ? await picker.pickSaveLocation(suggested)
         : null;
       await state.saveAs(chosen ?? (await defaultDocumentUri(state.title)));
-    })().catch(error => reportError(error, { context: 'save' }));
-  }, [document]);
+    }).catch(error => reportError(error, { context: 'save' }));
+  }, [document, runSave]);
 
   const [exportOpen, setExportOpen] = useState(false);
   const [snapshotsOpen, setSnapshotsOpen] = useState(false);
@@ -320,14 +327,26 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
     return () => document.store.getState().setEditLocked(false);
   }, [document, generating]);
 
-  const generateInsertedBars = useCallback(() => {
+  /*
+    Starting a job is a wait — the pending edit is written, then the job is
+    posted — before the overlay can say anything. The control that asked spins
+    through it (its sheet kept up), and no second job is started meanwhile.
+  */
+  const starting = usePendingAction<'again' | 'track' | 'replace' | 'bars'>();
+  const startGeneration = starting.run;
+  const generateInsertedBars = useCallback(async () => {
     if (!projectId) return;
     const prepared = prepareReplacement(document.store, 'measures', {
       ...defaultReplaceSubmission(),
       instruction: t('editor.generateInsertedBarsInstruction'),
     });
-    if (prepared) void generation.start(prepared.kind, prepared.request);
-  }, [document, generation, projectId, t]);
+    if (prepared) {
+      await startGeneration(
+        () => generation.start(prepared.kind, prepared.request),
+        'bars',
+      );
+    }
+  }, [document, generation, projectId, t, startGeneration]);
 
   /**
    * Writes the chosen format.
@@ -338,24 +357,27 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
    * the file is a recording of what was heard. music_io then encodes the PCM —
    * which is what keeps the two platform packages independent of each other.
    */
+  const exporting = usePendingAction();
+  const runExportWork = exporting.run;
   const writeExport = useCallback(
     (format: ExportFormat, scope: ExportScope = 'all') => {
-      trackButtonClick('export', { format, scope });
-      void exportDocument(
-        document,
-        getAppServices().io,
-        format,
-        async score => {
-          const plan = renderEvents(score);
-          const audio = await renderSamples(getAppServices().soundfont)(plan);
-          return { samples: audio.samples, sampleRate: audio.sampleRate };
-        },
-        scope,
-      )
-        .then(() => trackEvent('export_complete', { format, scope }))
-        .catch(error => reportError(error, { context: 'export' }));
+      void runExportWork(async () => {
+        trackButtonClick('export', { format, scope });
+        await exportDocument(
+          document,
+          getAppServices().io,
+          format,
+          async score => {
+            const plan = renderEvents(score);
+            const audio = await renderSamples(getAppServices().soundfont)(plan);
+            return { samples: audio.samples, sampleRate: audio.sampleRate };
+          },
+          scope,
+        );
+        trackEvent('export_complete', { format, scope });
+      }).catch(error => reportError(error, { context: 'export' }));
     },
-    [document],
+    [document, runExportWork],
   );
 
   /**
@@ -408,17 +430,45 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
   const [printOpen, setPrintOpen] = useState(false);
   const visibleTrackIds = useStore(document.store, selectVisibleTrackIds);
   const onPrint = useCallback(() => setPrintOpen(true), []);
+  /*
+    Print keeps the sheet up, spinning, while the pages are drawn, and closes
+    it only once they are — then asks for the dialog. Closing first used to
+    race: drawing a long score held the JS thread for seconds, so the close
+    reached UIKit late, after the native module had given up waiting and
+    presented the print dialog over the still-open sheet; the sheet then left
+    and took the dialog with it, leaving a blank screen.
+  */
+  const printInFlight = useRef(false);
+  const printCancelled = useRef(false);
   const runPrint = useCallback(
     (options: PrintPlanOptions) => {
-      setPrintOpen(false);
+      if (printInFlight.current) return;
+      printInFlight.current = true;
+      printCancelled.current = false;
       setPrinting(true);
       trackButtonClick('print');
-      void printScore(score!, options)
+      void printScore(score!, options, {
+        isCancelled: () => printCancelled.current,
+        beforeDialog: () => {
+          setPrintOpen(false);
+          // Let React commit the close; the native side then waits for the
+          // sheet to finish leaving before it presents.
+          return new Promise<void>(resolve => setTimeout(resolve, 50));
+        },
+      })
         .catch(error => reportError(error, { context: 'print' }))
-        .finally(() => setPrinting(false));
+        .finally(() => {
+          printInFlight.current = false;
+          setPrinting(false);
+        });
     },
     [score],
   );
+  const closePrint = useCallback(() => {
+    // Closing while the pages are drawn abandons the print.
+    printCancelled.current = true;
+    setPrintOpen(false);
+  }, []);
 
   /*
     The File menu's Export items run the export directly rather than opening
@@ -586,6 +636,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       document,
       onSave,
       onExport,
+      exporting: exporting.pending,
       onSettings,
       onDocuments,
       onShortcuts,
@@ -604,6 +655,7 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       menuActive={focused}
       onSave={onSave}
       onExport={onExport}
+      exporting={exporting.pending}
       onSettings={onSettings}
       onDocuments={onDocuments}
       onShortcuts={onShortcuts}
@@ -626,11 +678,16 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
               generating: generation.generating || outOfCredits,
               // The same request, with only the locked choices kept and the
               // rest rolled again by the server.
-              onGenerateAgain: lockedKeys =>
-                void generation.start(
-                  'generate-score',
-                  regenerateWithLocks(lastGeneration, lockedKeys),
-                ),
+              onGenerateAgain: async lockedKeys => {
+                await startGeneration(
+                  () =>
+                    generation.start(
+                      'generate-score',
+                      regenerateWithLocks(lastGeneration, lockedKeys),
+                    ),
+                  'again',
+                );
+              },
             },
           }
         : {})}
@@ -659,20 +716,28 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
             open={printOpen}
             score={score}
             visibleTrackIds={visibleTrackIds}
-            onClose={() => setPrintOpen(false)}
+            onClose={closePrint}
             onPrint={runPrint}
+            printing={printing}
             initialScope={printScope}
           />
           <GenerateTrackSheet
             open={generateTrackOpen}
             score={score}
             onClose={() => setGenerateTrackOpen(false)}
+            submitting={starting.pendingKey === 'track'}
             onSubmit={request => {
-              setGenerateTrackOpen(false);
               // The same runner every other generation uses, so adding a track
               // behaves like the rest: the overlay appears, the project locks
-              // server-side, and leaving the screen is safe.
-              void generation.start('generate-track', request);
+              // server-side, and leaving the screen is safe. The sheet stays
+              // up, Generate spinning, until the job has been posted.
+              void startGeneration(async () => {
+                try {
+                  await generation.start('generate-track', request);
+                } finally {
+                  setGenerateTrackOpen(false);
+                }
+              }, 'track');
             }}
           />
           <ExportScopeSheet
@@ -697,9 +762,9 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
             canSubmit={hasSelection}
             estimatedCredits={replaceCredits}
             onClose={() => setReplaceScope(null)}
+            submitting={starting.pendingKey === 'replace'}
             onSubmit={submission => {
               const scope = replaceScope;
-              setReplaceScope(null);
               if (!scope) return;
               /*
                 `prepareReplacement` turns the settings into the request the
@@ -713,9 +778,17 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
                 scope,
                 submission,
               );
-              if (prepared) {
-                void generation.start(prepared.kind, prepared.request);
-              }
+              // The sheet stays up, Replace spinning, until the job has been
+              // posted; then it closes either way.
+              void startGeneration(async () => {
+                try {
+                  if (prepared) {
+                    await generation.start(prepared.kind, prepared.request);
+                  }
+                } finally {
+                  setReplaceScope(null);
+                }
+              }, 'replace');
             }}
           />
           <ShortcutsSheet

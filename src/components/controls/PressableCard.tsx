@@ -15,9 +15,10 @@
  * phone sees the pressed state alone.
  */
 import { useState } from 'react';
-import { Pressable, View } from 'react-native';
+import { ActivityIndicator, Pressable, View } from 'react-native';
 import type { ReactNode } from 'react';
 import { MIN_TOUCH_TARGET, cn } from '@sudobility/components-rn';
+import { useNotationInk } from '@/components/icons/notation-ink';
 
 export type PressableCardProps = {
   /** The row's accessible name: what is being chosen. */
@@ -31,6 +32,14 @@ export type PressableCardProps = {
    * a press on Delete must not also open the project.
    */
   footer?: ReactNode;
+  /**
+   * What choosing the card started is under way: a spinner is drawn at the
+   * card's trailing edge and the card refuses a second press (the assistive
+   * activation with it) until it is done.
+   */
+  loading?: boolean;
+  /** The card is drawn but refuses: another card's work is under way. */
+  disabled?: boolean;
 };
 
 export function PressableCard({
@@ -38,18 +47,25 @@ export function PressableCard({
   onPress,
   children,
   footer,
+  loading = false,
+  disabled = false,
 }: PressableCardProps) {
   const [hovered, setHovered] = useState(false);
   const [pressed, setPressed] = useState(false);
+  const ink = useNotationInk();
+  const inert = disabled || loading;
   const surface = (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled: inert, busy: loading }}
       onPress={onPress}
+      disabled={inert}
       // macOS has no synthesized-touch fallback for an assistive press, so a
       // VoiceOver activation reaches a Pressable only through
-      // `onAccessibilityTap` — `onPress` is a touch/mouse responder.
-      onAccessibilityTap={onPress}
+      // `onAccessibilityTap` — `onPress` is a touch/mouse responder. Withheld
+      // while inert, since `disabled` stops only the press pair.
+      {...(inert ? {} : { onAccessibilityTap: onPress })}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => {
         setHovered(false);
@@ -70,9 +86,19 @@ export function PressableCard({
           ? 'bg-card'
           : 'border-border bg-card',
       )}
-      style={{ minHeight: MIN_TOUCH_TARGET }}
+      style={{
+        minHeight: MIN_TOUCH_TARGET,
+        opacity: disabled && !loading ? 0.5 : 1,
+      }}
     >
-      {children}
+      {loading ? (
+        <View className="flex-row items-center gap-3">
+          <View className="flex-1">{children}</View>
+          <ActivityIndicator size="small" color={ink.foreground} />
+        </View>
+      ) : (
+        children
+      )}
     </Pressable>
   );
   if (!footer) return surface;

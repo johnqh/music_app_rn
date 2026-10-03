@@ -33,11 +33,36 @@ import type { PrintPlan } from '@sudobility/music_drawing';
 /** One rendered page, as base64 PNG — which is what the native side wants. */
 export type RenderedPage = { base64: string; width: number; height: number };
 
-export function renderPrintPages(plan: PrintPlan): RenderedPage[] {
+/** Lets a frame go by, so a spinner keeps turning between pages. */
+function nextFrame(): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, 0));
+}
+
+/**
+ * Renders the plan's pages one at a time, yielding between them.
+ *
+ * **Each page's GPU surface and snapshot are released as soon as its PNG is
+ * taken.** A page is ~3000×4000 pixels (`PRINT_WIDTH` × `PRINT_SCALE`), about
+ * 48 MB as a surface; left to the garbage collector, a 21-page score held
+ * hundreds of megabytes of GPU memory until long after printing. And rendering
+ * every page in one synchronous loop froze the JS thread for the whole of it,
+ * so nothing the reader pressed — the sheet closing, a spinner — could happen
+ * until it finished.
+ *
+ * `isCancelled` is asked between pages; a cancelled render answers null.
+ */
+export async function renderPrintPages(
+  plan: PrintPlan,
+  isCancelled: () => boolean = () => false,
+): Promise<RenderedPage[] | null> {
   const { score, slices, pages, pageHeight, renderOptions } = plan;
   const height = Math.round(pageHeight);
+  const renderer = new CanvasScoreRenderer();
+  const rendered: RenderedPage[] = [];
 
-  return pages.map(page => {
+  for (const page of pages) {
+    await nextFrame();
+    if (isCancelled()) return null;
     const first = slices[page.systemIndices[0]!]!;
     const last = slices[page.systemIndices[page.systemIndices.length - 1]!]!;
 
@@ -46,33 +71,42 @@ export function renderPrintPages(plan: PrintPlan): RenderedPage[] {
       height * PRINT_SCALE,
     );
     if (!surface) throw new Error('Could not make a surface to print onto.');
+    try {
+      const canvas = surface.getCanvas();
+      /*
+        White, not transparent. A transparent PNG prints as whatever the print
+        service decides it should be, and "whatever it decides" is not
+        something to hand somebody's sheet music to.
+      */
+      canvas.clear(Skia.Color('white'));
 
-    const canvas = surface.getCanvas();
-    /*
-      White, not transparent. A transparent PNG prints as whatever the print
-      service decides it should be, and "whatever it decides" is not something
-      to hand somebody's sheet music to.
-    */
-    canvas.clear(Skia.Color('white'));
+      const ctx = createSkiaContext2D({
+        skia,
+        canvas,
+        width: PRINT_WIDTH,
+        height,
+      });
+      ctx.translate(0, -first.top);
+      // The plan's score — the part or the marked full score, lenses applied —
+      // never the stored one: slices were measured from it.
+      renderer.render(score, ctx, {
+        ...renderOptions,
+        viewport: { top: first.top, bottom: last.bottom },
+      });
 
-    const ctx = createSkiaContext2D({
-      skia,
-      canvas,
-      width: PRINT_WIDTH,
-      height,
-    });
-    ctx.translate(0, -first.top);
-    // The plan's score — the part or the marked full score, lenses applied —
-    // never the stored one: slices were measured from it.
-    new CanvasScoreRenderer().render(score, ctx, {
-      ...renderOptions,
-      viewport: { top: first.top, bottom: last.bottom },
-    });
-
-    return {
-      base64: surface.makeImageSnapshot().encodeToBase64(),
-      width: PRINT_WIDTH,
-      height,
-    };
-  });
+      const image = surface.makeImageSnapshot();
+      try {
+        rendered.push({
+          base64: image.encodeToBase64(),
+          width: PRINT_WIDTH,
+          height,
+        });
+      } finally {
+        image.dispose();
+      }
+    } finally {
+      surface.dispose();
+    }
+  }
+  return rendered;
 }
