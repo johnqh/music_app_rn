@@ -43,12 +43,29 @@ describe('SignInRequired', () => {
     expect(view.queryByText(/server/i)).toBeNull();
   });
 
-  it('opens the sign-in modal over the screen, and closes it once signed in', async () => {
+  it('opens the sign-in modal over the screen on arrival', () => {
     const view = renderWithApp(<SignInRequired />);
-    expect(view.queryByLabelText(/email/i)).toBeNull();
+    expect(view.getByTestId('login-view')).toBeTruthy();
+    expect(view.getByRole('button', { name: 'Close' })).toBeTruthy();
+  });
+
+  it('once: closed, it leaves the prompt and its button, which open it again', () => {
+    const view = renderWithApp(<SignInRequired />);
+    fireEvent.press(view.getByRole('button', { name: 'Close' }));
+    expect(view.queryByTestId('login-view')).toBeNull();
+    expect(view.getByText(/sign in to continue/i)).toBeTruthy();
+
+    // Re-rendering is not arriving again: it stays closed.
+    view.rerender(<SignInRequired />);
+    expect(view.queryByTestId('login-view')).toBeNull();
 
     // By role: the explanation above the button also says "sign in".
     fireEvent.press(view.getByRole('button', { name: 'Sign in' }));
+    expect(view.getByTestId('login-view')).toBeTruthy();
+  });
+
+  it('closes once signed in', async () => {
+    const view = renderWithApp(<SignInRequired />);
     expect(view.getByTestId('login-view')).toBeTruthy();
     expect(view.getByRole('button', { name: 'Close' })).toBeTruthy();
 

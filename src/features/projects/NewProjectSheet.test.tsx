@@ -11,22 +11,44 @@ import { fireEvent } from '@testing-library/react-native';
 import { renderWithApp } from '@/test/render';
 import type { NewProjectSubmission } from '@sudobility/music_lib';
 import { NewProjectSheet } from './NewProjectSheet';
+import type { NewProjectAccount } from './useNewProjectForm';
+
+/** Signed in, a server, the balance not known yet: nothing is refused. */
+const SIGNED_IN: NewProjectAccount = {
+  signedIn: true,
+  serverAvailable: true,
+  balance: null,
+  siteAdmin: false,
+};
 
 function setup(
-  overrides: { outOfCredits?: boolean; generationAvailable?: boolean } = {},
+  account: Partial<NewProjectAccount> = {},
+  { withCredits = false }: { withCredits?: boolean } = {},
 ) {
   const onSubmit = jest.fn();
   const onClose = jest.fn();
+  const onOpenCredits = jest.fn();
   const view = renderWithApp(
     <NewProjectSheet
       open
       onClose={onClose}
       onSubmit={onSubmit}
-      {...overrides}
+      account={{ ...SIGNED_IN, ...account }}
+      {...(withCredits ? { onOpenCredits } : {})}
     />,
   );
-  return { view, onSubmit, onClose };
+  return { view, onSubmit, onClose, onOpenCredits };
 }
+
+function isDisabled(view: ReturnType<typeof renderWithApp>, name: string) {
+  return (
+    view.getByRole('button', { name }).props.accessibilityState?.disabled ===
+    true
+  );
+}
+
+const NOT_ENOUGH =
+  'This needs 16 credits, but your balance is 10 (6 short). Buy credits, use fewer bars or instruments, or turn off “Generate for me”.';
 
 /** The toggle is a platform switch, so it reports a value rather than a press. */
 function turnGenerationOn(view: ReturnType<typeof renderWithApp>) {
@@ -107,13 +129,13 @@ describe('NewProjectSheet', () => {
   it('does not refuse a blank project to somebody with no credits', () => {
     // A blank project costs nothing. Refusing it would refuse work the server
     // never charges for.
-    const { view, onSubmit } = setup({ outOfCredits: true });
+    const { view, onSubmit } = setup({ balance: -5 });
     fireEvent.press(view.getByRole('button', { name: 'Create' }));
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
 
-  it('still refuses a generation to somebody with no credits', () => {
-    const { view, onSubmit } = setup({ outOfCredits: true });
+  it('still refuses a generation to somebody with too few credits', () => {
+    const { view, onSubmit } = setup({ balance: 10 });
     turnGenerationOn(view);
     fireEvent.changeText(view.getByLabelText('Prompt'), 'a calm piano melody');
     fireEvent.press(view.getByRole('button', { name: 'Create' }));
@@ -124,7 +146,7 @@ describe('NewProjectSheet', () => {
     // A local document has no project row on the server, so a job would have
     // nowhere to put its result. Offering the toggle would be offering
     // something that cannot work.
-    const { view } = setup({ generationAvailable: false });
+    const { view } = setup({ serverAvailable: false });
     expect(
       view.getByText(
         'Generating needs a project on the server. Log-in required.',
@@ -136,10 +158,82 @@ describe('NewProjectSheet', () => {
   it('stays blank even if the toggle is forced on with no server', () => {
     // The guard is on `generating`, not on the switch's own value: a disabled
     // control is a courtesy, and the submission must be correct regardless.
-    const { view, onSubmit } = setup({ generationAvailable: false });
+    const { view, onSubmit } = setup({ serverAvailable: false });
     turnGenerationOn(view);
     fireEvent.press(view.getByRole('button', { name: 'Create' }));
     expect(submitted(onSubmit).kind).toBe('blank');
+  });
+});
+
+describe('NewProjectSheet: credits', () => {
+  // The rules are music_lib's `newProjectCreditState`; these pin that the
+  // sheet draws its answer, and says why under the switch.
+  it('offers no generation signed out, and says to sign in', () => {
+    const { view } = setup({ signedIn: false });
+    expect(
+      view.getByText('Sign in to have a score generated for you.'),
+    ).toBeTruthy();
+    turnGenerationOn(view);
+    expect(view.queryByLabelText('Prompt')).toBeNull();
+  });
+
+  it('offers no generation below zero, says why, and offers credits', () => {
+    const { view, onOpenCredits } = setup(
+      { balance: -1 },
+      { withCredits: true },
+    );
+    expect(
+      view.getByText(
+        'Your credit balance is below zero, so generating is unavailable. Buy credits to use it again.',
+      ),
+    ).toBeTruthy();
+    turnGenerationOn(view);
+    expect(view.queryByLabelText('Prompt')).toBeNull();
+    fireEvent.press(view.getByRole('button', { name: 'Buy credits' }));
+    expect(onOpenCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows generation at exactly zero', () => {
+    const { view } = setup({ balance: 0 });
+    turnGenerationOn(view);
+    expect(view.getByLabelText('Prompt')).toBeTruthy();
+  });
+
+  it('refuses Create when the estimate is more than the balance, and says so', () => {
+    // Eight bars, a piano and the singer the switch adds: 16 credits.
+    const { view, onOpenCredits } = setup(
+      { balance: 10 },
+      { withCredits: true },
+    );
+    turnGenerationOn(view);
+    fireEvent.changeText(view.getByLabelText('Prompt'), 'a calm piano melody');
+    expect(isDisabled(view, 'Create')).toBe(true);
+    expect(view.getByText(NOT_ENOUGH)).toBeTruthy();
+    fireEvent.press(view.getByRole('button', { name: 'Buy credits' }));
+    expect(onOpenCredits).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows Create when the balance covers the estimate', () => {
+    const { view, onSubmit } = setup({ balance: 16 });
+    turnGenerationOn(view);
+    fireEvent.changeText(view.getByLabelText('Prompt'), 'a calm piano melody');
+    expect(view.queryByText(NOT_ENOUGH)).toBeNull();
+    fireEvent.press(view.getByRole('button', { name: 'Create' }));
+    expect(submitted(onSubmit).kind).toBe('generate');
+  });
+
+  it('never refuses a site administrator', () => {
+    const { view, onSubmit } = setup({ balance: -100, siteAdmin: true });
+    turnGenerationOn(view);
+    fireEvent.changeText(view.getByLabelText('Prompt'), 'a calm piano melody');
+    expect(view.queryByText(/short\)|below zero/)).toBeNull();
+    fireEvent.press(view.getByRole('button', { name: 'Create' }));
+    expect(submitted(onSubmit).kind).toBe('generate');
+  });
+
+  it('offers no Buy credits link without a way to open Credits', () => {
+    const { view } = setup({ balance: -1 });
+    expect(view.queryByRole('button', { name: 'Buy credits' })).toBeNull();
   });
 });
 
@@ -200,7 +294,7 @@ describe('NewProjectSheet: preset briefs', () => {
   it('offers no preset picker without a server to ask for the list', () => {
     // Local documents run with no MusicClient at all; the control is meant to
     // be absent rather than opening an empty list.
-    const { view } = setup({ generationAvailable: false });
+    const { view } = setup({ serverAvailable: false });
     expect(view.queryByLabelText('Preset prompts')).toBeNull();
   });
 });

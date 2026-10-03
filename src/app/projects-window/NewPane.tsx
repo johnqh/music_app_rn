@@ -3,47 +3,38 @@
  * shows as a modal (phone/tablet, and the macOS File menu's New), inline
  * instead, over the same `useNewProjectForm`. A blank project stays local
  * with nothing connected; a generated one needs the server and an account,
- * which is why `generationAvailable` disables the toggle exactly where
- * `NewProjectSheet`'s does — see that component's own comment on why it is
- * disabled rather than hidden.
+ * and the credit rules are music_lib's, so the toggle and Create are refused
+ * exactly where `NewProjectSheet`'s are, with the same explanation under the
+ * switch (`GenerateToggle`).
  */
 import { ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button, Switch, Text } from '@sudobility/components-rn';
+import { Button } from '@sudobility/components-rn';
 import { ScoreSetupFields } from '@/features/generation/ScoreSetupFields';
+import { GenerateToggle } from '@/features/projects/GenerateToggle';
 import {
   useNewProjectForm,
+  type NewProjectAccount,
   type NewProjectSubmission,
 } from '@/features/projects/useNewProjectForm';
 
 export type NewPaneProps = {
-  generationAvailable: boolean;
-  outOfCredits: boolean;
+  account: NewProjectAccount;
   submitting: boolean;
+  /** Opens Credits; offered beside a refusal for want of credits. */
+  onOpenCredits?: () => void;
   onSubmit: (submission: NewProjectSubmission) => void;
 };
 
 export function NewPane({
-  generationAvailable,
-  outOfCredits,
+  account,
   submitting,
+  onOpenCredits,
   onSubmit,
 }: NewPaneProps) {
   const { t } = useTranslation();
-  const {
-    form,
-    dispatch,
-    generating,
-    setGenerating,
-    credits,
-    canCreate,
-    handleCreate,
-  } = useNewProjectForm({
-    submitting,
-    outOfCredits,
-    generationAvailable,
-    onSubmit,
-  });
+  const newProject = useNewProjectForm({ submitting, account, onSubmit });
+  const { form, dispatch, canCreate, handleCreate } = newProject;
 
   return (
     <View className="flex-1">
@@ -56,37 +47,12 @@ export function NewPane({
           draft={form}
           dispatch={dispatch}
           generateToggle={
-            <View className="flex-row items-center gap-3 pb-3">
-              <Switch
-                checked={generating}
-                onCheckedChange={setGenerating}
-                disabled={!generationAvailable}
-                accessibilityLabel={t('newProject.generateForMe')}
-              />
-              <View className="flex-1">
-                <Text className="text-foreground text-base">
-                  {t('newProject.generateForMe')}
-                </Text>
-                <Text className="text-muted-foreground text-sm">
-                  {generationAvailable
-                    ? t('newProject.generateForMeHint')
-                    : t('newProject.generationNeedsServer')}
-                </Text>
-              </View>
-            </View>
+            <GenerateToggle
+              form={newProject}
+              {...(onOpenCredits ? { onOpenCredits } : {})}
+            />
           }
         />
-
-        {generating ? (
-          <Text className="text-muted-foreground text-sm">
-            {t('generate.estimate', { count: credits })}
-          </Text>
-        ) : null}
-        {generating && outOfCredits ? (
-          <Text className="text-destructive text-sm">
-            {t('credits.outOfCreditsTitle')}
-          </Text>
-        ) : null}
       </ScrollView>
 
       {/*

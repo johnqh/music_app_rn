@@ -44,5 +44,8 @@ module.exports = {
       '<rootDir>/node_modules/@sudobility/auth_lib/dist/$1/index.js',
     '^@sudobility/auth_lib/auth-js$':
       '<rootDir>/node_modules/@sudobility/auth_lib/dist/auth/index.js',
+    // `/signin` imports the Firebase JS SDK, whose ESM jest cannot load and
+    // which no component test uses (each mocks `@/auth/AuthContext`).
+    '^firebase/(app|auth)$': '<rootDir>/jest.firebase.cjs',
   },
 };

@@ -52,7 +52,6 @@ import {
 } from '@/features/projects/useServerProjectCreation';
 import { navigationRef, showEditor } from '@/app/Navigation';
 import { goToTab } from '@/app/tab-bar';
-import { useAuth } from '@/auth/AuthContext';
 import { useServerContext } from '@/config/useServerContext';
 
 const keyValue = createKeyValueStore();
@@ -76,9 +75,7 @@ export function MenuFileCommands() {
   const [newOpen, setNewOpen] = useState(false);
   // The gate, the 402 paywall and the failure report are the dashboard's too.
   const creation = useServerProjectCreation();
-  const { user } = useAuth();
   const serverContext = useServerContext();
-  const canGenerate = user !== null && serverContext !== null;
   const [failure, setFailure] = useState<string | null>(null);
   /*
     A store screenshot of New Project with Generate on
@@ -199,11 +196,18 @@ export function MenuFileCommands() {
       <NewProjectSheet
         open={newOpen}
         // A model writes into a project on the server, so generating needs an
-        // account; a blank score stays a local document either way.
-        generationAvailable={canGenerate}
+        // account and a server; a blank score stays a local document either
+        // way. The rules themselves are music_lib's (`newProjectCreditState`).
+        account={{
+          ...creation.account,
+          serverAvailable: serverContext !== null,
+        }}
+        onOpenCredits={() => {
+          setNewOpen(false);
+          if (navigationRef.isReady()) navigationRef.navigate('Credits');
+        }}
         generate={screenshotGenerate}
         submitting={creation.creating}
-        outOfCredits={creation.outOfCredits}
         onClose={() => {
           setNewOpen(false);
           setScreenshotGenerate(false);

@@ -19,6 +19,16 @@ const mockGoogleAvailable = jest.fn<() => boolean>();
 const mockApple = jest.fn<() => Promise<void>>();
 const mockAppleAvailable = jest.fn<() => boolean>();
 const mockReset = jest.fn<(email: string) => Promise<void>>();
+const mockTrackError = jest.fn();
+const mockTrackEvent = jest.fn();
+
+jest.mock('@/analytics', () => ({
+  trackButtonClick: () => {},
+  trackError: (...args: unknown[]) => mockTrackError(...args),
+  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
+  trackScreenView: () => {},
+  trackUserId: () => {},
+}));
 
 jest.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({
@@ -57,6 +67,8 @@ beforeEach(() => {
   mockAppleAvailable.mockReturnValue(false);
   mockReset.mockReset();
   mockReset.mockResolvedValue(undefined);
+  mockTrackError.mockReset();
+  mockTrackEvent.mockReset();
 });
 
 function fill(view: ReturnType<typeof renderWithApp>) {
@@ -181,6 +193,40 @@ describe('SignInPage', () => {
       });
 
       expect(view.getByText(/access_denied/)).toBeTruthy();
+      expect(mockTrackError).toHaveBeenCalledWith(
+        'OAuth error: access_denied',
+        'google_sign_in_failed',
+      );
+    });
+
+    it('closing the sheet is backing out: no error, no success, still on the page', async () => {
+      // auth_lib rejects a closed sheet with auth/user-cancelled; it used to
+      // resolve, which the form took for a sign-in.
+      mockGoogleAvailable.mockReturnValue(true);
+      mockGoogle.mockRejectedValue(
+        Object.assign(new Error('Sign in cancelled'), {
+          code: 'auth/user-cancelled',
+        }),
+      );
+      const view = renderWithApp(<SignInPage />);
+
+      await act(async () => {
+        fireEvent.press(
+          view.getByRole('button', { name: 'Continue with Google' }),
+        );
+      });
+
+      expect(mockGoogle).toHaveBeenCalledTimes(1);
+      expect(mockTrackError).not.toHaveBeenCalled();
+      expect(mockTrackEvent).not.toHaveBeenCalledWith(
+        'login_success',
+        expect.anything(),
+      );
+      expect(view.queryByText('Sign in cancelled')).toBeNull();
+      expect(view.getByTestId('login-page')).toBeTruthy();
+      expect(
+        view.getByRole('button', { name: 'Continue with Google' }),
+      ).toBeTruthy();
     });
   });
 

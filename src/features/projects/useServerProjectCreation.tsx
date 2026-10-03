@@ -15,21 +15,21 @@
  * that drifts: without it a user with no credits collects an empty "Generated
  * score" row on every attempt.
  *
- * Two things mirror the web dashboard exactly. **The courtesy gate** is
- * music_lib's `isOutOfCredits`: an administrator generates free and sits at
- * zero forever, and an unknown balance is not an empty one.
+ * Two things mirror the web dashboard exactly. **The credit gate** is not
+ * decided here: this hands the form who is asking (`account` — signed in, the
+ * balance, site administrator) and music_lib's `newProjectCreditState`
+ * decides the switch, Create and the explanation from it.
  * And **the sheet closes on a failure as well as on success** — behind the
  * paywall an open form is one more thing in the way, and a failure dialog over
  * a sheet is two stacked modals.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FormModal, Text } from '@sudobility/components-rn';
 import {
   classifyGenerationError,
   createGeneratedProject,
 } from '@sudobility/music_client';
-import { isOutOfCredits } from '@sudobility/music_lib';
 import type { NewProjectSubmission } from '@sudobility/music_lib';
 import { useAuth } from '@/auth/AuthContext';
 import { useSiteAdmin } from '@/auth/useSiteAdmin';
@@ -45,8 +45,11 @@ export type ServerProjectCreation = {
    */
   create: (submission: NewProjectSubmission) => Promise<string | null>;
   creating: boolean;
-  /** For `NewProjectSheet`'s `outOfCredits`. */
-  outOfCredits: boolean;
+  /**
+   * Who is asking, for `NewProjectSheet`/`NewPane`'s `account` — the caller
+   * adds `serverAvailable`, which it knows and this does not.
+   */
+  account: { signedIn: boolean; balance: number | null; siteAdmin: boolean };
   paywallOpen: boolean;
   closePaywall: () => void;
   failure: string | null;
@@ -57,7 +60,11 @@ export function useServerProjectCreation(): ServerProjectCreation {
   const { user, getToken } = useAuth();
   const siteAdmin = useSiteAdmin();
   const { balance, refresh } = useCreditBalance(getToken, user !== null);
-  const outOfCredits = isOutOfCredits(balance, siteAdmin);
+  const signedIn = user !== null;
+  const account = useMemo(
+    () => ({ signedIn, balance, siteAdmin }),
+    [signedIn, balance, siteAdmin],
+  );
   const [creating, setCreating] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
@@ -98,7 +105,7 @@ export function useServerProjectCreation(): ServerProjectCreation {
   return {
     create,
     creating,
-    outOfCredits,
+    account,
     paywallOpen,
     closePaywall: useCallback(() => setPaywallOpen(false), []),
     failure,

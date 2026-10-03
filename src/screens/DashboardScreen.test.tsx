@@ -80,7 +80,11 @@ describe('DashboardScreen', () => {
     mockServerContext.mockReturnValue({ client: {}, getToken: async () => '' });
     mockUser.mockReturnValue(null);
     const view = setup();
-    // The gate is still there — the list genuinely needs an account.
+    // Arriving signed out opens the sign-in modal; closing it leaves the gate,
+    // since the list genuinely needs an account.
+    expect(view.getByTestId('login-view')).toBeTruthy();
+    fireEvent.press(view.getByRole('button', { name: 'Close' }));
+    expect(view.queryByTestId('login-view')).toBeNull();
     expect(view.getByRole('button', { name: 'Sign in' })).toBeTruthy();
     // And so is the half that does not.
     fireEvent.press(view.getByLabelText('Import a file'));

@@ -210,7 +210,12 @@ function ProjectList({
       <NewProjectSheet
         open={newProjectOpen}
         submitting={creation.creating}
-        outOfCredits={creation.outOfCredits}
+        // Only reached with a server context, so there is a server.
+        account={{ ...creation.account, serverAvailable: true }}
+        onOpenCredits={() => {
+          setNewProjectOpen(false);
+          onOpenCredits();
+        }}
         onClose={() => setNewProjectOpen(false)}
         onSubmit={submission => void createProject(submission)}
       />

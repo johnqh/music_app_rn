@@ -12,13 +12,13 @@
  * local document — which is why generation can be switched off entirely.
  */
 import { useEffect } from 'react';
-import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { FormModal, Switch, Text } from '@sudobility/components-rn';
+import { FormModal } from '@sudobility/components-rn';
 import type { NewProjectSubmission } from '@sudobility/music_lib';
 import { ScoreSetupFields } from '@/features/generation/ScoreSetupFields';
 import { trackButtonClick } from '@/analytics';
-import { useNewProjectForm } from './useNewProjectForm';
+import { GenerateToggle } from './GenerateToggle';
+import { useNewProjectForm, type NewProjectAccount } from './useNewProjectForm';
 
 export type NewProjectSheetProps = {
   open: boolean;
@@ -26,25 +26,20 @@ export type NewProjectSheetProps = {
   onSubmit: (submission: NewProjectSubmission) => void;
   submitting?: boolean;
   /**
-   * Whether the balance is spent, decided by the caller.
+   * Who is asking — signed in, a server, the balance, site administrator —
+   * decided by the caller and handed to music_lib's credit rules.
    *
    * Passed in rather than looked up here: reading it would drag the auth
    * provider, and Firebase with it, into a form for choosing a key signature,
    * and a form that cannot render in a test is a form nobody tests.
    *
-   * It gates **generation only**. A blank project costs nothing, and refusing
-   * one would refuse work the server never charges for.
+   * From the macOS File menu a blank score is a local document, but a
+   * generated one is still a server project, so generation is offered there
+   * on exactly the same terms.
    */
-  outOfCredits?: boolean;
-  /**
-   * Whether a model can write this one.
-   *
-   * False from the macOS File menu, where the result is a local document: a job
-   * writes its result back to a project row on the server, and a local file has
-   * none. The toggle is disabled and says so rather than vanishing — a control
-   * that comes and goes teaches the reader nothing about where to find it.
-   */
-  generationAvailable?: boolean;
+  account: NewProjectAccount;
+  /** Opens Credits; offered beside a refusal for want of credits. */
+  onOpenCredits?: () => void;
   /**
    * Switches Generate on each time the sheet opens. For a store screenshot
    * (`ScreenshotLinks.tsx`); the toggle is otherwise the reader's.
@@ -57,25 +52,21 @@ export function NewProjectSheet({
   onClose,
   onSubmit,
   submitting = false,
-  outOfCredits = false,
-  generationAvailable = true,
+  account,
+  onOpenCredits,
   generate = false,
 }: NewProjectSheetProps) {
   const { t } = useTranslation();
+  const newProject = useNewProjectForm({ submitting, account, onSubmit });
   const {
     form,
     dispatch,
     generating,
+    generationAvailable,
     setGenerating,
-    credits,
     canCreate,
     handleCreate,
-  } = useNewProjectForm({
-    submitting,
-    outOfCredits,
-    generationAvailable,
-    onSubmit,
-  });
+  } = newProject;
   /*
     Through the toggle's own handler, so it adds the singer the toggle adds —
     and only when off, since switching it on twice would add a second one.
@@ -113,45 +104,12 @@ export function NewProjectSheet({
         draft={form}
         dispatch={dispatch}
         generateToggle={
-          <View className="flex-row items-center gap-3 pb-3">
-            <Switch
-              checked={generating}
-              // The roster and the style that overwrites it both live in the
-              // draft, so the singer is added and taken back there.
-              onCheckedChange={setGenerating}
-              disabled={!generationAvailable}
-              accessibilityLabel={t('newProject.generateForMe')}
-            />
-            <View className="flex-1">
-              <Text className="text-foreground text-base">
-                {t('newProject.generateForMe')}
-              </Text>
-              <Text className="text-muted-foreground text-sm">
-                {generationAvailable
-                  ? t('newProject.generateForMeHint')
-                  : t('newProject.generationNeedsServer')}
-              </Text>
-            </View>
-          </View>
+          <GenerateToggle
+            form={newProject}
+            {...(onOpenCredits ? { onOpenCredits } : {})}
+          />
         }
       />
-
-      {generating ? (
-        <Text className="text-muted-foreground text-sm">
-          {t('generate.estimate', { count: credits })}
-        </Text>
-      ) : null}
-      {/*
-        A courtesy gate, and only at zero. Deliberately not disabled when the
-        estimate merely exceeds the balance: a job may overdraw once by design,
-        and a stricter rule here would refuse work `POST /jobs` would have
-        accepted.
-      */}
-      {generating && outOfCredits ? (
-        <Text className="text-destructive text-sm">
-          {t('credits.outOfCreditsTitle')}
-        </Text>
-      ) : null}
     </FormModal>
   );
 }

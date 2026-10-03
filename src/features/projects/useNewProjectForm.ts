@@ -9,14 +9,14 @@
 import { useReducer } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  canCreateNewProject,
   initialNewProjectDraft,
-  newProjectCreditEstimate,
+  newProjectCreditState,
   newProjectDefaultTitleKey,
   newProjectSubmission,
   reduceNewProjectDraft,
 } from '@sudobility/music_lib';
 import type {
+  NewProjectAccountState,
   NewProjectDraftAction,
   NewProjectFormDraft,
   NewProjectSubmission,
@@ -27,19 +27,22 @@ const reducer = (
   action: NewProjectDraftAction,
 ): NewProjectFormDraft => reduceNewProjectDraft(draft, action);
 
+/**
+ * Who is asking, for New Project's credit rules: signed in, whether there is
+ * a server, the balance (null while unknown) and whether they are a site
+ * administrator. The caller knows; the form only hands it to music_lib.
+ */
+export type NewProjectAccount = Omit<NewProjectAccountState, 'submitting'>;
+
 export type UseNewProjectFormOptions = {
   submitting?: boolean;
-  /** See `NewProjectSheetProps.outOfCredits`. */
-  outOfCredits?: boolean;
-  /** See `NewProjectSheetProps.generationAvailable`. */
-  generationAvailable?: boolean;
+  account: NewProjectAccount;
   onSubmit: (submission: NewProjectSubmission) => void;
 };
 
 export function useNewProjectForm({
   submitting = false,
-  outOfCredits = false,
-  generationAvailable = true,
+  account,
   onSubmit,
 }: UseNewProjectFormOptions) {
   const { t } = useTranslation();
@@ -49,22 +52,21 @@ export function useNewProjectForm({
     initialNewProjectDraft,
   );
   /*
-    The draft's own `generating` is only ever set true through the toggle's
-    handler, which refuses it with no server — so a disabled switch that is
-    somehow toggled anyway still cannot produce a request there is nowhere to
-    send. Read again here as a belt to that brace.
+    Every credit rule — whether "Generate for me" may be switched on, whether
+    Create is offered, and what to say about either — is music_lib's
+    `newProjectCreditState`, the same call the web dialog makes. Nothing here
+    decides any of it.
+
+    Its `generating` is the draft's own *and* the switch being available, so a
+    draft left switched on (a session that ended while the sheet was open)
+    stops counting the moment it may not, and the submission below is built
+    from the effective form.
   */
-  const generating = draft.generating && generationAvailable;
+  const credit = newProjectCreditState(draft, { ...account, submitting });
+  const { generating, generationAvailable, canCreate } = credit;
   const form: NewProjectFormDraft = generating
     ? draft
     : { ...draft, generating: false };
-
-  const credits = newProjectCreditEstimate(form);
-  /*
-    One rule per mode, from music_lib, so this cannot offer a Create the
-    builder would then refuse — and `outOfCredits` gates generation only.
-  */
-  const canCreate = canCreateNewProject(form, { submitting, outOfCredits });
 
   const setGenerating = (next: boolean): void =>
     dispatch({
@@ -91,8 +93,9 @@ export function useNewProjectForm({
     form,
     dispatch,
     generating,
+    generationAvailable,
     setGenerating,
-    credits,
+    credit,
     canCreate,
     handleCreate,
   };

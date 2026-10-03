@@ -17,6 +17,7 @@
  * offering the other at all, and the view puts it first there.
  */
 import { useTranslation } from 'react-i18next';
+import { isSignInCancelled } from '@sudobility/auth_lib/signin';
 import type { AppleLogoTone, LoginViewText } from '@sudobility/components-rn';
 import { appleAvailable, googleAvailable, useAuth } from '@/auth/AuthContext';
 import { useTheme } from '@/config/ThemeContext';
@@ -25,7 +26,8 @@ import { trackButtonClick, trackError, trackEvent } from '@/analytics';
 /**
  * `action`, reported to analytics under sudojo_app_rn's event names: the
  * press (`<button>`), then `login_success`, or the error — rethrown, since
- * showing it is the form's.
+ * showing it is the form's. A cancel is rethrown too (the form treats it as
+ * backing out) but recorded as neither: nothing failed and nobody signed in.
  */
 function tracked<A extends unknown[]>(
   button: string,
@@ -37,6 +39,7 @@ function tracked<A extends unknown[]>(
       await action(...args);
       trackEvent('login_success', { method: button });
     } catch (error) {
+      if (isSignInCancelled(error)) throw error;
       trackError(
         error instanceof Error ? error.message : String(error),
         `${button}_failed`,

@@ -4,8 +4,8 @@
  * The dashboard and the File menu used to await the create with no `catch`, so
  * a refused job was an unhandled rejection and the sheet just stopped
  * spinning. A 402 must raise the paywall; anything else must say what went
- * wrong; and the courtesy gate must follow the web's rule, including standing
- * aside for a site administrator.
+ * wrong; and the form must be handed who is asking, so music_lib's credit
+ * rules can decide the rest.
  */
 import { jest } from '@jest/globals';
 import { Pressable, Text } from 'react-native';
@@ -55,7 +55,7 @@ function Harness({ onCreated }: { onCreated?: (id: string | null) => void }) {
   const creation = useServerProjectCreation();
   return (
     <>
-      <Text>{creation.outOfCredits ? 'gated' : 'open'}</Text>
+      <Text>{JSON.stringify(creation.account)}</Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="create"
@@ -109,15 +109,14 @@ describe('useServerProjectCreation', () => {
     await waitFor(() => expect(onCreated).toHaveBeenCalledWith('project-1'));
   });
 
-  it('gates at a spent balance, but never an administrator or an unknown one', () => {
-    mockBalance.balance = 0;
-    expect(renderWithApp(<Harness />).getByText('gated')).toBeTruthy();
-
+  it('hands the form the balance and the administrator flag, deciding nothing', () => {
+    // The rules are music_lib's `newProjectCreditState`, run by the form.
+    mockBalance.balance = -3;
     mockAuth.siteAdmin = true;
-    expect(renderWithApp(<Harness />).getAllByText('open')).toBeTruthy();
-
-    mockAuth.siteAdmin = false;
-    mockBalance.balance = null;
-    expect(renderWithApp(<Harness />).getAllByText('open')).toBeTruthy();
+    expect(
+      renderWithApp(<Harness />).getByText(
+        JSON.stringify({ signedIn: true, balance: -3, siteAdmin: true }),
+      ),
+    ).toBeTruthy();
   });
 });

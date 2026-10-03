@@ -109,9 +109,12 @@ export function ProjectsSplitView({
   const [failure, setFailure] = useState<string | null>(null);
 
   // A model writes into a project on the server, so generating needs an
-  // account with a server behind it — the same rule `MenuFileCommands`'s
-  // File-menu New uses.
-  const canGenerate = signedIn && serverContext !== null;
+  // account with a server behind it — and credits, by music_lib's rules. The
+  // same account `MenuFileCommands`'s File-menu New hands its sheet.
+  const newProjectAccount = {
+    ...creation.account,
+    serverAvailable: serverContext !== null,
+  };
 
   /*
     Keeps the sidebar's first slot pointed at whichever half of it is valid
@@ -222,9 +225,9 @@ export function ProjectsSplitView({
             ) : null}
             {selected === 'new' ? (
               <NewPane
-                generationAvailable={canGenerate}
-                outOfCredits={creation.outOfCredits}
+                account={newProjectAccount}
                 submitting={creation.creating}
+                onOpenCredits={onOpenCredits}
                 onSubmit={submission => guard(() => submitNew(submission))}
               />
             ) : null}
