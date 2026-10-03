@@ -24,6 +24,8 @@ import { useTranslation } from 'react-i18next';
 import { Text, touchSlop } from '@sudobility/components-rn';
 import type { ToastSink } from '@sudobility/music_lib';
 import type { Toast } from '@sudobility/music_types';
+import { useSafeAreaInsets } from '@/platform/SafeArea';
+import { useSafeEdges } from '@/platform/safe-edges';
 
 export type ToastQueue = ToastSink & {
   /** The toasts waiting, oldest first. A stable reference between changes. */
@@ -105,6 +107,9 @@ const CLOSE_CLASS: Record<Toast['severity'], string> = {
   info: 'text-primary-foreground text-lg',
 };
 
+/** The toast's distance from the screen's edges — `bottom-4`, `left-4`, `right-4`. */
+const TOAST_MARGIN = 16;
+
 export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
   const { t } = useTranslation();
   const toasts = useSyncExternalStore(
@@ -112,6 +117,11 @@ export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
     () => queue.toasts,
   );
   const current = toasts[0] ?? null;
+  // Clear of whatever the one rule (`useSafeEdges`) clears: the notch's side
+  // on a phone, the home indicator on a tablet. A toast 16 points from the
+  // edge of a phone held notch-left sat under the camera housing.
+  const insets = useSafeAreaInsets();
+  const edges = useSafeEdges();
 
   useEffect(() => {
     if (!current) return;
@@ -136,7 +146,12 @@ export function Toasts({ queue = appToasts }: { queue?: ToastQueue }) {
   return (
     <View
       pointerEvents="box-none"
-      className="absolute bottom-4 left-4 right-4 items-start"
+      className="absolute items-start"
+      style={{
+        bottom: TOAST_MARGIN + (edges.bottom ? insets.bottom : 0),
+        left: TOAST_MARGIN + (edges.left ? insets.left : 0),
+        right: TOAST_MARGIN + (edges.right ? insets.right : 0),
+      }}
     >
       <View
         accessibilityRole={assertive ? 'alert' : 'text'}

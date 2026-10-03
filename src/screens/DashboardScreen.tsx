@@ -40,11 +40,8 @@ import {
   useServerProjectCreation,
 } from '@/features/projects/useServerProjectCreation';
 import { SyncToServerButton } from '@/features/documents/SyncToServerButton';
-import {
-  ScreenScaffold,
-  ServerUnavailable,
-  SignInRequired,
-} from './ScreenScaffold';
+import { ScreenScaffold, ServerUnavailable } from './ScreenScaffold';
+import { SignInRequired } from '@/features/account/SignInRequired';
 
 export type DashboardScreenProps = {
   /**
@@ -95,7 +92,9 @@ export function DashboardScreen({ onOpenProject }: DashboardScreenProps = {}) {
     return (
       <ScreenScaffold title={t('nav.projects')}>
         <ImportButtons />
-        <SignInRequired onSignIn={() => navigation.navigate('SignIn')} />
+        {/* Over this screen, not a route away: once signed in, the list is
+            what this screen shows. */}
+        <SignInRequired />
       </ScreenScaffold>
     );
   }

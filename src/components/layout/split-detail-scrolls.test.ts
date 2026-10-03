@@ -24,9 +24,10 @@ const SPLIT_VIEWS = [
 ];
 
 // `ProjectTiles` is a `FlatList` with a grid's columns, as `ScreenScaffold`
-// is a `ScrollView` with a title: a pane that draws one scrolls.
+// is a `ScrollView` with a title, and building_blocks_rn's `LoginPage` a
+// `ScrollView` with the sign-in form in it: a pane that draws one scrolls.
 const SCROLLS =
-  /<(ScrollView|FlatList|SectionList|ScreenScaffold|ProjectTiles)\b/;
+  /<(ScrollView|FlatList|SectionList|ScreenScaffold|ProjectTiles|LoginPage)\b/;
 
 /** What is drawn inside `<SplitPanel secondary …>`, as source. */
 function detailOf(source: string): string {

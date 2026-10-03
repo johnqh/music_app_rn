@@ -20,37 +20,21 @@
  */
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { View } from 'react-native';
 import { Text } from '@sudobility/components-rn';
 import { useCreditBalance } from '@/features/credits/useCreditBalance';
 import { RedeemCouponForm } from './settings/RedeemCouponForm';
 import { useAuth } from '@/auth/AuthContext';
 import { getMusicClient } from '@/config/server';
-import type { RootStackParamList } from '@/app/Navigation';
-import {
-  ScreenScaffold,
-  ServerUnavailable,
-  SignInRequired,
-} from './ScreenScaffold';
+import { ScreenScaffold, ServerUnavailable } from './ScreenScaffold';
+import { SignInRequired } from '@/features/account/SignInRequired';
 import { trackScreenView } from '@/analytics';
 
-export function CreditsScreen({
-  onSignIn,
-}: {
-  /**
-   * Where signing in happens, for a holder that has somewhere of its own —
-   * Settings shows its account pane. Otherwise the sign-in screen is pushed.
-   */
-  onSignIn?: () => void;
-} = {}) {
+export function CreditsScreen() {
   useEffect(() => {
     trackScreenView('CreditsScreen');
   }, []);
 
-  const navigation =
-    useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { user } = useAuth();
 
   if (!getMusicClient()) {
@@ -63,9 +47,10 @@ export function CreditsScreen({
   if (!user) {
     return (
       <ScreenScaffold>
-        <SignInRequired
-          onSignIn={onSignIn ?? (() => navigation.navigate('SignIn'))}
-        />
+        {/* Signing in here is in the way of the balance, not the point of
+            the screen: it opens over it, and the balance shows once it is
+            done. */}
+        <SignInRequired />
       </ScreenScaffold>
     );
   }

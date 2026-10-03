@@ -1,13 +1,9 @@
 /**
- * The two states every server-backed screen has to be able to show, and the
- * insets its body has to keep clear of.
- *
- * "No server" and "not signed in" are different problems with different
- * remedies, and a screen that renders an empty list for either leaves the
- * reader guessing which. Saying which is missing is the whole job.
+ * The "no server" state every server-backed screen has to be able to show,
+ * and the insets its body has to keep clear of. The signed-out state is
+ * `SignInRequired`'s, tested beside it.
  */
 import { jest } from '@jest/globals';
-import { fireEvent } from '@testing-library/react-native';
 import { ScrollView, StyleSheet } from 'react-native';
 import { renderWithApp } from '@/test/render';
 
@@ -41,7 +37,7 @@ jest.mock('@/platform/safe-edges', () => {
   };
 });
 
-const { ScreenScaffold, ServerUnavailable, SignInRequired } =
+const { ScreenScaffold, ServerUnavailable } =
   require('./ScreenScaffold') as typeof import('./ScreenScaffold');
 
 describe('ScreenScaffold', () => {
@@ -52,38 +48,6 @@ describe('ScreenScaffold', () => {
       </ScreenScaffold>,
     );
     expect(view.getByText(/server/i)).toBeTruthy();
-  });
-
-  it('offers a way in when the problem is an account', () => {
-    // A remedy, not just a diagnosis.
-    const onSignIn = jest.fn();
-    const view = renderWithApp(
-      <ScreenScaffold title="Projects">
-        <SignInRequired onSignIn={onSignIn} />
-      </ScreenScaffold>,
-    );
-    // By role: the explanation above the button also says "sign in".
-    fireEvent.press(view.getByRole('button', { name: 'Sign in' }));
-    expect(onSignIn).toHaveBeenCalled();
-  });
-
-  it('tells the two apart', () => {
-    /*
-      The failure worth guarding: one empty state used for both. A reader with
-      no account is told to check their connection, and gives up.
-    */
-    const noServer = renderWithApp(
-      <ScreenScaffold title="P">
-        <ServerUnavailable />
-      </ScreenScaffold>,
-    );
-    const noAccount = renderWithApp(
-      <ScreenScaffold title="P">
-        <SignInRequired onSignIn={jest.fn()} />
-      </ScreenScaffold>,
-    );
-    expect(noServer.queryByRole('button', { name: 'Sign in' })).toBeNull();
-    expect(noAccount.queryByText(/server/i)).toBeNull();
   });
 });
 

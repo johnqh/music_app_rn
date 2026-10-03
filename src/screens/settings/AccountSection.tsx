@@ -2,8 +2,10 @@
  * The account: signing in, and once signed in, the name a user publishes
  * under and their picture — the web dashboard's Account page.
  *
- * **Signed out, this is the way in**, and nothing else: the sign-in form,
- * where a row saying "Sign in" would be a step before it.
+ * **Signed out, this is the way in**, and nothing else: the sign-in page
+ * (`SignInPage`, the family's `LoginPage`), since this pane is where somebody
+ * goes in order to sign in — a row saying "Sign in" would be a step before
+ * it, and a modal over a pane that has nothing else to show would be one too.
  *
  * **The nickname is what the publish sheet offers.** A snapshot is shared
  * under a publisher name typed into that sheet, which used to pre-fill
@@ -29,7 +31,7 @@ import { getMusicClient } from '@/config/server';
 import { useServerContext } from '@/config/useServerContext';
 import { useAvatarPicker } from '@/features/account/useAvatarPicker';
 import { ScreenScaffold, ServerUnavailable } from '../ScreenScaffold';
-import { SignInView } from '@/features/account/SignInView';
+import { SignInPage } from '@/features/account/SignInPage';
 
 /** The picture's drawn size, in points. */
 const PICTURE_SIZE = 72;
@@ -38,12 +40,8 @@ export function AccountSection() {
   const { user } = useAuth();
   const context = useServerContext();
   if (!user) {
-    // Signed out, the section is the way in: the form, placed here.
-    return (
-      <ScreenScaffold>
-        <SignInView />
-      </ScreenScaffold>
-    );
+    // Signed out, the section is the way in: the page, which scrolls itself.
+    return <SignInPage />;
   }
   if (!context) {
     return (

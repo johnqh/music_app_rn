@@ -8,7 +8,7 @@
 import type { ReactNode } from 'react';
 import { ScrollView, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button, Heading, Text } from '@sudobility/components-rn';
+import { Heading, Text } from '@sudobility/components-rn';
 import { useSafeAreaInsets } from '@/platform/SafeArea';
 import { useSafeEdges } from '@/platform/safe-edges';
 import { ScreenBackBar } from '@/components/layout/ScreenBackBar';
@@ -87,21 +87,6 @@ export function ServerUnavailable() {
       <Text className="text-muted-foreground text-center">
         {t('library.serverUnavailable')}
       </Text>
-    </View>
-  );
-}
-
-/** Signed-out state for a screen that needs an account. */
-export function SignInRequired({ onSignIn }: { onSignIn: () => void }) {
-  const { t } = useTranslation();
-  return (
-    <View className="items-center gap-3 py-8">
-      <Text className="text-muted-foreground text-center">
-        {t('library.authRequired')}
-      </Text>
-      <Button variant="link" textClassName="text-base" onPress={onSignIn}>
-        {t('nav.signIn')}
-      </Button>
     </View>
   );
 }

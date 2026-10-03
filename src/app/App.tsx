@@ -17,6 +17,7 @@ import '@/config/designTheme';
 import { useEffect, useMemo } from 'react';
 import { GestureRoot } from '@/platform/GestureRoot';
 import { SafeAreaProvider } from '@/platform/SafeArea';
+import { AppSafeEdges } from '@/platform/AppSafeEdges';
 import { AppState, StatusBar } from 'react-native';
 import { getSharedAppState, queryClient } from './appState';
 import { DocumentsProvider } from '@/documents/DocumentsContext';
@@ -84,27 +85,28 @@ export default function App() {
   return (
     <GestureRoot>
       <SafeAreaProvider>
-        {/*
+        <AppSafeEdges>
+          {/*
           Outside the vars provider, because it decides what those vars are.
         */}
-        <ThemeProvider>
-          <ThemedStatusBar />
-          <ThemeVarsProvider>
-            <QueryClientProvider client={queryClient}>
-              {/*
+          <ThemeProvider>
+            <ThemedStatusBar />
+            <ThemeVarsProvider>
+              <QueryClientProvider client={queryClient}>
+                {/*
                 Auth wraps the navigator rather than gating it: the editor is
                 usable signed out, and only the screens that read the server
                 ask whether there is an account.
               */}
-              <AuthProvider>
-                {/*
+                <AuthProvider>
+                  {/*
                   Every entity_client query is cached under the signed-in
                   user, so one account's workspaces and keys never reach the
                   next. Above the portal host, so a sheet sees it too.
                 */}
-                <EntityUserScope>
-                  <DocumentsProvider list={list} services={services}>
-                    {/*
+                  <EntityUserScope>
+                    <DocumentsProvider list={list} services={services}>
+                      {/*
                     Above everything that opens a picker: a portalled sheet
                     draws here, so it escapes the scrolling toolbar that would
                     otherwise clip it. Inside the data providers, not above
@@ -113,33 +115,34 @@ export default function App() {
                     New Project — failed with "No QueryClient set" when this
                     sat outside `QueryClientProvider`.
                   */}
-                    <PortalHost>
-                      {/*
+                      <PortalHost>
+                        {/*
                       A File-menu import makes a new document from whatever
                       screen is in front, so it can belong to none of them.
                     */}
-                      <MenuImportCommands />
-                      <MenuFileCommands />
-                      {/*
+                        <MenuImportCommands />
+                        <MenuFileCommands />
+                        {/*
                       Store-screenshot links, in a debug build only — the
                       build `app_store/scripts/capture.sh` installs.
                     */}
-                      {__DEV__ ? <ScreenshotLinks /> : null}
-                      {/*
+                        {__DEV__ ? <ScreenshotLinks /> : null}
+                        {/*
                       The test account from `.env`, in a debug build only:
                       what lets the screenshot devices show what needs one.
                     */}
-                      {__DEV__ ? <DevAutoSignIn /> : null}
-                      <WindowTitleSync />
-                      <Navigation />
-                      <Toasts />
-                    </PortalHost>
-                  </DocumentsProvider>
-                </EntityUserScope>
-              </AuthProvider>
-            </QueryClientProvider>
-          </ThemeVarsProvider>
-        </ThemeProvider>
+                        {__DEV__ ? <DevAutoSignIn /> : null}
+                        <WindowTitleSync />
+                        <Navigation />
+                        <Toasts />
+                      </PortalHost>
+                    </DocumentsProvider>
+                  </EntityUserScope>
+                </AuthProvider>
+              </QueryClientProvider>
+            </ThemeVarsProvider>
+          </ThemeProvider>
+        </AppSafeEdges>
       </SafeAreaProvider>
     </GestureRoot>
   );

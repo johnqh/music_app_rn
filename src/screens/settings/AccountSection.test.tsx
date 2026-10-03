@@ -48,10 +48,10 @@ jest.mock('@sudobility/music_client', () => ({
 jest.mock('@/features/account/useAvatarPicker', () => ({
   useAvatarPicker: () => ({ supported: true, pick: () => mockPick() }),
 }));
-jest.mock('@/features/account/SignInView', () => {
+jest.mock('@/features/account/SignInPage', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Text } = require('react-native') as typeof import('react-native');
-  return { SignInView: () => <Text>sign-in form</Text> };
+  return { SignInPage: () => <Text>sign-in page</Text> };
 });
 
 const { AccountSection } =
@@ -74,10 +74,11 @@ beforeEach(() => {
 });
 
 describe('AccountSection', () => {
-  it('is the sign-in form when nobody is signed in', () => {
+  it('is the sign-in page when nobody is signed in', () => {
+    // A pane somebody goes to in order to sign in: the page, not a modal.
     mockUser.mockReturnValue(null);
     const view = renderWithApp(<AccountSection />);
-    expect(view.getByText('sign-in form')).toBeTruthy();
+    expect(view.getByText('sign-in page')).toBeTruthy();
     expect(view.queryByLabelText('Nickname')).toBeNull();
   });
 

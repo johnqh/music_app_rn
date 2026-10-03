@@ -1,5 +1,6 @@
 /**
- * Signing in, and creating an account.
+ * The sign-in page (building_blocks_rn's `LoginPage`): signing in, creating
+ * an account, and a forgotten password.
  *
  * One form for both, because they take the same two fields — and the mode
  * decides which call is made. Getting that backwards silently creates an
@@ -17,6 +18,7 @@ const mockGoogle = jest.fn<() => Promise<void>>();
 const mockGoogleAvailable = jest.fn<() => boolean>();
 const mockApple = jest.fn<() => Promise<void>>();
 const mockAppleAvailable = jest.fn<() => boolean>();
+const mockReset = jest.fn<(email: string) => Promise<void>>();
 
 jest.mock('@/auth/AuthContext', () => ({
   useAuth: () => ({
@@ -26,6 +28,7 @@ jest.mock('@/auth/AuthContext', () => ({
     signUpWithEmail: () => mockCreate(),
     signInWithGoogle: () => mockGoogle(),
     signInWithApple: () => mockApple(),
+    sendPasswordResetEmail: (email: string) => mockReset(email),
     signOut: async () => {},
   }),
   // Module exports beside the shared context, read at render time — getters,
@@ -37,12 +40,7 @@ jest.mock('@/auth/AuthContext', () => ({
     return mockAppleAvailable();
   },
 }));
-jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ navigate: jest.fn(), goBack: jest.fn() }),
-}));
-
-const { SignInScreen } =
-  require('./SignInScreen') as typeof import('./SignInScreen');
+const { SignInPage } = require('./SignInPage') as typeof import('./SignInPage');
 
 beforeEach(() => {
   mockSignIn.mockReset();
@@ -57,6 +55,8 @@ beforeEach(() => {
   mockApple.mockResolvedValue(undefined);
   mockAppleAvailable.mockReset();
   mockAppleAvailable.mockReturnValue(false);
+  mockReset.mockReset();
+  mockReset.mockResolvedValue(undefined);
 });
 
 function fill(view: ReturnType<typeof renderWithApp>) {
@@ -64,11 +64,28 @@ function fill(view: ReturnType<typeof renderWithApp>) {
   fireEvent.changeText(view.getByLabelText(/password/i), 'hunter2hunter2');
 }
 
-describe('SignInScreen', () => {
+describe('SignInPage', () => {
+  it("is the family's LoginPage, under the app's name and a heading that follows the mode", () => {
+    const view = renderWithApp(<SignInPage />);
+    expect(view.getByTestId('login-page')).toBeTruthy();
+    expect(view.getByText('Moosiac')).toBeTruthy();
+    expect(view.getByText('Sign in to your account')).toBeTruthy();
+    fireEvent.press(view.getByRole('button', { name: 'Create account' }));
+    expect(view.getByText('Create your account')).toBeTruthy();
+  });
+
+  it('asks the question and links the way to the other mode separately', () => {
+    const view = renderWithApp(<SignInPage />);
+    expect(view.getByText('Need an account?')).toBeTruthy();
+    fireEvent.press(view.getByRole('button', { name: 'Create account' }));
+    expect(view.getByText('Already have an account?')).toBeTruthy();
+    expect(view.getByRole('button', { name: 'Sign in' })).toBeTruthy();
+  });
+
   describe('Apple', () => {
     it('is offered where it can be done, and signs in with it', async () => {
       mockAppleAvailable.mockReturnValue(true);
-      const view = renderWithApp(<SignInScreen />);
+      const view = renderWithApp(<SignInPage />);
 
       await act(async () => {
         fireEvent.press(
@@ -82,14 +99,14 @@ describe('SignInScreen', () => {
     });
 
     it('is not offered where it cannot be done', () => {
-      const view = renderWithApp(<SignInScreen />);
+      const view = renderWithApp(<SignInPage />);
       expect(view.queryByText('Continue with Apple')).toBeNull();
     });
 
     it('says why when it fails', async () => {
       mockAppleAvailable.mockReturnValue(true);
       mockApple.mockRejectedValue(new Error('No identity token from Apple'));
-      const view = renderWithApp(<SignInScreen />);
+      const view = renderWithApp(<SignInPage />);
 
       await act(async () => {
         fireEvent.press(
@@ -103,7 +120,7 @@ describe('SignInScreen', () => {
     it('comes before Google, as it must where both are offered', () => {
       mockAppleAvailable.mockReturnValue(true);
       mockGoogleAvailable.mockReturnValue(true);
-      const view = renderWithApp(<SignInScreen />);
+      const view = renderWithApp(<SignInPage />);
       const labels = view
         .getAllByRole('button')
         .map(button => button.props.accessibilityLabel as string | undefined);
@@ -119,7 +136,7 @@ describe('SignInScreen', () => {
       // An account made on the web with Google has no password: without
       // this, the person who made it cannot sign in here at all.
       mockGoogleAvailable.mockReturnValue(true);
-      const view = renderWithApp(<SignInScreen />);
+      const view = renderWithApp(<SignInPage />);
 
       await act(async () => {
         fireEvent.press(
@@ -133,7 +150,7 @@ describe('SignInScreen', () => {
 
     it("carries Google's mark beside the words, and still reads out as the words", () => {
       mockGoogleAvailable.mockReturnValue(true);
-      const view = renderWithApp(<SignInScreen />);
+      const view = renderWithApp(<SignInPage />);
 
       expect(
         view.getByRole('button', { name: 'Continue with Google' }),
@@ -148,14 +165,14 @@ describe('SignInScreen', () => {
     });
 
     it('is not offered where it cannot, rather than offered and failing', () => {
-      const view = renderWithApp(<SignInScreen />);
+      const view = renderWithApp(<SignInPage />);
       expect(view.queryByText('Continue with Google')).toBeNull();
     });
 
     it('says why when it fails', async () => {
       mockGoogleAvailable.mockReturnValue(true);
       mockGoogle.mockRejectedValue(new Error('OAuth error: access_denied'));
-      const view = renderWithApp(<SignInScreen />);
+      const view = renderWithApp(<SignInPage />);
 
       await act(async () => {
         fireEvent.press(
@@ -167,21 +184,21 @@ describe('SignInScreen', () => {
     });
   });
 
-  it('signs in by default, rather than creating an account', () => {
-    const view = renderWithApp(<SignInScreen />);
+  it('signs in by default, rather than creating an account', async () => {
+    const view = renderWithApp(<SignInPage />);
     fill(view);
-    act(() => {
+    await act(async () => {
       fireEvent.press(view.getByRole('button', { name: 'Sign in' }));
     });
     expect(mockSignIn).toHaveBeenCalled();
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it('creates an account only after switching mode', () => {
-    const view = renderWithApp(<SignInScreen />);
-    fireEvent.press(view.getByText(/create an account/i));
+  it('creates an account only after switching mode', async () => {
+    const view = renderWithApp(<SignInPage />);
+    fireEvent.press(view.getByRole('button', { name: 'Create account' }));
     fill(view);
-    act(() => {
+    await act(async () => {
       fireEvent.press(view.getByRole('button', { name: 'Create account' }));
     });
     expect(mockCreate).toHaveBeenCalled();
@@ -191,11 +208,28 @@ describe('SignInScreen', () => {
   it('shows a failure rather than appearing to succeed', async () => {
     // A form that clears on a failed sign-in reads as having worked.
     mockSignIn.mockRejectedValue(new Error('wrong password'));
-    const view = renderWithApp(<SignInScreen />);
+    const view = renderWithApp(<SignInPage />);
     fill(view);
     await act(async () => {
       fireEvent.press(view.getByRole('button', { name: 'Sign in' }));
     });
     expect(view.getByText('wrong password')).toBeTruthy();
+  });
+
+  describe('a forgotten password', () => {
+    it('sends a reset link to the address typed, under its own title', async () => {
+      const view = renderWithApp(<SignInPage />);
+      fireEvent.changeText(view.getByLabelText(/email/i), 'a@example.com');
+      fireEvent.press(view.getByRole('button', { name: 'Forgot password?' }));
+      expect(view.getByText('Reset your password')).toBeTruthy();
+
+      await act(async () => {
+        fireEvent.press(view.getByRole('button', { name: 'Send reset link' }));
+      });
+
+      expect(mockReset).toHaveBeenCalledWith('a@example.com');
+      expect(mockSignIn).not.toHaveBeenCalled();
+      expect(view.getByText(/Check your email/)).toBeTruthy();
+    });
   });
 });

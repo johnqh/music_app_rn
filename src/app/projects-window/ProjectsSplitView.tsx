@@ -42,8 +42,7 @@ import {
   SplitPanel,
   SplitViewContainer,
 } from '@/components/layout/SplitViewContainer';
-import { SignInView } from '@/features/account/SignInView';
-import { ScreenScaffold } from '@/screens/ScreenScaffold';
+import { SignInPage } from '@/features/account/SignInPage';
 import { useSingleDocumentGuard } from '@/features/documents/useSingleDocumentGuard';
 import { ProjectsSidebar, paneLabelKey } from './ProjectsSidebar';
 import { MyProjectsPane } from './MyProjectsPane';
@@ -214,12 +213,9 @@ export function ProjectsSplitView({
         secondaryPanel={
           <SplitPanel secondary title={t(paneLabelKey(selected))}>
             {selected === 'connect' ? (
-              // The form places itself: no wider than 360 and centred,
-              // with nothing painted behind it, so the pane's own background
-              // is what shows. The scaffold is the scroller and the padding.
-              <ScreenScaffold>
-                <SignInView />
-              </ScreenScaffold>
+              // Connect is where a reader goes in order to sign in, so it is
+              // the page (`LoginPage`), which brings its own scrolling.
+              <SignInPage />
             ) : null}
             {selected === 'myProjects' ? (
               <MyProjectsPane onOpen={id => guard(() => openExisting(id))} />

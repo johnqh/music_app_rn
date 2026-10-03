@@ -159,9 +159,7 @@ export function SettingsScreen({ navigation, route }: SettingsScreenProps) {
         secondaryPanel={
           <SplitPanel secondary title={t(SECTION_LABEL[section])}>
             {section === 'account' ? <AccountSection /> : null}
-            {section === 'credits' ? (
-              <CreditsScreen onSignIn={() => setChosen('account')} />
-            ) : null}
+            {section === 'credits' ? <CreditsScreen /> : null}
             {section === 'history' ? <CreditHistorySection /> : null}
             {section === 'apiKeys' ? <ApiKeysSection /> : null}
             {section === 'manageCoupons' ? <ManageCouponsSection /> : null}

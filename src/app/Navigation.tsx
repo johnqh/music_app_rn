@@ -43,7 +43,6 @@ import { DocsScreen } from '@/screens/DocsScreen';
 import { CommunityScreen } from '@/screens/CommunityScreen';
 import { PublishedScreen } from '@/screens/PublishedScreen';
 import { CreditsScreen } from '@/screens/CreditsScreen';
-import { SignInScreen } from '@/screens/SignInScreen';
 import { ResourcesScreen } from '@/screens/ResourcesScreen';
 
 /**
@@ -67,7 +66,6 @@ export type RootStackParamList = MainTabParamList & {
   Editor: { projectId?: string } | undefined;
   Published: { publicId: string };
   Credits: undefined;
-  SignIn: undefined;
 };
 
 const Stack = createAppStackNavigator<RootStackParamList>();
@@ -128,11 +126,6 @@ export function Navigation() {
             component={CreditsScreen}
             options={{ title: t('nav.credits') }}
           />
-          <Stack.Screen
-            name="SignIn"
-            component={SignInScreen}
-            options={{ title: t('nav.signIn') }}
-          />
         </Stack.Navigator>
       ) : (
         <Stack.Navigator
@@ -180,11 +173,6 @@ export function Navigation() {
             name="Credits"
             component={CreditsScreen}
             options={{ headerShown: true, title: t('nav.credits') }}
-          />
-          <Stack.Screen
-            name="SignIn"
-            component={SignInScreen}
-            options={{ headerShown: true, title: t('nav.signIn') }}
           />
           {/*
             Where to find music to open. More useful on a phone than on the

@@ -17,7 +17,7 @@
  * **A single-route navigator, not a stack of screens.** The content is
  * `ProjectsSplitView` — a sidebar and whichever pane it has selected, held
  * as its own local state, not navigation history. The navigator exists only
- * because `SignInScreen`'s `ScreenBackBar` (macOS's own) calls
+ * because `ScreenScaffold`'s `ScreenBackBar` (macOS's own) calls
  * `useNavigation()` and throws without one nearby; a single route with
  * `canGoBack()` always false is what makes that call answer "there is
  * nothing to go back to" instead of failing to resolve at all.
@@ -28,6 +28,7 @@ import '@/config/designTheme';
 import { useMemo } from 'react';
 import { GestureRoot } from '@/platform/GestureRoot';
 import { SafeAreaProvider } from '@/platform/SafeArea';
+import { AppSafeEdges } from '@/platform/AppSafeEdges';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { PortalHost } from '@sudobility/components-rn';
@@ -85,23 +86,25 @@ export default function ProjectsWindow() {
   return (
     <GestureRoot>
       <SafeAreaProvider>
-        <ThemeProvider>
-          <ThemeVarsProvider>
-            <QueryClientProvider client={queryClient}>
-              <AuthProvider>
-                <DocumentsProvider list={list} services={services}>
-                  <PortalHost>
-                    <NavigationContainer>
-                      <Stack.Navigator screenOptions={{ headerShown: false }}>
-                        <Stack.Screen name="Root" component={ProjectsRoot} />
-                      </Stack.Navigator>
-                    </NavigationContainer>
-                  </PortalHost>
-                </DocumentsProvider>
-              </AuthProvider>
-            </QueryClientProvider>
-          </ThemeVarsProvider>
-        </ThemeProvider>
+        <AppSafeEdges>
+          <ThemeProvider>
+            <ThemeVarsProvider>
+              <QueryClientProvider client={queryClient}>
+                <AuthProvider>
+                  <DocumentsProvider list={list} services={services}>
+                    <PortalHost>
+                      <NavigationContainer>
+                        <Stack.Navigator screenOptions={{ headerShown: false }}>
+                          <Stack.Screen name="Root" component={ProjectsRoot} />
+                        </Stack.Navigator>
+                      </NavigationContainer>
+                    </PortalHost>
+                  </DocumentsProvider>
+                </AuthProvider>
+              </QueryClientProvider>
+            </ThemeVarsProvider>
+          </ThemeProvider>
+        </AppSafeEdges>
       </SafeAreaProvider>
     </GestureRoot>
   );
