@@ -27,7 +27,7 @@
         "@react-navigation/native-stack": "^7.10.1",
         "@react-navigation/stack": "^7.7.1",
         "@shopify/react-native-skia": "2.2.12",
-        "@sudobility/auth_lib": "^0.0.104",
+        "@sudobility/auth_lib": "^0.0.105",
         "@sudobility/building_blocks_rn": "^0.0.80",
         "@sudobility/components-rn": "^1.0.114",
         "@sudobility/consumables_client": "^0.0.28",
@@ -664,7 +664,7 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
-    "@sudobility/auth_lib": ["@sudobility/auth_lib@0.0.104", "", { "peerDependencies": { "@react-native-firebase/app": ">=18.0.0", "@react-native-firebase/auth": ">=18.0.0", "@sudobility/di": "^1.5.68", "@sudobility/types": "^1.9.68", "@tanstack/react-query": "^5.0.0", "firebase": "^12.7.0", "react": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["@react-native-firebase/app", "@react-native-firebase/auth", "firebase"] }, "sha512-R+vgKK16GtuBqIqfUpOL0HWfdAFrfhUTslEu+ijuC22uXvM8dTBP+RDkaB/1Y8v5/b7umvm938azIxaam1WV6w=="],
+    "@sudobility/auth_lib": ["@sudobility/auth_lib@0.0.105", "", { "peerDependencies": { "@react-native-firebase/app": ">=18.0.0", "@react-native-firebase/auth": ">=18.0.0", "@sudobility/di": "^1.5.68", "@sudobility/types": "^1.9.68", "@tanstack/react-query": "^5.0.0", "firebase": "^12.7.0", "react": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["@react-native-firebase/app", "@react-native-firebase/auth", "firebase"] }, "sha512-c1w+ud/ffS8EovRlLv/vakT5E5NIpBQi8E8v7Y6qUdospvdwSiUb7Zw+9rhhGy6DvHO4OGQoDKYpoXRm5i7tDw=="],
 
     "@sudobility/building_blocks_rn": ["@sudobility/building_blocks_rn@0.0.80", "", { "peerDependencies": { "@react-native-async-storage/async-storage": ">=1.0.0", "@react-navigation/bottom-tabs": ">=7.0.0", "@react-navigation/native": ">=7.0.0", "@react-navigation/native-stack": ">=7.0.0", "@sudobility/components-rn": "^1.0.114", "@sudobility/design": "^1.1.57", "@sudobility/types": "*", "@tanstack/react-query": "*", "firebase": "*", "i18next": "^23.0.0 || ^24.0.0 || ^25.0.0", "react": "^18.0.0 || ^19.0.0", "react-i18next": "^14.0.0 || ^15.0.0 || ^16.0.0", "react-native": ">=0.72.0", "react-native-gesture-handler": "*", "react-native-in-app-review": ">=4.4.2", "react-native-localize": ">=3.0.0", "react-native-purchases": "*", "react-native-safe-area-context": ">=4.0.0" }, "optionalPeers": ["@sudobility/types", "@tanstack/react-query", "firebase", "react-native-gesture-handler", "react-native-in-app-review", "react-native-localize", "react-native-purchases"] }, "sha512-vZCoXvq2uNZqGdRZDkTWMGG3oC5XIrevDK03zfc3yr4QFN6K51XeOcvfHIYmtgMP13Hq2anijfSpiGMnFG563w=="],
 
