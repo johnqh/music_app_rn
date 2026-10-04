@@ -111,6 +111,35 @@ describe('colours come from the theme', () => {
       /\b(?:color|backgroundColor|borderColor|tintColor|fill|stroke)\s*[=:]\s*\{?\s*['"](?:white|black|red|gray|grey|blue|green)['"]/g;
     expect(offenders(NAMED, new Map())).toEqual([]);
   });
+
+  /*
+    An icon is an SVG, and an SVG takes its ink as a `color` prop. A colour
+    class on one is dropped without a word: NativeWind turns `className` into
+    style only for elements created through its JSX runtime or a
+    `createElement` it can see is React's, and `react-native-heroicons` calls
+    `createElement` through a bundler alias it does not recognise — so the
+    `cssInterop(Svg, …)` in `designTheme.ts` never runs for a heroicon, and
+    `fill="currentColor"` resolves to black. In dark mode that is a glyph
+    drawn black on a black bar: Play and Stop on the playback bar, every
+    toolbar glyph beside the drawn ones that took `useNotationInk()`. The
+    colour comes from `useNotationInk()`, the theme's tokens resolved.
+  */
+  /*
+    The library's `Spinner` is a fixed blue in both themes, off the Swiss
+    palette; `components/controls/Spinner` is the same control in the
+    theme's accent.
+  */
+  it("no spinner from the library's fixed palette", () => {
+    const LIBRARY_SPINNER =
+      /import\s*\{[^}]*\bSpinner\b[^}]*\}\s*from\s*'@sudobility\/components-rn'/g;
+    expect(offenders(LIBRARY_SPINNER, new Map())).toEqual([]);
+  });
+
+  it('no icon tinted through a class', () => {
+    const CLASSED_ICON =
+      /<(?:[A-Z]\w*)?Icon\b(?:(?!\/?>)[\s\S])*?\bclassName=/g;
+    expect(offenders(CLASSED_ICON, new Map())).toEqual([]);
+  });
 });
 
 describe('controls come from the library', () => {

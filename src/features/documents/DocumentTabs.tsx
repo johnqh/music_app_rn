@@ -25,6 +25,7 @@ import { useTranslation } from 'react-i18next';
 import { XMarkIcon } from 'react-native-heroicons/outline';
 import { MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
 import { IconButton } from '@/components/layout/IconButton';
+import { useNotationInk } from '@/components/icons/notation-ink';
 import { ConfirmSheet } from '@/components/controls/ConfirmSheet';
 import { useDocumentList, useDocuments } from '@/documents/DocumentsContext';
 import type { MusicDocument } from '@/documents/document';
@@ -88,6 +89,7 @@ function DocumentTab({
   const { t } = useTranslation();
   const title = useStore(document.store, s => s.title);
   const dirty = useStore(document.store, s => s.dirty);
+  const ink = useNotationInk();
   return (
     <Pressable
       accessibilityRole="tab"
@@ -112,7 +114,7 @@ function DocumentTab({
         label={t('document.closeDocument', { title })}
         onPress={onClose}
       >
-        <XMarkIcon size={CLOSE_SIZE} className="text-muted-foreground" />
+        <XMarkIcon size={CLOSE_SIZE} color={ink.muted} />
       </IconButton>
     </Pressable>
   );

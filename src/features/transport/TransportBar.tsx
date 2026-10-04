@@ -39,12 +39,7 @@ import { View } from 'react-native';
 import { useStore } from 'zustand';
 
 import { useTranslation } from 'react-i18next';
-import {
-  Input,
-  MIN_TOUCH_TARGET,
-  Spinner,
-  Text,
-} from '@sudobility/components-rn';
+import { Input, MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
 import {
   ArrowPathRoundedSquareIcon,
   CubeTransparentIcon,
@@ -207,7 +202,7 @@ export function TransportBar({
         }}
       />
       <IconButton label={t('transport.stop')} onPress={transport.stop}>
-        <StopIcon size={ICON_SIZE} className="text-foreground" />
+        <StopIcon size={ICON_SIZE} color={ink.foreground} />
       </IconButton>
       <IconButton
         label={t('transport.nextMeasure')}
@@ -233,7 +228,7 @@ export function TransportBar({
       >
         <ArrowPathRoundedSquareIcon
           size={ICON_SIZE}
-          className={loop ? 'text-primary' : 'text-foreground'}
+          color={loop ? ink.primary : ink.foreground}
         />
       </IconButton>
       <IconButton
@@ -419,6 +414,7 @@ function PlayPauseButton({
   onPress: () => void;
 }) {
   const { t } = useTranslation();
+  const ink = useNotationInk();
   /*
     Whether the engine is up is the player's own readiness, read and driven
     by music_player's `usePlaybackReadiness` — the same hook the web's Play
@@ -438,17 +434,18 @@ function PlayPauseButton({
     ? t('transport.pause')
     : t('transport.play');
   return (
+    // The button's own spinner rather than the library `Spinner`, which
+    // draws a fixed blue in both themes: this one is the theme's ink.
     <IconButton
       label={label}
-      disabled={preparing || disabled}
+      loading={preparing}
+      disabled={disabled}
       onPress={onPress}
     >
-      {preparing ? (
-        <Spinner />
-      ) : playing ? (
-        <PauseIcon size={ICON_SIZE} className="text-foreground" />
+      {playing ? (
+        <PauseIcon size={ICON_SIZE} color={ink.foreground} />
       ) : (
-        <PlayIcon size={ICON_SIZE} className="text-foreground" />
+        <PlayIcon size={ICON_SIZE} color={ink.foreground} />
       )}
     </IconButton>
   );

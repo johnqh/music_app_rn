@@ -9,7 +9,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button, Spinner, Text } from '@sudobility/components-rn';
+import { Button, Text } from '@sudobility/components-rn';
+import { Spinner } from '@/components/controls/Spinner';
 import type {
   ConsumablePurchaseRecord,
   ConsumableUsageRecord,

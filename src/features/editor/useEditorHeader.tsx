@@ -90,17 +90,11 @@ export function useEditorHeader(
                     label={t('nav.back')}
                     onPress={() => navigation.goBack?.()}
                   >
-                    <ChevronLeftIcon
-                      size={ICON_SIZE}
-                      className="text-primary-foreground"
-                    />
+                    <ChevronLeftIcon size={ICON_SIZE} color={ink.onPrimary} />
                   </IconButton>
                 ) : null}
                 <IconButton label={t('nav.projects')} onPress={onMaster}>
-                  <Bars3Icon
-                    size={ICON_SIZE}
-                    className="text-primary-foreground"
-                  />
+                  <Bars3Icon size={ICON_SIZE} color={ink.onPrimary} />
                 </IconButton>
               </View>
             ),

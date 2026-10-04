@@ -8,7 +8,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button, Input, Spinner, Text } from '@sudobility/components-rn';
+import { Button, Input, Text } from '@sudobility/components-rn';
+import { Spinner } from '@/components/controls/Spinner';
 import type { CreditCoupon } from '@sudobility/consumables_client';
 import { useAuth } from '@/auth/AuthContext';
 import { useConsumablesClient } from '@/features/account/useAccountClients';

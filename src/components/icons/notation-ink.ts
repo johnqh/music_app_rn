@@ -5,8 +5,11 @@
  * `NotationIcon` is handed a literal colour — and a literal colour is exactly
  * the thing that cannot follow the theme. The toolbar used to hardcode
  * `#18181b`, which is invisible on a dark background: every drawn glyph on the
- * editing bar disappeared in dark mode while the heroicons beside them, tinted
- * through `className`, did not.
+ * editing bar disappeared in dark mode.
+ *
+ * The heroicons take their ink from here too, as a `color` prop. A colour
+ * class on one is silently dropped (see `designTheme.ts`), so Play, Stop and
+ * the rest drew black on a dark bar until they were moved over.
  *
  * Read from the same `swissTheme` tokens `themeVars.ts` applies, so there is
  * one statement of what "foreground" is rather than a hex copy of it. The

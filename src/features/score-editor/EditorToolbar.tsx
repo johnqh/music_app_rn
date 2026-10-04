@@ -365,7 +365,7 @@ export function EditorToolbar({
             disabled={!available.addTrack}
             onPress={() => setAddTrackOpen(true)}
           >
-            <PlusIcon size={ICON_SIZE} className="text-foreground" />
+            <PlusIcon size={ICON_SIZE} color={ink.foreground} />
           </IconButton>
         </Group>
 
@@ -611,7 +611,7 @@ export function EditorToolbar({
         >
           <PencilIcon
             size={ICON_SIZE}
-            className={noteInput ? 'text-primary' : 'text-foreground'}
+            color={noteInput ? ink.primary : ink.foreground}
           />
         </IconButton>
 
@@ -690,10 +690,7 @@ export function EditorToolbar({
           disabled={!available.moreActions}
           onChange={handleMoreAction}
         >
-          <EllipsisHorizontalIcon
-            size={ICON_SIZE}
-            className="text-foreground"
-          />
+          <EllipsisHorizontalIcon size={ICON_SIZE} color={ink.foreground} />
         </ToolbarSelect>
       </ScrollView>
 
@@ -708,10 +705,7 @@ export function EditorToolbar({
           label={t('editor.zoomOut')}
           onPress={() => store.getState().setZoom(zoomOut(zoom))}
         >
-          <MagnifyingGlassMinusIcon
-            size={ICON_SIZE}
-            className="text-foreground"
-          />
+          <MagnifyingGlassMinusIcon size={ICON_SIZE} color={ink.foreground} />
         </IconButton>
         {/*
           The name sits on a wrapper: this package's `Text` styles text and
@@ -726,10 +720,7 @@ export function EditorToolbar({
           label={t('editor.zoomIn')}
           onPress={() => store.getState().setZoom(zoomIn(zoom))}
         >
-          <MagnifyingGlassPlusIcon
-            size={ICON_SIZE}
-            className="text-foreground"
-          />
+          <MagnifyingGlassPlusIcon size={ICON_SIZE} color={ink.foreground} />
         </IconButton>
 
         <Group label={t('editor.layoutMode')}>
@@ -829,12 +820,9 @@ export function EditorToolbar({
             say so is gone — selection is the accent colour throughout.
           */}
           {inspectorVisible ? (
-            <ChevronDoubleRightIcon size={ICON_SIZE} className="text-primary" />
+            <ChevronDoubleRightIcon size={ICON_SIZE} color={ink.primary} />
           ) : (
-            <ChevronDoubleLeftIcon
-              size={ICON_SIZE}
-              className="text-foreground"
-            />
+            <ChevronDoubleLeftIcon size={ICON_SIZE} color={ink.foreground} />
           )}
         </IconButton>
       </View>

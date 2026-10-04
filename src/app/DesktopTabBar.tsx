@@ -17,12 +17,13 @@ import {
   UserGroupIcon,
 } from 'react-native-heroicons/outline';
 import { MIN_TOUCH_TARGET, Text } from '@sudobility/components-rn';
+import { useNotationInk } from '@/components/icons/notation-ink';
 import type { MainTab } from './tab-bar';
 
 /** Matches the title bar's glyph size. */
 const ICON_SIZE = 18;
 
-type Glyph = ComponentType<{ size?: number; className?: string }>;
+type Glyph = ComponentType<{ size?: number; color?: string }>;
 
 /**
  * Each tab's glyph and its name. A record over the tabs, so one added
@@ -53,6 +54,7 @@ const BAR_HEIGHT = MIN_TOUCH_TARGET;
 
 export function DesktopTabBar({ state, navigation }: BottomTabBarProps) {
   const { t } = useTranslation();
+  const ink = useNotationInk();
   return (
     <View
       // `tab`/`tablist` map to nothing in AppKit and arrive as `AXUnknown`,
@@ -89,10 +91,7 @@ export function DesktopTabBar({ state, navigation }: BottomTabBarProps) {
             className={selected ? ITEM_SELECTED : ITEM}
             style={({ pressed }) => (pressed ? PRESSED_STYLE : null)}
           >
-            <Icon
-              size={ICON_SIZE}
-              className={selected ? 'text-primary' : 'text-muted-foreground'}
-            />
+            <Icon size={ICON_SIZE} color={selected ? ink.primary : ink.muted} />
             <Text
               className={
                 selected

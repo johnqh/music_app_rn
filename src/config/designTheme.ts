@@ -26,10 +26,16 @@ import Svg from 'react-native-svg';
 configureTheme(swissTheme, { native: true });
 
 /*
-  Let react-native-svg — and the heroicons that render it — honour `className`
-  colour utilities, mapping the resolved text colour onto the svg's `color`
-  prop. Without this an icon cannot be tinted by a class and cannot follow
-  light/dark.
+  Let an `<Svg>` written in this app's JSX honour `className` colour
+  utilities, mapping the resolved text colour onto the svg's `color` prop.
+
+  It does **not** reach the heroicons. NativeWind applies an interop only to
+  elements created through its JSX runtime, or through a `createElement` its
+  babel plugin can see is React's; `react-native-heroicons` is prebuilt and
+  calls `createElement` through a bundler alias the plugin does not
+  recognise, so a `className` handed to a heroicon arrives at the `Svg` raw
+  and `fill="currentColor"` resolves to black. Icons take `color` from
+  `useNotationInk()`; `design-system.test.ts` refuses a class on one.
 */
 cssInterop(Svg, {
   className: { target: 'style', nativeStyleToProp: { color: true } },

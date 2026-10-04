@@ -36,7 +36,8 @@
 import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { FormModal, Spinner, Text } from '@sudobility/components-rn';
+import { FormModal, Text } from '@sudobility/components-rn';
+import { Spinner } from '@/components/controls/Spinner';
 import type { NativeUploadFile } from '@sudobility/music_client';
 import { audioMimeFor } from '@sudobility/music_io';
 import { createFilePicker } from '@/documents/file-picker';

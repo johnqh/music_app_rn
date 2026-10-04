@@ -130,9 +130,10 @@ export function TitleBarTitle({ document }: { document: MusicDocument }) {
   */
   const title = useStore(document.store, s => s.title);
   const saveState = useStore(document.store, s => s.saveState);
+  const ink = useNotationInk();
   return (
     <View className="shrink flex-row items-center gap-1">
-      <MusicalNoteIcon size={ICON_SIZE} className="text-primary-foreground" />
+      <MusicalNoteIcon size={ICON_SIZE} color={ink.onPrimary} />
       <Text
         className="text-primary-foreground shrink px-1 text-lg font-medium"
         numberOfLines={1}
@@ -185,30 +186,21 @@ export function TitleBarDocumentActions({
         loading={saveState === 'saving'}
         spinnerColor={ink.onPrimary}
       >
-        <ArrowDownTrayIcon
-          size={ICON_SIZE}
-          className="text-primary-foreground"
-        />
+        <ArrowDownTrayIcon size={ICON_SIZE} color={ink.onPrimary} />
       </IconButton>
       <IconButton
         label={t('editor.undo')}
         onPress={undo}
         disabled={!canUndo || playing}
       >
-        <ArrowUturnLeftIcon
-          size={ICON_SIZE}
-          className="text-primary-foreground"
-        />
+        <ArrowUturnLeftIcon size={ICON_SIZE} color={ink.onPrimary} />
       </IconButton>
       <IconButton
         label={t('editor.redo')}
         onPress={redo}
         disabled={!canRedo || playing}
       >
-        <ArrowUturnRightIcon
-          size={ICON_SIZE}
-          className="text-primary-foreground"
-        />
+        <ArrowUturnRightIcon size={ICON_SIZE} color={ink.onPrimary} />
       </IconButton>
       {/* The export sheet closes before the file is written — what follows
           it is the share sheet or the hidden-tracks question, neither of
@@ -220,10 +212,7 @@ export function TitleBarDocumentActions({
         loading={exporting}
         spinnerColor={ink.onPrimary}
       >
-        <DocumentArrowDownIcon
-          size={ICON_SIZE}
-          className="text-primary-foreground"
-        />
+        <DocumentArrowDownIcon size={ICON_SIZE} color={ink.onPrimary} />
       </IconButton>
       {/*
         There is no Generate here. A whole new score is where a project starts
@@ -236,12 +225,12 @@ export function TitleBarDocumentActions({
           onPress={onPrint}
           disabled={printing}
         >
-          <PrinterIcon size={ICON_SIZE} className="text-primary-foreground" />
+          <PrinterIcon size={ICON_SIZE} color={ink.onPrimary} />
         </IconButton>
       ) : null}
       {onSnapshots ? (
         <IconButton label={t('snapshot.openTitle')} onPress={onSnapshots}>
-          <ClockIcon size={ICON_SIZE} className="text-primary-foreground" />
+          <ClockIcon size={ICON_SIZE} color={ink.onPrimary} />
         </IconButton>
       ) : null}
     </View>
@@ -270,26 +259,21 @@ export function TitleBarAppActions({
   onShortcuts,
 }: TitleBarAppActionsProps) {
   const { t } = useTranslation();
+  const ink = useNotationInk();
   return (
     <View className="flex-row items-center gap-1">
       {/* First, as on the web: help with this screen, before the ways out
           of it. */}
       {onShortcuts ? (
         <IconButton label={t('editor.keyboardShortcuts')} onPress={onShortcuts}>
-          <QuestionMarkCircleIcon
-            size={ICON_SIZE}
-            className="text-primary-foreground"
-          />
+          <QuestionMarkCircleIcon size={ICON_SIZE} color={ink.onPrimary} />
         </IconButton>
       ) : null}
       <IconButton label={t('nav.projects')} onPress={onDocuments}>
-        <RectangleStackIcon
-          size={ICON_SIZE}
-          className="text-primary-foreground"
-        />
+        <RectangleStackIcon size={ICON_SIZE} color={ink.onPrimary} />
       </IconButton>
       <IconButton label={t('nav.settings')} onPress={onSettings}>
-        <Cog6ToothIcon size={ICON_SIZE} className="text-primary-foreground" />
+        <Cog6ToothIcon size={ICON_SIZE} color={ink.onPrimary} />
       </IconButton>
     </View>
   );

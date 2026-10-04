@@ -192,6 +192,12 @@ export function ProjectTiles({
                     >
                       {t('dashboard.duplicate')}
                     </Button>
+                    {/* Ghost with the destructive token on its words, not
+                        `variant="destructive-outline"`: the library looks that
+                        name up as `variants.button['destructive-outline']`,
+                        which does not exist, and falls back to the primary
+                        fill — a red block. The web tile works round the same
+                        gap. */}
                     <Button
                       variant="ghost"
                       size="sm"

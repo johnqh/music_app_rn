@@ -11,7 +11,8 @@
  */
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button, Spinner, Text } from '@sudobility/components-rn';
+import { Button, Text } from '@sudobility/components-rn';
+import { Spinner } from '@/components/controls/Spinner';
 import { useProjects } from '@sudobility/music_client';
 import { useServerContext } from '@/config/useServerContext';
 import { ProjectTiles } from '@/features/projects/ProjectTiles';

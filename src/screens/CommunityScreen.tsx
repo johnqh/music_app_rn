@@ -15,7 +15,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Image, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Button, SearchInput, Spinner, Text } from '@sudobility/components-rn';
+import { Button, SearchInput, Text } from '@sudobility/components-rn';
+import { Spinner } from '@/components/controls/Spinner';
 import { PressableCard } from '@/components/controls/PressableCard';
 import {
   communityItemTitle,

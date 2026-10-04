@@ -18,7 +18,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { Spinner, Text } from '@sudobility/components-rn';
+import { Text } from '@sudobility/components-rn';
+import { Spinner } from '@/components/controls/Spinner';
 import {
   communityItemTitle,
   getMusicPosition,
@@ -36,6 +37,7 @@ import type { RootStackParamList } from '@/app/Navigation';
 import { Share } from 'react-native';
 import { ShareIcon } from 'react-native-heroicons/solid';
 import { IconButton } from '@/components/layout/IconButton';
+import { useNotationInk } from '@/components/icons/notation-ink';
 import { createDocumentStore } from '@sudobility/music_lib';
 import { usePlayerBinding } from '@/features/transport/usePlayerBinding';
 import { appToasts } from '@/features/toasts/Toasts';
@@ -120,6 +122,7 @@ export function PublishedScreen() {
  */
 export function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
   const { t, i18n } = useTranslation();
+  const ink = useNotationInk();
   const store = useMemo(
     () =>
       createDocumentStore({
@@ -185,7 +188,7 @@ export function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
       ),
       headerRight: () => (
         <IconButton label={t('published.share')} onPress={share}>
-          <ShareIcon size={18} className="text-foreground" />
+          <ShareIcon size={18} color={ink.foreground} />
         </IconButton>
       ),
     });

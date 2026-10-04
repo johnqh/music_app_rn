@@ -301,8 +301,15 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   `currentColor` is an SVG idea `react-native-svg` does not resolve, so every
   `NotationIcon` is handed a literal colour — which is exactly the thing that
   cannot follow light/dark. The toolbar hardcoded `#18181b`, so every drawn
-  glyph on the editing bar vanished in dark mode while the heroicons beside
-  them, tinted through `className`, did not. `useNotationInk()` resolves
+  glyph on the editing bar vanished in dark mode. **Heroicons are the same
+  case, not an exception**: a `className` colour on one is silently dropped —
+  NativeWind's interop only reaches elements created through its JSX runtime
+  or a `createElement` its babel plugin recognises as React's, and the
+  prebuilt heroicons call it through an alias it does not — so
+  `fill="currentColor"` resolves to black. Play and Stop drew black on the
+  dark playback bar this way, along with every title-bar glyph. Every icon
+  takes `color={ink.…}`; `design-system.test.ts` refuses a class on one.
+  `useNotationInk()` resolves
   `foreground` / `primaryForeground` / `mutedForeground` from the same
   `swissTheme` tokens `themeVars.ts` applies, so there is one statement of what
   "foreground" is rather than a hex copy of it. Never write a hex for a glyph.
