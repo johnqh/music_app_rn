@@ -481,7 +481,7 @@
       "keyboard": {
         "heading": "The piano keyboard",
         "p1": "Below the score is a full-width keyboard showing the active track's sounding notes as they play. Its range is the active track's instrument, not always all 88 keys, so it follows a track change and an instrument change alike.",
-        "p2": "It is an input device as well as a display. Pressing a key auditions it; releasing writes a note at the caret whose length is how long you held the key, snapped to a value the duration buttons could also have produced.",
+        "p2": "It is an input device as well as a display. Pressing a key auditions it. With one note selected, tapping a key changes that note's pitch. Otherwise, releasing writes a note at the caret whose length is how long you held the key, snapped to a value the duration buttons could also have produced.",
         "p3": "On a drum track every key is labelled with its drum, black keys included, because a drum map has no pattern to learn the way a keyboard does."
       },
       "following": {
@@ -1494,6 +1494,9 @@
     "exportAnyway": "Export anyway"
   },
   "transport": {
+    "audioOutput": "Audio output",
+    "systemDefault": "System default",
+    "outputUnavailable": "Could not switch to that audio output",
     "editTempo": "Edit tempo",
     "goToStart": "Go to start",
     "loadFailed": "Instruments failed to load",

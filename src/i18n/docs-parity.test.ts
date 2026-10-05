@@ -11,8 +11,9 @@
  * pinned against each other here: if the web app's documentation changes, this
  * fails until the native app's is brought across.
  *
- * `seeShortcutsScreen` is the one native-only key, because the web shows its
- * shortcut table inline and this app has a screen for it.
+ * `seeShortcutsScreen` is native-only. The keyboard gesture paragraph differs
+ * because Shift-click is a web and desktop pointer gesture, while the native
+ * keyboard is tapped without modifiers.
  */
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
@@ -23,6 +24,7 @@ const WEB_LOCALES = join(__dirname, '../../../music_app/public/locales');
 
 /** Keys this app adds because its documentation is navigated differently. */
 const NATIVE_ONLY = new Set(['seeShortcutsScreen']);
+const PLATFORM_SPECIFIC = new Set(['playback.keyboard.p2']);
 
 function load(path: string): Record<string, unknown> {
   return JSON.parse(readFileSync(path, 'utf8')) as Record<string, unknown>;
@@ -43,7 +45,7 @@ describe.each(['en', 'zh'])('documentation prose (%s)', lang => {
     const web = flatten(load(join(WEB_LOCALES, lang, 'app.json')).docs);
     const native = flatten(load(join(__dirname, `locales/${lang}.json`)).docs);
     for (const key of Object.keys(native)) {
-      if (NATIVE_ONLY.has(key)) continue;
+      if (NATIVE_ONLY.has(key) || PLATFORM_SPECIFIC.has(key)) continue;
       expect(native[key], `docs.${key}`).toBe(web[key]);
     }
     // And nothing the web documents is missing here.

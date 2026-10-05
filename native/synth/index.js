@@ -18,6 +18,21 @@ export function bundledSoundfontPath() {
   return MoosiacSynth ? MoosiacSynth.bundledSoundfontPath() : null;
 }
 
+export async function outputDevices() {
+  return (await MoosiacSynth?.outputDevices?.()) ?? [];
+}
+
+export function selectedOutputDevice() {
+  return MoosiacSynth?.selectedOutputDevice?.() ?? 'default';
+}
+
+export function setOutputDevice(id) {
+  if (!MoosiacSynth?.setOutputDevice) {
+    return Promise.reject(new Error('Audio output selection is unavailable.'));
+  }
+  return MoosiacSynth.setOutputDevice(id);
+}
+
 export const nativeSynthApi = {
   isSupported() {
     return MoosiacSynth != null;

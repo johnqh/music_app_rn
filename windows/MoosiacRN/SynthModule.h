@@ -18,6 +18,16 @@ struct SynthModule {
   REACT_METHOD(bundledSoundfontPath)
   std::string bundledSoundfontPath() noexcept;
 
+  REACT_METHOD(outputDevices)
+  void outputDevices(React::ReactPromise<React::JSValue> result) noexcept;
+
+  REACT_METHOD(selectedOutputDevice)
+  std::string selectedOutputDevice() noexcept;
+
+  REACT_METHOD(setOutputDevice)
+  void setOutputDevice(std::string deviceId,
+                       React::ReactPromise<React::JSValue> result) noexcept;
+
   REACT_METHOD(initialize)
   void initialize(std::string soundfontUri, double instanceCount,
                   React::JSValueObject settings,

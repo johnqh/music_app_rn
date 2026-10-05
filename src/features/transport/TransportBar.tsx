@@ -65,6 +65,7 @@ import { useNotationInk } from '@/components/icons/notation-ink';
 import { LevelSlider } from '@/components/controls/LevelSlider';
 import { ToolbarSelect } from '@/components/controls/ToolbarSelect';
 import { SynthLoadIndicator } from './SynthLoadIndicator';
+import { AudioOutputSelect } from './AudioOutputSelect';
 import { getMusicPlayerIfInitialized } from '@sudobility/music_player/core';
 import { usePlaybackReadiness } from '@sudobility/music_player/react';
 import { IconButton } from '@/components/layout/IconButton';
@@ -324,6 +325,8 @@ export function TransportBar({
           }}
         />
       </View>
+
+      <AudioOutputSelect />
 
       <PositionScrubber maxTick={maxTick} transport={transport} />
       <Timecode

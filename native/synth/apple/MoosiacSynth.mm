@@ -16,6 +16,7 @@
 #import "MoosiacSynth.h"
 
 #import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
 // iOS: the vendored FluidSynth.xcframework, reached as a framework now that
 // the podspec no longer lists its headers as the pod's own (they clashed
 // between the device and simulator slices once pods became frameworks).
@@ -27,11 +28,13 @@
 #endif
 
 #include <mutex>
+#include <cstring>
 #include <vector>
 
 static const int kDrumBank = 128;
 static const int kStandardKit = 0;
 static const int kPercussionChannel = 9;
+static const char *kDefaultOutputDevice = "default";
 
 namespace {
 
@@ -71,6 +74,7 @@ void destroyInstance(Instance &instance)
   double _initialGain;
   double _masterVolume;
   int _interpolation;
+  NSString *_outputDevice;
 }
 
 RCT_EXPORT_MODULE()
@@ -86,6 +90,7 @@ RCT_EXPORT_MODULE()
     _initialGain = 0.35;
     _masterVolume = 1;
     _interpolation = -1;
+    _outputDevice = @"default";
   }
   return self;
 }
@@ -123,6 +128,7 @@ RCT_EXPORT_MODULE()
   fluid_settings_setstr(instance.settings, "synth.midi-bank-select", "gs");
   fluid_settings_setint(instance.settings, "synth.min-note-length", 10);
   fluid_settings_setstr(instance.settings, "audio.driver", "coreaudio");
+  fluid_settings_setstr(instance.settings, "audio.coreaudio.device", _outputDevice.UTF8String);
 
   instance.synth = new_fluid_synth(instance.settings);
   if (!instance.synth) {
@@ -169,6 +175,75 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(bundledSoundfontPath)
 {
   NSString *path = [[NSBundle mainBundle] pathForResource:@"FluidR3Mono_GM" ofType:@"sf3"];
   return path ?: (id)[NSNull null];
+}
+
+/** The options accepted by FluidSynth's CoreAudio driver on this Mac. */
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(outputDevices)
+{
+#if TARGET_OS_OSX
+  fluid_settings_t *settings = new_fluid_settings();
+  NSMutableArray *devices = [NSMutableArray arrayWithObject:@{@"id": @"default", @"name": @"System default"}];
+  fluid_settings_foreach_option(settings, "audio.coreaudio.device", (__bridge void *)devices,
+    [](void *data, const char *, const char *option) {
+      if (strcmp(option, kDefaultOutputDevice) == 0) return;
+      NSString *name = [NSString stringWithUTF8String:option];
+      [(__bridge NSMutableArray *)data addObject:@{@"id": name, @"name": name}];
+    });
+  delete_fluid_settings(settings);
+  return devices;
+#else
+  return @[@{@"id": @"default", @"name": @"System output"}];
+#endif
+}
+
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(selectedOutputDevice)
+{
+  std::lock_guard<std::mutex> lock(_mutex);
+  return _outputDevice;
+}
+
+/** Switch every live driver while retaining the synths, soundfont and MIDI state. */
+RCT_EXPORT_METHOD(setOutputDevice:(NSString *)device
+                  resolve:(RCTPromiseResolveBlock)resolve
+                  reject:(RCTPromiseRejectBlock)reject)
+{
+  dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+    std::lock_guard<std::mutex> lock(self->_mutex);
+    NSString *chosen = device.length ? device : @"default";
+#if !TARGET_OS_OSX
+    if (![chosen isEqualToString:@"default"]) {
+      reject(@"output_unsupported", @"iOS output routes are selected by the system.", nil);
+      return;
+    }
+#endif
+    if ([chosen isEqualToString:self->_outputDevice]) {
+      resolve(nil);
+      return;
+    }
+    NSString *previous = self->_outputDevice;
+    for (auto &instance : self->_instances) {
+      if (instance.driver) delete_fluid_audio_driver(instance.driver);
+      instance.driver = nullptr;
+    }
+    bool opened = true;
+    for (auto &instance : self->_instances) {
+      fluid_settings_setstr(instance.settings, "audio.coreaudio.device", chosen.UTF8String);
+      instance.driver = new_fluid_audio_driver(instance.settings, instance.synth);
+      if (!instance.driver) { opened = false; break; }
+    }
+    if (!opened) {
+      for (auto &instance : self->_instances) {
+        if (instance.driver) delete_fluid_audio_driver(instance.driver);
+        instance.driver = nullptr;
+        fluid_settings_setstr(instance.settings, "audio.coreaudio.device", previous.UTF8String);
+        instance.driver = new_fluid_audio_driver(instance.settings, instance.synth);
+      }
+      reject(@"output_unavailable", @"Could not open the selected audio output.", nil);
+      return;
+    }
+    self->_outputDevice = chosen;
+    resolve(nil);
+  });
 }
 
 RCT_EXPORT_METHOD(initialize:(NSString *)soundfontUri

@@ -185,6 +185,10 @@ describe('controls come from the library', () => {
     ['src/components/controls/PressableCard.tsx', 'The list row itself.'],
     ['src/components/controls/ToolbarSelect.tsx', 'The toolbar picker itself.'],
     [
+      'src/features/transport/AudioOutputSelect.tsx',
+      'An anchored desktop output menu; the library select cannot use an icon-only toolbar trigger.',
+    ],
+    [
       'src/components/controls/SegmentedTabs.macos.tsx',
       'The segmented control drawn in-app on macOS, where the native one does not animate.',
     ],

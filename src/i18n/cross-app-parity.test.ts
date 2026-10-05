@@ -67,6 +67,8 @@ const nativeLocale = (lang: string) => join(__dirname, `locales/${lang}.json`);
  * apps are allowed to disagree; everything else is a drift.
  */
 const WORDED_DIFFERENTLY: Record<string, string> = {
+  'docs.playback.keyboard.p2':
+    'Shift-click edits chords on web and desktop; native taps have no Shift modifier',
   // A native document is a file; a web project is a row on a server. The two
   // words are the honest ones for the two things.
   'importMidi.description': 'document vs project',

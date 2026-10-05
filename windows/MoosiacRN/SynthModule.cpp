@@ -4,6 +4,8 @@
 
 #include <mmdeviceapi.h>
 #include <audioclient.h>
+#include <functiondiscoverykeys_devpkey.h>
+#include <propsys.h>
 #include <ksmedia.h>
 #include <wrl/client.h>
 
@@ -67,23 +69,27 @@ struct Instance {
   std::mutex *ownerMutex = nullptr;
 };
 
-void closeInstance(Instance &instance) {
+void closeOutput(Instance &instance) {
   instance.running.store(false);
   if (instance.stopEvent) SetEvent(instance.stopEvent);
   if (instance.thread.joinable()) instance.thread.join();
   if (instance.audioClient) instance.audioClient->Stop();
-  if (instance.synth) tsf_close(instance.synth);
   if (instance.event) CloseHandle(instance.event);
   if (instance.stopEvent) CloseHandle(instance.stopEvent);
   if (instance.renderClient) instance.renderClient->Release();
   if (instance.audioClient) instance.audioClient->Release();
   if (instance.device) instance.device->Release();
-  instance.synth = nullptr;
   instance.device = nullptr;
   instance.audioClient = nullptr;
   instance.renderClient = nullptr;
   instance.event = nullptr;
   instance.stopEvent = nullptr;
+}
+
+void closeInstance(Instance &instance) {
+  closeOutput(instance);
+  if (instance.synth) tsf_close(instance.synth);
+  instance.synth = nullptr;
   instance.events.clear();
   instance.renderedSamples = 0;
   instance.ownerMutex = nullptr;
@@ -160,7 +166,6 @@ void audioLoop(Instance *instance) {
   CoInitializeEx(nullptr, COINIT_MULTITHREADED);
   HANDLE waits[] = {instance->event, instance->stopEvent};
   std::vector<float> stereo;
-  instance->running.store(true);
 
   while (instance->running.load()) {
     const DWORD wait = WaitForMultipleObjects(2, waits, FALSE, 1000);
@@ -178,7 +183,14 @@ void audioLoop(Instance *instance) {
     {
       // TSF is not re-entrant. The same lock gives noteAt a sample-clock
       // boundary, so scheduled events cannot race the audio callback.
-      std::lock_guard lock(*instance->ownerMutex);
+      // Device switching holds this lock while joining the render thread.
+      // A blocking lock here would deadlock that join when the thread has
+      // already entered the callback, so output silence for that one buffer.
+      std::unique_lock lock(*instance->ownerMutex, std::try_to_lock);
+      if (!lock.owns_lock()) {
+        instance->renderClient->ReleaseBuffer(frames, AUDCLNT_BUFFERFLAGS_SILENT);
+        continue;
+      }
       applyEvents(*instance, instance->renderedSamples + frames);
       tsf_render_float(instance->synth, stereo.data(), static_cast<int>(frames), TSF_FALSE);
       applyEffects(*instance, stereo, frames);
@@ -198,6 +210,68 @@ void audioLoop(Instance *instance) {
   CoUninitialize();
 }
 
+bool openOutput(Instance &instance, const std::string &deviceId, std::string &error) {
+  ComPtr<IMMDeviceEnumerator> enumerator;
+  HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                                IID_PPV_ARGS(&enumerator));
+  if (FAILED(hr) || FAILED(deviceId.empty()
+        ? enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &instance.device)
+        : enumerator->GetDevice(winrt::to_hstring(deviceId).c_str(), &instance.device))) {
+    error = "Could not find the selected Windows audio output.";
+    closeOutput(instance);
+    return false;
+  }
+
+  WAVEFORMATEX *format = nullptr;
+  hr = instance.device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr,
+                                 reinterpret_cast<void **>(&instance.audioClient));
+  if (FAILED(hr) || FAILED(instance.audioClient->GetMixFormat(&format))) {
+    error = "Could not open the Windows audio output.";
+    closeOutput(instance);
+    return false;
+  }
+  const double previousRate = instance.sampleRate;
+  instance.sampleRate = format->nSamplesPerSec;
+  instance.channels = format->nChannels;
+  const auto effectSamples = static_cast<size_t>(instance.sampleRate);
+  instance.chorusDelayLeft.assign(effectSamples, 0.0f);
+  instance.chorusDelayRight.assign(effectSamples, 0.0f);
+  instance.reverbDelayLeft.assign(effectSamples, 0.0f);
+  instance.reverbDelayRight.assign(effectSamples, 0.0f);
+  instance.effectCursor = 0;
+  tsf_set_output(instance.synth, TSF_STEREO_INTERLEAVED,
+                 static_cast<int>(instance.sampleRate), 0.0f);
+  instance.event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+  instance.stopEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+  if (!instance.event || !instance.stopEvent) {
+    CoTaskMemFree(format);
+    error = "Could not create the audio events.";
+    closeOutput(instance);
+    return false;
+  }
+  hr = instance.audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
+      AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
+      0, 0, format, nullptr);
+  CoTaskMemFree(format);
+  if (FAILED(hr) || FAILED(instance.audioClient->SetEventHandle(instance.event)) ||
+      FAILED(instance.audioClient->GetBufferSize(&instance.bufferFrames)) ||
+      FAILED(instance.audioClient->GetService(IID_PPV_ARGS(&instance.renderClient))) ||
+      FAILED(instance.audioClient->Start())) {
+    error = "Could not initialize the selected audio output.";
+    closeOutput(instance);
+    return false;
+  }
+  if (previousRate > 0 && previousRate != instance.sampleRate) {
+    const double ratio = instance.sampleRate / previousRate;
+    instance.renderedSamples = static_cast<uint64_t>(instance.renderedSamples * ratio);
+    for (auto &event : instance.events)
+      event.sample = static_cast<uint64_t>(event.sample * ratio);
+  }
+  instance.running.store(true);
+  instance.thread = std::thread(audioLoop, &instance);
+  return true;
+}
+
 } // namespace
 
 struct WindowsSynthState {
@@ -209,6 +283,7 @@ struct WindowsSynthState {
   float initialGain = kInitialGain;
   bool chorusActive = true;
   bool reverbActive = true;
+  std::string outputDeviceId;
 
   ~WindowsSynthState() {
     for (auto &instance : instances) closeInstance(*instance);
@@ -224,51 +299,14 @@ struct WindowsSynthState {
     tsf_set_max_voices(instance->synth, 2048);
     tsf_set_interpolation(instance->synth, interpolation);
     tsf_set_volume(instance->synth, initialGain * static_cast<float>(masterVolume));
-
-    ComPtr<IMMDeviceEnumerator> enumerator;
-    HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
-                          IID_PPV_ARGS(&enumerator));
-    if (FAILED(hr) || FAILED(enumerator->GetDefaultAudioEndpoint(eRender, eConsole, &instance->device))) {
-      error = "Could not find the Windows audio device."; closeInstance(*instance); return false;
-    }
-    WAVEFORMATEX *format = nullptr;
-    hr = instance->device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr,
-                                   reinterpret_cast<void **>(&instance->audioClient));
-    if (FAILED(hr) || FAILED(instance->audioClient->GetMixFormat(&format))) {
-      error = "Could not open the Windows audio client."; closeInstance(*instance); return false;
-    }
-    instance->sampleRate = format->nSamplesPerSec;
-    instance->channels = format->nChannels;
     instance->chorusActive = chorusActive;
     instance->reverbActive = reverbActive;
-    const auto effectSamples = static_cast<size_t>(instance->sampleRate);
-    instance->chorusDelayLeft.assign(effectSamples, 0.0f);
-    instance->chorusDelayRight.assign(effectSamples, 0.0f);
-    instance->reverbDelayLeft.assign(effectSamples, 0.0f);
-    instance->reverbDelayRight.assign(effectSamples, 0.0f);
-    tsf_set_output(instance->synth, TSF_STEREO_INTERLEAVED,
-                   static_cast<int>(instance->sampleRate), 0.0f);
-    instance->event = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-    instance->stopEvent = CreateEvent(nullptr, TRUE, FALSE, nullptr);
-    if (!instance->event || !instance->stopEvent) {
-      CoTaskMemFree(format); error = "Could not create the audio events."; closeInstance(*instance); return false;
-    }
-    hr = instance->audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
-        AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
-        0, 0, format, nullptr);
-    CoTaskMemFree(format);
-    if (FAILED(hr) || FAILED(instance->audioClient->SetEventHandle(instance->event)) ||
-        FAILED(instance->audioClient->GetBufferSize(&instance->bufferFrames)) ||
-        FAILED(instance->audioClient->GetService(IID_PPV_ARGS(&instance->renderClient)))) {
-      error = "Could not initialize shared-mode audio."; closeInstance(*instance); return false;
-    }
-    if (FAILED(instance->audioClient->Start())) {
-      error = "Could not start shared-mode audio."; closeInstance(*instance); return false;
-    }
     instance->ownerMutex = &mutex;
+    if (!openOutput(*instance, outputDeviceId, error)) {
+      closeInstance(*instance);
+      return false;
+    }
     instances.push_back(std::move(instance));
-    auto &stored = *instances.back();
-    stored.thread = std::thread(audioLoop, &stored);
     return true;
   }
 };
@@ -278,6 +316,83 @@ bool SynthModule::isSupported() noexcept { return true; }
 std::string SynthModule::bundledSoundfontPath() noexcept {
   return winrt::to_string(::MoosiacApp::AppDirectory()) +
       "\\soundfont\\FluidR3Mono_GM.sf3";
+}
+
+void SynthModule::outputDevices(React::ReactPromise<React::JSValue> result) noexcept {
+  std::thread([result = std::move(result)]() mutable {
+    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    React::JSValueArray devices;
+    devices.emplace_back(React::JSValueObject{{"id", "default"}, {"name", "System default"}});
+    ComPtr<IMMDeviceEnumerator> enumerator;
+    ComPtr<IMMDeviceCollection> collection;
+    HRESULT hr = CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL,
+                                  IID_PPV_ARGS(&enumerator));
+    if (SUCCEEDED(hr)) hr = enumerator->EnumAudioEndpoints(eRender, DEVICE_STATE_ACTIVE, &collection);
+    if (SUCCEEDED(hr)) {
+      UINT count = 0;
+      collection->GetCount(&count);
+      for (UINT i = 0; i < count; ++i) {
+        ComPtr<IMMDevice> device;
+        if (FAILED(collection->Item(i, &device))) continue;
+        LPWSTR id = nullptr;
+        if (FAILED(device->GetId(&id))) continue;
+        std::string name = winrt::to_string(winrt::hstring{id});
+        ComPtr<IPropertyStore> properties;
+        if (SUCCEEDED(device->OpenPropertyStore(STGM_READ, &properties))) {
+          PROPVARIANT value;
+          PropVariantInit(&value);
+          if (SUCCEEDED(properties->GetValue(PKEY_Device_FriendlyName, &value)) && value.vt == VT_LPWSTR)
+            name = winrt::to_string(winrt::hstring{value.pwszVal});
+          PropVariantClear(&value);
+        }
+        devices.emplace_back(React::JSValueObject{{"id", winrt::to_string(winrt::hstring{id})}, {"name", name}});
+        CoTaskMemFree(id);
+      }
+    }
+    result.Resolve(React::JSValue{std::move(devices)});
+    CoUninitialize();
+  }).detach();
+}
+
+std::string SynthModule::selectedOutputDevice() noexcept {
+  if (!m_state) return "default";
+  std::lock_guard lock(m_state->mutex);
+  return m_state->outputDeviceId.empty() ? "default" : m_state->outputDeviceId;
+}
+
+void SynthModule::setOutputDevice(std::string deviceId,
+                                  React::ReactPromise<React::JSValue> result) noexcept {
+  if (!m_state) m_state = std::make_shared<WindowsSynthState>();
+  auto state = m_state;
+  std::thread([state, deviceId = std::move(deviceId), result = std::move(result)]() mutable {
+    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    std::lock_guard lock(state->mutex);
+    const std::string chosen = deviceId == "default" ? "" : deviceId;
+    if (chosen == state->outputDeviceId) {
+      result.Resolve(React::JSValue{nullptr});
+      CoUninitialize();
+      return;
+    }
+    const std::string previous = state->outputDeviceId;
+    for (auto &instance : state->instances) closeOutput(*instance);
+    std::string error;
+    bool opened = true;
+    for (auto &instance : state->instances) {
+      if (!openOutput(*instance, chosen, error)) { opened = false; break; }
+    }
+    if (!opened) {
+      for (auto &instance : state->instances) closeOutput(*instance);
+      for (auto &instance : state->instances) {
+        std::string ignored;
+        openOutput(*instance, previous, ignored);
+      }
+      result.Reject(React::ReactError{"OUTPUT_UNAVAILABLE", error});
+    } else {
+      state->outputDeviceId = chosen;
+      result.Resolve(React::JSValue{nullptr});
+    }
+    CoUninitialize();
+  }).detach();
 }
 
 void SynthModule::initialize(std::string soundfontUri, double instanceCount,
