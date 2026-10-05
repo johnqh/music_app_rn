@@ -20,7 +20,7 @@
  * The Mac variant applies it.
  */
 import { useEffect, useMemo, useRef } from 'react';
-import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { Animated, Easing, Platform, StyleSheet, View } from 'react-native';
 import { cursorTickAt } from '@sudobility/music_drawing';
 import { useSignal } from './useScoreCanvas';
 import type { CursorState, ScrollOffset, Signal } from './useScoreCanvas';
@@ -51,6 +51,14 @@ export const CURSOR_WIDTH = 2;
  */
 const HORIZON_SECONDS = 30;
 
+/**
+ * Not on Windows. React Native Windows hands an interpolation to the
+ * compositor as an expression animation, and the compositor refuses this one
+ * (`StartAnimation`, E_INVALIDARG) — an error nothing catches, so pressing
+ * Play aborted the app. Driven from JavaScript there, a frame per write.
+ */
+const NATIVE_DRIVER = Platform.OS !== 'windows';
+
 export function PlaybackCursor({
   cursor: cursorSignal,
   scroll,
@@ -71,7 +79,7 @@ export function PlaybackCursor({
       toValue: from + motion.ticksPerSecond * HORIZON_SECONDS,
       duration: HORIZON_SECONDS * 1000,
       easing: Easing.linear,
-      useNativeDriver: true,
+      useNativeDriver: NATIVE_DRIVER,
       isInteraction: false,
     }).start();
     return () => clock.stopAnimation();

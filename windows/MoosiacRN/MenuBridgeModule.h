@@ -27,7 +27,7 @@ namespace winrt::MoosiacRN::implementation {
  * Windows toolchain available in this environment. Build and click-test on a
  * Windows machine before relying on it.
  */
-REACT_MODULE(MoosiacMenuBridge)
+REACT_MODULE(MenuBridgeModule, L"MoosiacMenuBridge")
 struct MenuBridgeModule {
   REACT_INIT(Initialize)
   void Initialize(winrt::Microsoft::ReactNative::ReactContext const &context) noexcept;

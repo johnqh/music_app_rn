@@ -20,7 +20,9 @@ function walk(dir: string): string[] {
   });
 }
 
-const files = walk(SRC).map(f => relative(join(SRC, '..'), f));
+const files = walk(SRC).map(f =>
+  relative(join(SRC, '..'), f).replaceAll('\\', '/'),
+);
 const sources = files.filter(
   f => /\.tsx?$/.test(f) && !/\.test\.tsx?$/.test(f),
 );
@@ -132,6 +134,11 @@ const ALLOWED_NON_UI = new Set([
   'src/di/initializeServices.android.ts',
   'src/analytics.ts',
   'src/auth/useSiteAdmin.ts',
+  // Where the Sign in with Apple module comes from, per platform: a lazy
+  // `require` everywhere but Windows, which has no build of it and whose
+  // bundle cannot even resolve its files.
+  'src/auth/apple-auth-module.ts',
+  'src/auth/apple-auth-module.windows.ts',
   // The design theme: which @sudobility/design theme is active, and the CSS
   // variables NativeWind resolves semantic classes against. Presentation
   // configuration, and it must match the web app's.

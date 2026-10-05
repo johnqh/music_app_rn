@@ -258,6 +258,11 @@ _Use_decl_annotations_ int CALLBACK WinMain(HINSTANCE /* instance */, HINSTANCE,
 #else
   // Load the JS bundle from Metro
   settings.JavaScriptBundleFile(L"index");
+  // No source map inside the bundle: it triples this app's dev bundle to
+  // ~90 MB, and the host's multipart reader takes minutes over that where it
+  // takes seconds without — the window sat on "Loading". DevTools fetches the
+  // map separately.
+  settings.RequestInlineSourceMap(false);
   // Enable hot reload
   settings.UseFastRefresh(true);
 #endif

@@ -10,18 +10,18 @@ namespace winrt::MoosiacRN::implementation {
 
 struct WindowsSynthState;
 
-REACT_MODULE(MoosiacSynth)
+REACT_MODULE(SynthModule, L"MoosiacSynth")
 struct SynthModule {
-  REACT_METHOD(isSupported)
+  REACT_SYNC_METHOD(isSupported)
   bool isSupported() noexcept;
 
-  REACT_METHOD(bundledSoundfontPath)
+  REACT_SYNC_METHOD(bundledSoundfontPath)
   std::string bundledSoundfontPath() noexcept;
 
   REACT_METHOD(outputDevices)
   void outputDevices(React::ReactPromise<React::JSValue> result) noexcept;
 
-  REACT_METHOD(selectedOutputDevice)
+  REACT_SYNC_METHOD(selectedOutputDevice)
   std::string selectedOutputDevice() noexcept;
 
   REACT_METHOD(setOutputDevice)
@@ -37,10 +37,10 @@ struct SynthModule {
   void ensureInstances(double count,
                        React::ReactPromise<React::JSValue> result) noexcept;
 
-  REACT_METHOD(currentTime)
+  REACT_SYNC_METHOD(currentTime)
   double currentTime() noexcept;
 
-  REACT_METHOD(outputLatency)
+  REACT_SYNC_METHOD(outputLatency)
   double outputLatency() noexcept;
 
   REACT_METHOD(noteAt)

@@ -10,7 +10,7 @@
     "ios": "react-native run-ios --port 8091",
     "android": "react-native run-android --port 8091",
     "macos": "react-native run-macos --port 8091",
-    "windows": "react-native run-windows",
+    "windows": "react-native run-windows --arch x64 --msbuildprops UseFabric=true,UseExperimentalNuget=true,RnwNewArch=true,WindowsAppSDKVerifyTransitiveDependencies=false,PlatformToolset=v145,WindowsTargetPlatformVersion=10.0.26100.0,TargetPlatformVersion=10.0.26100.0",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts,.tsx",
     "test:watch": "vitest",

@@ -6,17 +6,17 @@
 
 namespace winrt::MoosiacRN::implementation {
 
-REACT_MODULE(MoosiacPrint)
+REACT_MODULE(PrintModule, L"MoosiacPrint")
 struct PrintModule {
   REACT_INIT(Initialize)
-  void Initialize(winrt::Microsoft.ReactNative::ReactContext const &context) noexcept;
+  void Initialize(winrt::Microsoft::ReactNative::ReactContext const &context) noexcept;
 
   REACT_METHOD(printPages)
   void printPages(std::string jobName, React::JSValueArray pages,
                   React::ReactPromise<bool> result) noexcept;
 
  private:
-  winrt::Microsoft.ReactNative::ReactContext m_context;
+  winrt::Microsoft::ReactNative::ReactContext m_context;
 };
 
 } // namespace winrt::MoosiacRN::implementation

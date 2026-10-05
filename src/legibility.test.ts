@@ -9,7 +9,9 @@
 import { describe, expect, it } from 'vitest';
 import { globSync, readFileSync } from 'node:fs';
 
-const sources = globSync('src/**/*.tsx').filter(f => !f.includes('.test.'));
+const sources = globSync('src/**/*.tsx')
+  .map(f => f.replaceAll('\\', '/'))
+  .filter(f => !f.includes('.test.'));
 
 describe('text is large enough to read', () => {
   /*

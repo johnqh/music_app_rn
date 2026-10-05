@@ -278,6 +278,14 @@ struct WindowsSynthState {
   std::mutex mutex;
   std::vector<std::unique_ptr<Instance>> instances;
   std::string soundfontPath;
+  /**
+   * The soundfont, decoded once. Every instance is a `tsf_copy` of it, which
+   * shares the samples: the SF3 is Ogg-compressed, and decoding it per
+   * instance cost a full decode and a full copy of the samples (hundreds of
+   * MB) for each — the music and the metronome click at the least.
+   */
+  tsf *font = nullptr;
+  std::string fontPath;
   int interpolation = 1;
   double masterVolume = 1.0;
   float initialGain = kInitialGain;
@@ -287,11 +295,19 @@ struct WindowsSynthState {
 
   ~WindowsSynthState() {
     for (auto &instance : instances) closeInstance(*instance);
+    if (font) tsf_close(font);
+  }
+
+  /** Adopts a decoded font, closing the one it replaces. Under the lock. */
+  void adoptFont(tsf *loaded, const std::string &path) {
+    if (font) tsf_close(font);
+    font = loaded;
+    fontPath = path;
   }
 
   bool addInstance(std::string &error) {
     auto instance = std::make_unique<Instance>();
-    instance->synth = tsf_load_filename(soundfontPath.c_str());
+    instance->synth = tsf_copy(font);
     if (!instance->synth) {
       error = "Could not load the bundled SoundFont.";
       return false;
@@ -403,8 +419,24 @@ void SynthModule::initialize(std::string soundfontUri, double instanceCount,
   std::thread([state, soundfontUri = std::move(soundfontUri), instanceCount,
                settings = std::move(settings), result = std::move(result)]() mutable {
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    const std::string path =
+        soundfontUri.rfind("file://", 0) == 0 ? soundfontUri.substr(7) : soundfontUri;
+    // Decoded before the lock is taken: JS reads `currentTime` and
+    // `selectedOutputDevice` synchronously, and while the decode held the lock
+    // the JS thread — the whole UI — waited for it.
+    bool decoded;
+    {
+      std::lock_guard lock(state->mutex);
+      decoded = state->font && state->fontPath == path;
+    }
+    tsf *loaded = decoded ? nullptr : tsf_load_filename(path.c_str());
     std::lock_guard lock(state->mutex);
-    state->soundfontPath = soundfontUri.rfind("file://", 0) == 0 ? soundfontUri.substr(7) : soundfontUri;
+    if (loaded) {
+      for (auto &instance : state->instances) closeInstance(*instance);
+      state->instances.clear();
+      state->adoptFont(loaded, path);
+    }
+    state->soundfontPath = path;
     if (auto it = settings.find("initialGain"); it != settings.end() &&
         (it->second.TryGetDouble() || it->second.TryGetInt64())) {
       state->initialGain = static_cast<float>(it->second.AsDouble());

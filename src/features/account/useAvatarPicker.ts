@@ -27,7 +27,6 @@
  */
 import { useCallback } from 'react';
 import { Platform } from 'react-native';
-import RNFS from 'react-native-fs';
 import type { NativeUploadFile } from '@sudobility/music_client';
 import { AVATAR_MAX_BYTES } from '@sudobility/music_types';
 import { createFilePicker } from '@/documents/file-picker';
@@ -92,6 +91,14 @@ export function useAvatarPicker(): AvatarPicker {
     /* eslint-disable @typescript-eslint/no-require-imports */
     const { Skia, ImageFormat } =
       require('@shopify/react-native-skia') as typeof import('@shopify/react-native-skia');
+    // Asked for here, like Skia: its module throws while loading where its
+    // native half is missing, as on Windows, which would take this screen
+    // down with it.
+    const fsModule =
+      require('react-native-fs') as typeof import('react-native-fs') & {
+        default?: typeof import('react-native-fs');
+      };
+    const RNFS = fsModule.default ?? fsModule;
     /* eslint-enable @typescript-eslint/no-require-imports */
 
     const encoded = await RNFS.readFile(

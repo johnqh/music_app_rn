@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "FilePickerModule.h"
 
-#include <ReactCoreInjection.h>
 #include <shobjidl_core.h>
 
 #include <string>
@@ -43,7 +42,7 @@ void FilePickerModule::pickFile(
         // arbitrary extensions directly, including the app's custom formats.
         std::wstring patterns;
         for (const auto &extensionValue : extensions) {
-          if (!extensionValue.IsString()) continue;
+          if (extensionValue.Type() != React::JSValueType::String) continue;
           std::string extension = extensionValue.AsString();
           while (!extension.empty() && extension.front() == '.') {
             extension.erase(extension.begin());

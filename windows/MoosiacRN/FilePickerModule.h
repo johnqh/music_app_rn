@@ -6,7 +6,7 @@
 
 namespace winrt::MoosiacRN::implementation {
 
-REACT_MODULE(MoosiacFilePicker)
+REACT_MODULE(FilePickerModule, L"MoosiacFilePicker")
 struct FilePickerModule {
   REACT_INIT(Initialize)
   void Initialize(winrt::Microsoft::ReactNative::ReactContext const &context) noexcept;

@@ -27,7 +27,7 @@ namespace winrt::MoosiacRN::implementation {
  * built or run here — there is no Windows toolchain in this environment.
  * Build and click-test on a Windows machine before relying on it.
  */
-REACT_MODULE(MoosiacProjectsWindow)
+REACT_MODULE(WindowManagerModule, L"MoosiacProjectsWindow")
 struct WindowManagerModule {
   REACT_INIT(Initialize)
   void Initialize(winrt::Microsoft::ReactNative::ReactContext const &context) noexcept;

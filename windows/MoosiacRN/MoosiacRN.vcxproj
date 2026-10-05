@@ -13,6 +13,10 @@
     <DefaultLanguage>en-US</DefaultLanguage>
     <MinimumVisualStudioVersion>17.0</MinimumVisualStudioVersion>
     <AppxPackage>false</AppxPackage>
+    <!-- Linked in, not shipped beside the exe: the package project does not
+         carry WebView2Loader.dll into the MSIX layout, and a missing loader
+         stops the app at launch, before a window exists. -->
+    <WebView2LoaderPreference>Static</WebView2LoaderPreference>
   </PropertyGroup>
   <PropertyGroup Label="ReactNativeWindowsProps">
     <ReactNativeWindowsDir Condition="'$(ReactNativeWindowsDir)' == ''">$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildThisFileDirectory), 'node_modules\react-native-windows\package.json'))\node_modules\react-native-windows\</ReactNativeWindowsDir>
@@ -127,7 +131,16 @@
     <ClCompile Include="FileSystemModule.cpp" />
     <ClCompile Include="MenuBridgeModule.cpp" />
     <ClCompile Include="PrintModule.cpp" />
-    <ClCompile Include="SynthModule.cpp" />
+    <!-- Optimised in Debug too: it holds the Ogg Vorbis decoder and the
+         synthesiser's render loop, which unoptimised take many times as long
+         to decode the soundfont and can fall behind the audio clock. -->
+    <ClCompile Include="SynthModule.cpp">
+      <Optimization Condition="'$(Configuration)'=='Debug'">MaxSpeed</Optimization>
+      <BasicRuntimeChecks Condition="'$(Configuration)'=='Debug'">Default</BasicRuntimeChecks>
+      <!-- The shared PCH is built unoptimised, and MSVC drops /O2 for a file
+           that uses it (C4653). This one parses pch.h itself. -->
+      <PrecompiledHeader Condition="'$(Configuration)'=='Debug'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="WindowManagerModule.cpp" />
     <ClCompile Include="WindowTitleModule.cpp" />
     <ClCompile Include="pch.cpp">

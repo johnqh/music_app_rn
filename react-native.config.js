@@ -37,15 +37,15 @@
 const path = require('path');
 
 /**
- * Disable a native Firebase package on macOS and Windows while keeping the
- * package's own iOS and Android settings. Autolinking merges this file over
+ * Switch a package off on the given platforms while keeping the package's own
+ * iOS and Android settings. Autolinking merges this file over
  * the library's config shallowly: a bare `platforms: { macos: null }` REPLACES
  * the library's `platforms`, dropping settings it declares for Android —
  * since react-native-firebase 26 that includes `cmakeListsPath`, without
  * which the Android build fails in CMake with "not an existing directory".
  * Returns a one-entry object so it can be spread into `dependencies`.
  */
-function nativeFirebaseOnMobileOnly(packageName) {
+function withoutPlatforms(packageName, dropped) {
   // Loaded by file path: the package's `exports` map does not expose this file.
   const packageDir = path.join(__dirname, 'node_modules', packageName);
   const library = require(path.join(packageDir, 'react-native.config.js'));
@@ -74,11 +74,14 @@ function nativeFirebaseOnMobileOnly(packageName) {
       platforms: {
         ...platforms,
         ...(android ? { android } : {}),
-        macos: null,
-        windows: null,
+        ...Object.fromEntries(dropped.map(platform => [platform, null])),
       },
     },
   };
+}
+
+function nativeFirebaseOnMobileOnly(packageName) {
+  return withoutPlatforms(packageName, ['macos', 'windows']);
 }
 
 const config = {
@@ -96,6 +99,10 @@ const config = {
     ...nativeFirebaseOnMobileOnly('@react-native-firebase/remote-config'),
     '@shopify/react-native-skia': { platforms: { windows: null } },
     'react-native-audio-api': { platforms: { windows: null } },
+    // Its Windows project is UWP-only (Paper), which cannot link into this
+    // Composition app — and Windows does not use it: the desktops navigate
+    // with the JS stack (`createAppStackNavigator.ts`).
+    ...withoutPlatforms('react-native-screens', ['windows']),
     'react-native-share': { platforms: { macos: null, windows: null } },
     '@react-native-community/slider': { platforms: { macos: null, windows: null } },
     // Google's SDK is iOS and Android only; the desktops sign in through the

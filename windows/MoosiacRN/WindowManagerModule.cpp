@@ -2,7 +2,6 @@
 #include "WindowManagerModule.h"
 #include "MoosiacRN.h"
 
-#include <ReactCoreInjection.h>
 
 #include <utility>
 

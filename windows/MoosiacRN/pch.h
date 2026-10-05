@@ -44,4 +44,3 @@
 
 #include <string>
 
-using namespace winrt::Windows::Foundation;

@@ -41,6 +41,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import { FIREBASE_CONFIG, SIGN_IN_CONFIG } from '@/config/env';
 import { trackUserId } from '@/analytics';
+import { loadAppleAuthModule } from './apple-auth-module';
 
 export type { AuthUser, AuthContextValue } from '@sudobility/auth_lib/auth-js';
 
@@ -77,14 +78,8 @@ const AUTH_CONFIG: FirebaseAuthConfig = {
     (
       require('@react-native-google-signin/google-signin') as typeof import('@react-native-google-signin/google-signin')
     ).GoogleSignin,
-  getAppleAuth: () =>
-    (
-      require('@invertase/react-native-apple-authentication') as typeof import('@invertase/react-native-apple-authentication')
-    ).appleAuth,
-  getAppleAuthAndroid: () =>
-    (
-      require('@invertase/react-native-apple-authentication') as typeof import('@invertase/react-native-apple-authentication')
-    ).appleAuthAndroid,
+  getAppleAuth: () => loadAppleAuthModule().appleAuth,
+  getAppleAuthAndroid: () => loadAppleAuthModule().appleAuthAndroid,
   providers: {
     // iOS and Android take their Google client from the services files.
     google: mobile || googleSignInAvailable(platform, SIGN_IN_CONFIG),

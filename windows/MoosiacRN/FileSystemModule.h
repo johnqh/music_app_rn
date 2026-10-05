@@ -6,7 +6,7 @@
 
 namespace winrt::MoosiacRN::implementation {
 
-REACT_MODULE(MoosiacFileSystem)
+REACT_MODULE(FileSystemModule, L"MoosiacFileSystem")
 struct FileSystemModule {
   REACT_METHOD(getDocumentDirectoryPath)
   void getDocumentDirectoryPath(React::ReactPromise<std::string> result) noexcept;
