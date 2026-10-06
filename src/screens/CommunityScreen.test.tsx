@@ -8,7 +8,7 @@
  * set.
  */
 import { jest } from '@jest/globals';
-import { FlatList, StyleSheet } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet } from 'react-native';
 import { act, fireEvent } from '@testing-library/react-native';
 import type { CommunityItem } from '@sudobility/music_types';
 import { renderWithApp } from '@/test/render';
@@ -52,8 +52,8 @@ describe('CommunityScreen', () => {
   it('holds its content to the width of a page, centred', async () => {
     mockListCommunity.mockResolvedValue([item({})]);
     const view = await render();
-    const list = view.getByTestId('community-tiles').findByType(FlatList);
-    expect(StyleSheet.flatten(list.props.contentContainerStyle)).toMatchObject({
+    const page = view.UNSAFE_getByType(ScrollView);
+    expect(StyleSheet.flatten(page.props.contentContainerStyle)).toMatchObject({
       width: '100%',
       maxWidth: 1280,
       alignSelf: 'center',
@@ -104,6 +104,17 @@ describe('CommunityScreen', () => {
     fireEvent.changeText(view.getByLabelText(/search/i), 'zzzz');
     expect(view.queryByText('Public title')).toBeNull();
     expect(view.getByText(/zzzz/)).toBeTruthy();
+  });
+
+  it('loads inside the scroller it will show the tiles in', async () => {
+    // React Native Windows did not paint this screen when its scroller was
+    // swapped for another — a spinner screen for the list — and left it
+    // blank until the next input. One scroller holds every state.
+    mockListCommunity.mockReturnValue(new Promise(() => {}));
+    const view = await render();
+    const page = view.UNSAFE_getByType(ScrollView);
+    expect(page.findByType(ActivityIndicator)).toBeTruthy();
+    expect(page.findByProps({ testID: 'community-tiles' })).toBeTruthy();
   });
 
   it('reports a failed load as a failure', async () => {

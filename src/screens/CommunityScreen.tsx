@@ -12,7 +12,7 @@
  * it has no Duplicate and no Delete.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { FlatList, Image, View } from 'react-native';
+import { Image, View } from 'react-native';
 import type { LayoutChangeEvent } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Button, SearchInput, Text } from '@sudobility/components-rn';
@@ -24,10 +24,6 @@ import {
 } from '@sudobility/music_types';
 import { monogramFor } from '@sudobility/music_lib';
 import { TILE_GAP, tileGrid } from '@/features/projects/ProjectTiles';
-import {
-  SCREEN_MAX_WIDTH,
-  SCREEN_WIDTH_STYLE,
-} from '@/components/layout/EmbeddedScreen';
 import { getMusicClient } from '@/config/server';
 import type { CommunityItem } from '@sudobility/music_types';
 import { ScreenScaffold, ServerUnavailable } from './ScreenScaffold';
@@ -134,8 +130,10 @@ function CommunityList({ navigation }: { navigation: CommunityNavigation }) {
   const onLayout = useCallback((event: LayoutChangeEvent) => {
     setWidth(Math.round(event.nativeEvent.layout.width));
   }, []);
-  // The grid is no wider than a screen's content is, however wide the window.
-  const { columns, tileWidth } = tileGrid(Math.min(width, SCREEN_MAX_WIDTH));
+  // Measured inside `ScreenScaffold`, which caps the page's width and pads
+  // it: `tileGrid` allows for a padding the scaffold has already applied, so
+  // it is handed that much more — Resources' arithmetic.
+  const { columns, tileWidth } = tileGrid(width + 2 * TILE_GAP);
 
   /*
     Which state the list is in, and the rows it shows, are music_types'
@@ -173,125 +171,130 @@ function CommunityList({ navigation }: { navigation: CommunityNavigation }) {
       </ScreenScaffold>
     );
   }
-  if (list.kind === 'loading') {
-    return (
-      <ScreenScaffold>
+  /*
+    One scroller, mounted with the screen and never replaced: the spinner, the
+    empty states and the tiles are all drawn inside it, and how many tiles a
+    row holds is each tile's width rather than a list re-keyed per column
+    count. React Native Windows did not paint this screen when its scroller
+    was swapped — the spinner's screen for the list, then the list for one
+    keyed to the measured columns — and left it blank, tiles laid out beneath,
+    until the next input. Resources, built this way, drew at once. The
+    community is a short list; nothing is lost by not virtualizing it.
+  */
+  return (
+    <ScreenScaffold>
+      <View className="gap-2 pb-2" onLayout={onLayout} testID="community-tiles">
+        <Text className="text-muted-foreground text-base">
+          {t('community.intro')}
+        </Text>
+        <SearchInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder={t('community.searchPlaceholder')}
+          accessibilityLabel={t('community.searchLabel')}
+        />
+      </View>
+      {list.kind === 'loading' ? (
         <View className="items-center py-8">
           <Spinner />
         </View>
-      </ScreenScaffold>
-    );
-  }
+      ) : list.visible.length === 0 ? (
+        <View className="items-center gap-3 py-8">
+          {/*
+            Three different empty states, because they mean different things:
+            a failed load, a community with nothing in it, and a search that
+            matched nothing. Collapsing them would tell a reader who mistyped
+            that nobody has published anything.
+          */}
+          <Text className="text-muted-foreground text-center">
+            {list.kind === 'failed'
+              ? t('community.loadFailed')
+              : list.kind === 'noMatch'
+              ? t('community.noMatch', { query })
+              : t('community.empty')}
+          </Text>
+          {list.kind === 'empty' ? (
+            <Button
+              variant="outline"
+              onPress={() => navigation.navigate('Resources')}
+            >
+              {t('community.browseResources')}
+            </Button>
+          ) : null}
+        </View>
+      ) : (
+        <View className="flex-row flex-wrap" style={{ gap: TILE_GAP }}>
+          {list.visible.map(item => (
+            <CommunityTile
+              key={item.publicId}
+              item={item}
+              width={columns > 1 ? tileWidth : undefined}
+              avatarUrl={
+                item.publisherAvatarId
+                  ? client.avatarUrl(item.publisherAvatarId)
+                  : null
+              }
+              onOpen={() =>
+                navigation.navigate('Published', { publicId: item.publicId })
+              }
+            />
+          ))}
+        </View>
+      )}
+    </ScreenScaffold>
+  );
+}
 
+function CommunityTile({
+  item,
+  width,
+  avatarUrl,
+  onOpen,
+}: {
+  item: CommunityItem;
+  /** Undefined for one column, which fills the row. */
+  width: number | undefined;
+  avatarUrl: string | null;
+  onOpen: () => void;
+}) {
+  const { t } = useTranslation();
+  // `communityItemTitle`, not `publicName || name`: a public title of spaces
+  // is truthy and printed an empty tile.
+  const title = communityItemTitle(item);
   return (
     <View
-      className="bg-background flex-1"
-      onLayout={onLayout}
-      testID="community-tiles"
+      testID="community-tile"
+      style={width === undefined ? { width: '100%' } : { width }}
     >
-      <FlatList<CommunityItem>
-        // A FlatList cannot change how many columns it has; one that can is
-        // a different list.
-        key={columns}
-        // Clears the tab bar; see `ScreenScaffold`.
-        contentInsetAdjustmentBehavior="automatic"
-        data={[...list.visible]}
-        numColumns={columns}
-        keyExtractor={(item: CommunityItem) => item.publicId}
-        contentContainerStyle={{
-          ...SCREEN_WIDTH_STYLE,
-          padding: TILE_GAP,
-          gap: TILE_GAP,
-        }}
-        {...(columns > 1 ? { columnWrapperStyle: { gap: TILE_GAP } } : {})}
-        ListHeaderComponent={
-          <View className="gap-2 pb-2">
-            <Text className="text-muted-foreground text-base">
-              {t('community.intro')}
-            </Text>
-            <SearchInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder={t('community.searchPlaceholder')}
-              accessibilityLabel={t('community.searchLabel')}
-            />
-          </View>
+      <PressableCard
+        // "Title, by Ada": a name under a picture reads as who shared it, but
+        // read aloud after a title it could be the composer, which is a
+        // different person.
+        label={
+          item.publisherName
+            ? `${title}, ${t('community.sharedBy', {
+                name: item.publisherName,
+              })}`
+            : title
         }
-        ListEmptyComponent={
-          <View className="items-center gap-3 py-8">
-            {/*
-              Three different empty states, because they mean different things:
-              a failed load, a community with nothing in it, and a search that
-              matched nothing. Collapsing them would tell a reader who mistyped
-              that nobody has published anything.
-            */}
-            <Text className="text-muted-foreground text-center">
-              {list.kind === 'failed'
-                ? t('community.loadFailed')
-                : list.kind === 'noMatch'
-                ? t('community.noMatch', { query })
-                : t('community.empty')}
-            </Text>
-            {list.kind === 'empty' ? (
-              <Button
-                variant="outline"
-                onPress={() => navigation.navigate('Resources')}
-              >
-                {t('community.browseResources')}
-              </Button>
-            ) : null}
-          </View>
-        }
-        renderItem={({ item }: { item: CommunityItem }) => {
-          const activate = () =>
-            navigation.navigate('Published', { publicId: item.publicId });
-          // `communityItemTitle`, not `publicName || name`: a public title of
-          // spaces is truthy and printed an empty tile.
-          const title = communityItemTitle(item);
-          const pictureUrl = item.publisherAvatarId
-            ? client.avatarUrl(item.publisherAvatarId)
-            : null;
-          return (
-            <View
-              testID="community-tile"
-              style={columns > 1 ? { width: tileWidth } : undefined}
-            >
-              <PressableCard
-                // "Title, by Ada": a name under a picture reads as who shared
-                // it, but read aloud after a title it could be the composer,
-                // which is a different person.
-                label={
-                  item.publisherName
-                    ? `${title}, ${t('community.sharedBy', {
-                        name: item.publisherName,
-                      })}`
-                    : title
-                }
-                onPress={activate}
-              >
-                <View className="flex-row items-center gap-2 pb-2">
-                  <PublisherAvatar
-                    name={item.publisherName}
-                    pictureUrl={pictureUrl}
-                  />
-                  <Text
-                    className="text-muted-foreground flex-1 text-sm"
-                    numberOfLines={1}
-                  >
-                    {item.publisherName}
-                  </Text>
-                </View>
-                <Text className="text-foreground font-medium" numberOfLines={2}>
-                  {title}
-                </Text>
-                <Text className="text-muted-foreground text-sm">
-                  {new Date(item.createdAt).toLocaleDateString()}
-                </Text>
-              </PressableCard>
-            </View>
-          );
-        }}
-      />
+        onPress={onOpen}
+      >
+        <View className="flex-row items-center gap-2 pb-2">
+          <PublisherAvatar name={item.publisherName} pictureUrl={avatarUrl} />
+          <Text
+            className="text-muted-foreground flex-1 text-sm"
+            numberOfLines={1}
+          >
+            {item.publisherName}
+          </Text>
+        </View>
+        <Text className="text-foreground font-medium" numberOfLines={2}>
+          {title}
+        </Text>
+        <Text className="text-muted-foreground text-sm">
+          {new Date(item.createdAt).toLocaleDateString()}
+        </Text>
+      </PressableCard>
     </View>
   );
 }

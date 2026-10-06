@@ -33,6 +33,9 @@ void CreateProjectsWindow() {
 
   auto appWindow = window.AppWindow();
   appWindow.Title(L"Projects");
+  // The same icon as the editor window (see MoosiacRN.cpp).
+  appWindow.SetIcon(winrt::Microsoft::UI::GetIconIdFromIcon(
+      LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_ICON1))));
   appWindow.Resize({960, 680});
 
   // The native close button hides rather than destroys, the same as

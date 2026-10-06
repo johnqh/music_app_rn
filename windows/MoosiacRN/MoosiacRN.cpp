@@ -285,6 +285,10 @@ _Use_decl_annotations_ int CALLBACK WinMain(HINSTANCE /* instance */, HINSTANCE,
   g_mainWindow = reactNativeWin32App.ReactNativeWindow();
   auto appWindow{reactNativeWin32App.AppWindow()};
   appWindow.Title(L"Moosiac");
+  // The title bar's icon. An AppWindow does not take the exe's icon
+  // resource on its own, so it is handed that same icon here.
+  appWindow.SetIcon(winrt::Microsoft::UI::GetIconIdFromIcon(
+      LoadIconW(GetModuleHandleW(nullptr), MAKEINTRESOURCEW(IDI_ICON1))));
   appWindow.Resize({1280, 860});
 
   // The menu goes on before the window is first shown, so the first layout
