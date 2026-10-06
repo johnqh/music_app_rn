@@ -18,7 +18,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\"",
     "verify": "bun run format:check && bun run typecheck && bun run lint && bun run test:unit",
-    "postinstall": "patch-package --error-on-fail",
+    "postinstall": "node scripts/unshare-patched-files.cjs && patch-package --error-on-fail",
     "prestart": "node scripts/generate-theme-css.js",
     "premacos": "node scripts/generate-theme-css.js",
     "prewindows": "node scripts/generate-theme-css.js",
