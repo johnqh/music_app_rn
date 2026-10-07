@@ -11,6 +11,10 @@ import { installTestAppServices } from '@/config/initialize';
 import { readinessOf } from '@sudobility/music_player/core';
 import type { IMusicPlayer, PlaybackReadiness } from '@sudobility/music_player';
 import type { PlaybackLoadState } from '@sudobility/music_types';
+import {
+  getMusicPosition,
+  getMusicPositionSource,
+} from '@sudobility/music_types';
 import { selectMeasureRange } from '@sudobility/music_editing';
 import { renderWithApp, testDocument } from '@/test/render';
 import { usePlayerBinding } from './usePlayerBinding';
@@ -257,10 +261,19 @@ describe('TransportBar', () => {
     expect(toasts.at(-1)?.message).toMatch(/no audio device/);
   });
 
-  it('stops through the engine', () => {
+  it('reset pauses and goes to the start of the score', () => {
     const { view, calls } = setup();
-    fireEvent.press(view.getByLabelText(/stop/i));
-    expect(calls).toContain('stop');
+    act(() => getMusicPositionSource().moveTo(960));
+    fireEvent.press(view.getByLabelText(/go to start/i));
+    expect(calls).toContain('pause');
+    expect(getMusicPosition().reportedTick).toBe(0);
+  });
+
+  it('offers reset and play/pause only: no stop or bar stepping', () => {
+    const { view } = setup();
+    for (const name of [/^stop$/i, /previous bar/i, /next bar/i]) {
+      expect(view.queryByLabelText(name)).toBeNull();
+    }
   });
 
   it('sends a speed chosen from the sheet to the engine', () => {

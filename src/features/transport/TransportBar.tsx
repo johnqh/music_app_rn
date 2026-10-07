@@ -1,17 +1,14 @@
 /**
  * The playback bar, mirroring the web app's — control for control.
  *
- * Same controls in the same order, drawn with the same glyphs: go to start,
- * previous bar, play/pause, stop, next bar, loop, metronome, the bar:beat
+ * Same controls in the same order, drawn with the same glyphs: reset (pause
+ * and go to start), play/pause, loop, metronome, the bar:beat
  * readout, the tempo, the speed, the master volume, the position scrubber and
  * the timecode, with the load indicator last so it never shifts the rest.
  *
- * **The glyphs are shared, as data.** `GoToStartIcon`, `PreviousMeasureIcon`,
- * `NextMeasureIcon` and `MetronomeIcon` live in `NOTATION_ICONS` and are drawn
- * by both apps, so a metronome here is the web's metronome rather than a
- * lookalike. This bar used to draw the same `BackwardIcon` for both go-to-start
- * and previous-bar — two different actions with one picture — and a `♩` glyph
- * for the metronome.
+ * **The glyphs are shared, as data.** `GoToStartIcon` and `MetronomeIcon` live
+ * in `NOTATION_ICONS` and are drawn by both apps, so a metronome here is the
+ * web's metronome rather than a lookalike.
  *
  * **Every position-driven readout is its own subscriber.** Position arrives
  * about thirty times a second; reading it here would re-render the whole bar —
@@ -45,7 +42,6 @@ import {
   CubeTransparentIcon,
   PauseIcon,
   PlayIcon,
-  StopIcon,
 } from 'react-native-heroicons/solid';
 import {
   barBeatForTick,
@@ -99,7 +95,7 @@ export type TransportBarProps = {
   onToggleSpatial?: () => void;
   /**
    * Keeps Play off while something else owns the score — a generation job
-   * writing it live. Everything else on the bar still works: Stop, the
+   * writing it live. Everything else on the bar still works: reset, the
    * position controls, loop, metronome, tempo and volume change nothing the
    * job is about to replace.
    */
@@ -180,19 +176,13 @@ export function TransportBar({
     >
       <IconButton
         label={t('transport.goToStart')}
-        onPress={transport.goToStart}
+        onPress={() => {
+          // Reset: stop where you are and go back to the beginning.
+          transport.pause();
+          transport.goToStart();
+        }}
       >
         <NotationIcon name="GoToStartIcon" color={ink.foreground} />
-      </IconButton>
-      {/*
-        Bar stepping is the binding's: it steps from the one shared caret
-        rather than from a tick this bar tracked for itself.
-      */}
-      <IconButton
-        label={t('transport.previousMeasure')}
-        onPress={transport.previousMeasure}
-      >
-        <NotationIcon name="PreviousMeasureIcon" color={ink.foreground} />
       </IconButton>
       <PlayPauseButton
         playing={playing}
@@ -202,15 +192,6 @@ export function TransportBar({
           void transport.togglePlay();
         }}
       />
-      <IconButton label={t('transport.stop')} onPress={transport.stop}>
-        <StopIcon size={ICON_SIZE} color={ink.foreground} />
-      </IconButton>
-      <IconButton
-        label={t('transport.nextMeasure')}
-        onPress={transport.nextMeasure}
-      >
-        <NotationIcon name="NextMeasureIcon" color={ink.foreground} />
-      </IconButton>
 
       {/*
         Loop and metronome are toggles, and they say so the way every other
