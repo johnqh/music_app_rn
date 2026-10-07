@@ -17,6 +17,9 @@
 
 #import <Foundation/Foundation.h>
 #import <TargetConditionals.h>
+#if TARGET_OS_OSX
+#import <AVFoundation/AVFoundation.h>
+#endif
 // iOS: the vendored FluidSynth.xcframework, reached as a framework now that
 // the podspec no longer lists its headers as the pod's own (they clashed
 // between the device and simulator slices once pods became frameworks).
@@ -75,6 +78,10 @@ void destroyInstance(Instance &instance)
   double _masterVolume;
   int _interpolation;
   NSString *_outputDevice;
+#if TARGET_OS_OSX
+  AVAudioRecorder *_voiceRecorder;
+  NSURL *_voiceURL;
+#endif
 }
 
 RCT_EXPORT_MODULE()
@@ -107,12 +114,75 @@ RCT_EXPORT_MODULE()
 
 - (void)disposeAll
 {
+#if TARGET_OS_OSX
+  @synchronized(self) {
+    [_voiceRecorder stop];
+    _voiceRecorder = nil;
+    _voiceURL = nil;
+  }
+#endif
   std::lock_guard<std::mutex> lock(_mutex);
   for (auto &instance : _instances) {
     destroyInstance(instance);
   }
   _instances.clear();
 }
+
+#if TARGET_OS_OSX
+RCT_REMAP_METHOD(startVoiceRecording,
+                 startVoiceRecordingWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+  [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio
+                          completionHandler:^(BOOL granted) {
+    if (!granted) {
+      reject(@"MIC_DENIED", @"Microphone access was denied.", nil);
+      return;
+    }
+    @synchronized(self) {
+      if (_voiceRecorder != nil) {
+        reject(@"MIC_BUSY", @"A recording is already active.", nil);
+        return;
+      }
+      NSString *name = [NSString stringWithFormat:@"moosiac-voice-%@.wav", [NSUUID UUID].UUIDString];
+      _voiceURL = [NSURL fileURLWithPath:[NSTemporaryDirectory() stringByAppendingPathComponent:name]];
+      NSDictionary *settings = @{
+        AVFormatIDKey: @(kAudioFormatLinearPCM),
+        AVSampleRateKey: @44100,
+        AVNumberOfChannelsKey: @1,
+        AVLinearPCMBitDepthKey: @16,
+        AVLinearPCMIsFloatKey: @NO,
+      };
+      NSError *error = nil;
+      _voiceRecorder = [[AVAudioRecorder alloc] initWithURL:_voiceURL settings:settings error:&error];
+      if (!_voiceRecorder || ![_voiceRecorder record]) {
+        _voiceRecorder = nil;
+        _voiceURL = nil;
+        reject(@"MIC_UNAVAILABLE", error.localizedDescription ?: @"Could not start recording.", error);
+        return;
+      }
+      resolve(nil);
+    }
+  }];
+}
+
+RCT_REMAP_METHOD(stopVoiceRecording,
+                 stopVoiceRecordingWithResolver:(RCTPromiseResolveBlock)resolve
+                 rejecter:(RCTPromiseRejectBlock)reject)
+{
+  @synchronized(self) {
+    if (!_voiceRecorder || !_voiceURL) {
+      reject(@"MIC_IDLE", @"No recording is active.", nil);
+      return;
+    }
+    [_voiceRecorder stop];
+    NSString *uri = _voiceURL.absoluteString;
+    _voiceRecorder = nil;
+    _voiceURL = nil;
+    resolve(uri);
+  }
+}
+#endif
 
 /** One synth with its own audio output and a sequencer timed by that output's samples. */
 - (BOOL)addInstance:(NSString **)error
@@ -121,6 +191,10 @@ RCT_EXPORT_MODULE()
   instance.settings = new_fluid_settings();
   fluid_settings_setint(instance.settings, "synth.midi-channels", [_settings[@"midiChannelCount"] intValue] ?: 256);
   fluid_settings_setint(instance.settings, "synth.polyphony", [_settings[@"polyphony"] intValue] ?: 2048);
+  // FluidR3 is a compressed 23 MB file but expands to hundreds of MB of PCM.
+  // FluidSynth can load/unload a preset's samples as channels select it, so a
+  // score with a few instruments does not decode every GM instrument up front.
+  fluid_settings_setint(instance.settings, "synth.dynamic-sample-loading", 1);
   fluid_settings_setnum(instance.settings, "synth.gain", _initialGain * _masterVolume);
   fluid_settings_setint(instance.settings, "synth.chorus.active", [_settings[@"chorusActive"] boolValue] ? 1 : 0);
   fluid_settings_setint(instance.settings, "synth.reverb.active", [_settings[@"reverbActive"] boolValue] ? 1 : 0);
@@ -371,6 +445,25 @@ RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(programSelect:(double)index channel:(doub
   }
   fluid_synth_set_channel_type(instance->synth, (int)channel, CHANNEL_TYPE_MELODIC);
   fluid_synth_program_select(instance->synth, (int)channel, instance->sfontId, 0, (int)program);
+  return nil;
+}
+
+/** Unselect old score presets so dynamic sample loading can release their PCM. */
+RCT_EXPORT_BLOCKING_SYNCHRONOUS_METHOD(setPrograms:(NSArray *)melodicPrograms
+                                  percussionPrograms:(NSArray *)percussionPrograms)
+{
+  (void)melodicPrograms;
+  (void)percussionPrograms;
+  std::lock_guard<std::mutex> lock(_mutex);
+  for (auto &instance : _instances) {
+    if (!instance.synth) continue;
+    int channelCount = 256;
+    fluid_settings_getint(instance.settings, "synth.midi-channels", &channelCount);
+    for (int channel = 0; channel < channelCount; ++channel) {
+      fluid_synth_all_sounds_off(instance.synth, channel);
+      fluid_synth_unset_program(instance.synth, channel);
+    }
+  }
   return nil;
 }
 

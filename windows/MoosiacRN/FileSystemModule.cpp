@@ -5,12 +5,35 @@
 
 #include <winrt/Windows.Storage.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <vector>
 
 namespace winrt::MoosiacRN::implementation {
+
+namespace {
+std::vector<char> DecodeBase64(const std::string &input) {
+  constexpr char alphabet[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  std::vector<char> output;
+  unsigned int accumulator = 0;
+  int bits = -8;
+  for (const unsigned char c : input) {
+    if (c == '=') break;
+    const char *digit = std::find(std::begin(alphabet), std::end(alphabet) - 1, c);
+    if (digit == std::end(alphabet) - 1) continue;
+    accumulator = (accumulator << 6) | static_cast<unsigned int>(digit - alphabet);
+    bits += 6;
+    if (bits >= 0) {
+      output.push_back(static_cast<char>((accumulator >> bits) & 0xff));
+      bits -= 8;
+    }
+  }
+  return output;
+}
+} // namespace
 
 void FileSystemModule::getDocumentDirectoryPath(
     React::ReactPromise<std::string> result) noexcept {
@@ -48,7 +71,7 @@ void FileSystemModule::readFile(
 }
 
 void FileSystemModule::writeFile(
-    std::string path, std::string content, std::string /*encoding*/,
+    std::string path, std::string content, std::string encoding,
     React::ReactPromise<bool> result) noexcept {
   const auto filePath = std::filesystem::u8path(path);
   std::error_code error;
@@ -58,7 +81,12 @@ void FileSystemModule::writeFile(
     result.Reject(React::ReactError{"EACCES", "Could not write file."});
     return;
   }
-  output.write(content.data(), static_cast<std::streamsize>(content.size()));
+  if (encoding == "base64") {
+    const auto decoded = DecodeBase64(content);
+    output.write(decoded.data(), static_cast<std::streamsize>(decoded.size()));
+  } else {
+    output.write(content.data(), static_cast<std::streamsize>(content.size()));
+  }
   if (!output) {
     result.Reject(React::ReactError{"EIO", "Could not write file."});
     return;

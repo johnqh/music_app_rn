@@ -34,6 +34,12 @@ const sources = files.filter(
  * app's own document, none of which is a rule about music.
  */
 const ALLOWED_NON_UI = new Set([
+  // Microphone capture is a platform bridge; the transcription helper wires
+  // the authenticated client to the existing asynchronous project workflow.
+  'src/features/score-editor/voice-recorder.ts',
+  'src/features/score-editor/transcribe-recording.ts',
+  // WAV-to-MP3 conversion and temporary file handling at the native boundary.
+  'src/features/score-editor/voice-mp3.ts',
   // The Resources screen's icons: a table of `require`s, which is how Metro
   // is told an asset exists. Files on disk are the one part of that page a
   // library cannot hold — the web app keeps its own table for the same reason.

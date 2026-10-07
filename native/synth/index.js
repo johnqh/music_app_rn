@@ -40,12 +40,21 @@ export const nativeSynthApi = {
   createSynth() {
     const M = MoosiacSynth;
     return {
-      async initialize({ soundfontUri, instanceCount, settings, onProgress }) {
+      async initialize({ soundfontUri, instanceCount, settings, programs, onProgress }) {
         onProgress?.(0);
-        await M.initialize(soundfontUri, instanceCount, settings);
+        await M.initialize(soundfontUri, instanceCount, {
+          ...settings,
+          melodicPrograms: programs?.melodic ?? [],
+          percussionPrograms: programs?.percussion ?? [0],
+        });
         onProgress?.(1);
       },
       ensureInstances: count => M.ensureInstances(count),
+      setPrograms: async programs => {
+        if (M?.setPrograms) {
+          await M.setPrograms(programs.melodic, programs.percussion);
+        }
+      },
       currentTime: () => M.currentTime(),
       outputLatency: () => M.outputLatency(),
       noteAt: (i, c, m, v, delay, duration) => {

@@ -28,20 +28,20 @@
         "@react-navigation/stack": "^7.7.1",
         "@shopify/react-native-skia": "2.2.12",
         "@sudobility/auth_lib": "^0.0.107",
-        "@sudobility/building_blocks_rn": "^0.0.83",
-        "@sudobility/components-rn": "^1.0.116",
+        "@sudobility/building_blocks_rn": "^0.0.84",
+        "@sudobility/components-rn": "^1.0.117",
         "@sudobility/consumables_client": "^0.0.28",
         "@sudobility/design": "^1.1.58",
         "@sudobility/di": "^1.5.68",
-        "@sudobility/di_rn": "^0.1.151",
+        "@sudobility/di_rn": "^0.1.152",
         "@sudobility/entity_client": "^0.0.46",
-        "@sudobility/music_client": "^0.4.85",
+        "@sudobility/music_client": "^0.4.86",
         "@sudobility/music_codecs": "^0.2.51",
         "@sudobility/music_drawing": "^0.0.61",
-        "@sudobility/music_editing": "^0.0.45",
+        "@sudobility/music_editing": "^0.0.46",
         "@sudobility/music_io": "^0.9.67",
         "@sudobility/music_lib": "^1.9.73",
-        "@sudobility/music_player": "^0.1.60",
+        "@sudobility/music_player": "^0.1.61",
         "@sudobility/music_spatial_core": "^0.0.15",
         "@sudobility/music_spatial_rn": "^0.0.15",
         "@sudobility/music_types": "^0.13.49",
@@ -666,9 +666,9 @@
 
     "@sudobility/auth_lib": ["@sudobility/auth_lib@0.0.107", "", { "peerDependencies": { "@react-native-firebase/app": ">=18.0.0", "@react-native-firebase/auth": ">=18.0.0", "@sudobility/di": "^1.5.68", "@sudobility/types": "^1.9.68", "@tanstack/react-query": "^5.0.0", "firebase": "^12.7.0", "react": "^18.0.0 || ^19.0.0" }, "optionalPeers": ["@react-native-firebase/app", "@react-native-firebase/auth", "firebase"] }, "sha512-iR9Mi/T/snhg2CHERfoxVCFohTrmQO9QRDuJooUgqMm/szIBUWTbJ6tlyfmLMGXuRABkWRrxc5QQSLJtOyn5iA=="],
 
-    "@sudobility/building_blocks_rn": ["@sudobility/building_blocks_rn@0.0.83", "", { "peerDependencies": { "@react-native-async-storage/async-storage": ">=1.0.0", "@react-navigation/bottom-tabs": ">=7.0.0", "@react-navigation/native": ">=7.0.0", "@react-navigation/native-stack": ">=7.0.0", "@sudobility/components-rn": "^1.0.116", "@sudobility/design": "^1.1.58", "@sudobility/types": "*", "@tanstack/react-query": "*", "firebase": "*", "i18next": "^23.0.0 || ^24.0.0 || ^25.0.0", "react": "^18.0.0 || ^19.0.0", "react-i18next": "^14.0.0 || ^15.0.0 || ^16.0.0", "react-native": ">=0.72.0", "react-native-gesture-handler": "*", "react-native-in-app-review": ">=4.4.2", "react-native-localize": ">=3.0.0", "react-native-purchases": "*", "react-native-safe-area-context": ">=4.0.0" }, "optionalPeers": ["@sudobility/types", "@tanstack/react-query", "firebase", "react-native-gesture-handler", "react-native-in-app-review", "react-native-localize", "react-native-purchases"] }, "sha512-KGCKc0Gm4nOzn++6TINW6bNYRDrHQQwC7wJr9CEIX5pcP5ChzDAbWmIvwcIjEzVwquPR1LacnZOdkpuPoaofRA=="],
+    "@sudobility/building_blocks_rn": ["@sudobility/building_blocks_rn@0.0.84", "", { "peerDependencies": { "@react-native-async-storage/async-storage": ">=1.0.0", "@react-navigation/bottom-tabs": ">=7.0.0", "@react-navigation/native": ">=7.0.0", "@react-navigation/native-stack": ">=7.0.0", "@sudobility/components-rn": "^1.0.117", "@sudobility/design": "^1.1.58", "@sudobility/types": "*", "@tanstack/react-query": "*", "firebase": "*", "i18next": "^23.0.0 || ^24.0.0 || ^25.0.0", "react": "^18.0.0 || ^19.0.0", "react-i18next": "^14.0.0 || ^15.0.0 || ^16.0.0", "react-native": ">=0.72.0", "react-native-gesture-handler": "*", "react-native-in-app-review": ">=4.4.2", "react-native-localize": ">=3.0.0", "react-native-purchases": "*", "react-native-safe-area-context": ">=4.0.0" }, "optionalPeers": ["@sudobility/types", "@tanstack/react-query", "firebase", "react-native-gesture-handler", "react-native-in-app-review", "react-native-localize", "react-native-purchases"] }, "sha512-RSfelUc8krhy7DyqggrEyBNpkSyYMqhVOBBSwbPgOekc+DnCYP6+6WXkv3hR1SoMIQPzB58qf3jQeX570obi8w=="],
 
-    "@sudobility/components-rn": ["@sudobility/components-rn@1.0.116", "", { "peerDependencies": { "@sudobility/design": "^1.1.58", "@sudobility/types": "^1.9.68", "class-variance-authority": "^0.7.0", "clsx": "^2.0.0", "nativewind": ">=4.0.0", "react": "^18.0.0 || ^19.0.0", "react-native": ">=0.72.0", "react-native-gesture-handler": ">=2.0.0", "react-native-reanimated": ">=3.0.0", "react-native-safe-area-context": ">=4.0.0", "react-native-svg": ">=13.0.0", "tailwind-merge": ">=2.0.0" } }, "sha512-IyEE2Jh99xLQjdETUwQTYMFKkaukTxXMs10h9fzdNrYH53dK6oz5Wy6DqD4AaTw9CzwrgugvmV5ChPxi7VEM+w=="],
+    "@sudobility/components-rn": ["@sudobility/components-rn@1.0.117", "", { "peerDependencies": { "@react-native-community/slider": "^4.5.1", "@sudobility/design": "^1.1.58", "@sudobility/types": "^1.9.68", "class-variance-authority": "^0.7.0", "clsx": "^2.0.0", "nativewind": ">=4.0.0", "react": "^18.0.0 || ^19.0.0", "react-native": ">=0.72.0", "react-native-gesture-handler": ">=2.0.0", "react-native-reanimated": ">=3.0.0", "react-native-safe-area-context": ">=4.0.0", "react-native-svg": ">=13.0.0", "tailwind-merge": ">=2.0.0" } }, "sha512-Dfo5jU3ieKxCF/sJiMmx66fSIP4tHewuYG/N36FuoBIgWvcPKgRko9dZPBt9HRSzab97yPQlE3yIFp2lhwHwdA=="],
 
     "@sudobility/consumables_client": ["@sudobility/consumables_client@0.0.28", "", { "peerDependencies": { "@revenuecat/purchases-js": "^1.0.0", "@sudobility/types": "^1.9.68", "react": "^18.0.0 || ^19.0.0", "react-native-purchases": ">=7.0.0" }, "optionalPeers": ["@revenuecat/purchases-js", "react-native-purchases"] }, "sha512-0xwtx4uJhQi/MCOSmf+TUrp9dSf21mwrfUfbfpqVoyN668UWrJA9+LqeXvtYqUk6NayE8Mg+1C3xzO9OomXOJQ=="],
 
@@ -676,23 +676,23 @@
 
     "@sudobility/di": ["@sudobility/di@1.5.68", "", { "peerDependencies": { "@notifee/react-native": ">=7.0.0", "@react-native-async-storage/async-storage": ">=1.19.0", "@react-native-community/netinfo": ">=9.0.0", "@react-native-firebase/analytics": ">=18.0.0", "@react-native-firebase/app": ">=18.0.0", "@react-native-firebase/messaging": ">=18.0.0", "@react-native-firebase/remote-config": ">=18.0.0", "@sudobility/types": "^1.9.68", "firebase": ">=11.0.0", "react": ">=18.0.0", "react-native": ">=0.70.0" }, "optionalPeers": ["@notifee/react-native", "@react-native-async-storage/async-storage", "@react-native-community/netinfo", "@react-native-firebase/analytics", "@react-native-firebase/app", "@react-native-firebase/messaging", "@react-native-firebase/remote-config", "firebase", "react-native"] }, "sha512-C21cnkf8ng1V/jQfVc/4+MbFaTwYmra2YEvlYmqKOY95/qxambjVyhiTOr+mbFFy+jkxL1vKObraeR0zOv3Vsg=="],
 
-    "@sudobility/di_rn": ["@sudobility/di_rn@0.1.151", "", { "peerDependencies": { "@sudobility/components-rn": "^1.0.116", "@sudobility/di": "^1.5.68", "@sudobility/subscription_lib": "*", "@sudobility/types": "^1.9.68", "react": "^18.0.0 || ^19.0.0", "react-native": ">=0.72.0" }, "optionalPeers": ["@sudobility/subscription_lib"] }, "sha512-9kCTOER3/UZ3bYmm8c7ExHOiE+JhOSmoU+vd6FvFgrZxuRmiQkmUElWfr4TZveN/I6S3q6tPRoRxXK/6Vt4DCQ=="],
+    "@sudobility/di_rn": ["@sudobility/di_rn@0.1.152", "", { "peerDependencies": { "@sudobility/components-rn": "^1.0.117", "@sudobility/di": "^1.5.68", "@sudobility/subscription_lib": "*", "@sudobility/types": "^1.9.68", "react": "^18.0.0 || ^19.0.0", "react-native": ">=0.72.0" }, "optionalPeers": ["@sudobility/subscription_lib"] }, "sha512-40SdjqmV/nwOgd9+IxpDf3tHuqMNXlG5dRWkbnIONWnP6vd/6sOINpe/vBAe3OMRGUveuSMyNV72IpbMuOu2TQ=="],
 
     "@sudobility/entity_client": ["@sudobility/entity_client@0.0.46", "", { "peerDependencies": { "@sudobility/types": "^1.9.68", "@tanstack/react-query": "^5.0.0", "react": "^18.0.0 || ^19.0.0" } }, "sha512-hGY+1840ZUL8mNUc8Ask4FJ0uOvCTXOr3MSIJf/97hfJdkMlLsRWJn5bsq1bjoTm+6D/PxOnncxitNyolfQ1rA=="],
 
-    "@sudobility/music_client": ["@sudobility/music_client@0.4.85", "", { "peerDependencies": { "@sudobility/di": "^1.5.68", "@sudobility/music_types": "^0.13.49", "@sudobility/types": "^1.9.68", "@tanstack/react-query": ">=5", "react": ">=18" } }, "sha512-34uKPARjLKtDfrr1CWO72htILkpxmbre/QAJOxRCA08O8FG5Wt6avu0+oJ7bcA01NOCsn+TMFnFWtZK1VDM9PA=="],
+    "@sudobility/music_client": ["@sudobility/music_client@0.4.86", "", { "peerDependencies": { "@sudobility/di": "^1.5.68", "@sudobility/music_types": "^0.13.49", "@sudobility/types": "^1.9.68", "@tanstack/react-query": ">=5", "react": ">=18" } }, "sha512-THpPdl1U9sdkd0FY8v1Zu8Uud5uSNUZph3byCnjpiFt3ZXduOtKyeHBQkdpRwcAtMQ0mr7w/s5Nqduygk1KGWg=="],
 
     "@sudobility/music_codecs": ["@sudobility/music_codecs@0.2.51", "", { "peerDependencies": { "@sudobility/music_types": "^0.13.49" } }, "sha512-tHctv9KLEXJDr9OQ8p60APW7rwlFAKxqvKCBlx/rb9/+0ZFy+Ausne1sZFx6WWqVEzhnLUByUy9zqhRDVDmMRQ=="],
 
     "@sudobility/music_drawing": ["@sudobility/music_drawing@0.0.61", "", { "peerDependencies": { "@sudobility/music_types": "^0.13.49", "vexflow": "^4.2.5" } }, "sha512-R2tlBni9hHnMR4RObqCFJRJkqv5cMeKAlUVkDsC4No1E890AtRZyFCNVtlt1npRt47eaf/vhozyXPE2ujh2mHA=="],
 
-    "@sudobility/music_editing": ["@sudobility/music_editing@0.0.45", "", { "peerDependencies": { "@sudobility/music_types": "^0.13.49", "immer": "^11.1.18", "react": ">=18", "zustand": ">=5" } }, "sha512-J3dtT4JKYGywurugeZArZy4nJKztFViKwr15Q3HMVTzdmHQ343J2UrE1QLt0HG+ozADTobCitjoWNqAUzJ+5/A=="],
+    "@sudobility/music_editing": ["@sudobility/music_editing@0.0.46", "", { "peerDependencies": { "@sudobility/music_types": "^0.13.49", "immer": "^11.1.18", "react": ">=18", "zustand": ">=5" } }, "sha512-dw3us8KntWQXu8eXS1T9aSYEcJnovkKhlHe0WPfHXD6TUvPY9aERD8gJouuawcDFQM6c8CBkJcb1jPotRWHeJg=="],
 
     "@sudobility/music_io": ["@sudobility/music_io@0.9.67", "", { "peerDependencies": { "@breezystack/lamejs": "^1.2.7", "@sudobility/music_codecs": "^0.2.51", "@sudobility/music_types": "^0.13.49", "fast-xml-parser": ">=5.0.0", "react-native-fs": ">=2.20.0", "react-native-share": ">=10.0.0" }, "optionalPeers": ["fast-xml-parser", "react-native-fs", "react-native-share"] }, "sha512-zAensQ3C0pXqvJqbdYUUdkpd/wRrw47B0Kf/m433IecYUMzqk5kra63BAybKwAVdQSgWtN499iULiERlaxYDDw=="],
 
     "@sudobility/music_lib": ["@sudobility/music_lib@1.9.73", "", { "peerDependencies": { "@sudobility/music_types": "^0.13.49", "immer": "^10.0.0 || ^11.0.0", "zustand": ">=5" } }, "sha512-uX+I4x7kFreYtCnETeDBac1ylplNO+dWWs+aczhbRgTU4w6iPPEF1NMk+e9ukw2eoNpzZtf6rHKPPLe577gSKQ=="],
 
-    "@sudobility/music_player": ["@sudobility/music_player@0.1.60", "", { "peerDependencies": { "@sudobility/music_types": "^0.13.49", "js-synthesizer": "^1.13.0", "react": ">=18.0.0", "react-native-audio-api": ">=0.13.0" }, "optionalPeers": ["js-synthesizer", "react", "react-native-audio-api"] }, "sha512-QxluNMD8Ki8HUP1cOKyQrephikdz9XCtoEboDEk5az6KgU4KEtC/q1lKB0wt2sx/xSc4GJouQq8kn8AJIno7Pw=="],
+    "@sudobility/music_player": ["@sudobility/music_player@0.1.61", "", { "peerDependencies": { "@sudobility/music_types": "^0.13.49", "js-synthesizer": "^1.13.0", "react": ">=18.0.0", "react-native-audio-api": ">=0.13.0" }, "optionalPeers": ["js-synthesizer", "react", "react-native-audio-api"] }, "sha512-XjpjOtXgCuGOpnwXTGDkg/UFHX72FQitSsY51+b90BFhIKWInFxhf9O0geMaYyYsA4EUDxldwagq/EkTMHoaeg=="],
 
     "@sudobility/music_spatial_core": ["@sudobility/music_spatial_core@0.0.15", "", { "peerDependencies": { "@sudobility/music_types": "^0.13.49", "react": ">=18", "three": "^0.160.0" } }, "sha512-Dqeh/7E/SDCwXL7It+/T2UI3oDXgECPuS2WHrqRef15OtdTqErRF1wGiNduJNJswBudPoab2lLJoLUSAGG4RQw=="],
 

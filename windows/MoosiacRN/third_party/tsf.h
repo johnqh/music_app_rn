@@ -68,6 +68,9 @@ typedef struct tsf tsf;
 #ifndef TSF_NO_STDIO
 // Directly load a SoundFont from a .sf2 file path
 TSFDEF tsf* tsf_load_filename(const char* filename);
+// Loads only sample data used by General MIDI bank 0 and drum bank 128. Each
+// bit is a program number; drum bits are stored at offset 128.
+TSFDEF tsf* tsf_load_filename_programs(const char* filename, const unsigned char* programs);
 #endif
 
 // Load a SoundFont from a block of memory
@@ -88,6 +91,7 @@ struct tsf_stream
 
 // Generic SoundFont loading method using the stream structure above
 TSFDEF tsf* tsf_load(struct tsf_stream* stream);
+TSFDEF tsf* tsf_load_programs(struct tsf_stream* stream, const unsigned char* programs);
 
 // Copy a tsf instance from an existing one, use tsf_close to close it as well.
 // All copied tsf instances and their original instance are linked, and share the underlying soundfont.
@@ -369,6 +373,21 @@ TSFDEF tsf* tsf_load_filename(const char* filename)
 	}
 	stream.data = f;
 	res = tsf_load(&stream);
+	fclose(f);
+	return res;
+}
+TSFDEF tsf* tsf_load_filename_programs(const char* filename, const unsigned char* programs)
+{
+	tsf* res;
+	struct tsf_stream stream = { TSF_NULL, (int(*)(void*,void*,unsigned int))&tsf_stream_stdio_read, (int(*)(void*,unsigned int))&tsf_stream_stdio_skip };
+	#if __STDC_WANT_SECURE_LIB__
+	FILE* f = TSF_NULL; fopen_s(&f, filename, "rb");
+	#else
+	FILE* f = fopen(filename, "rb");
+	#endif
+	if (!f) return TSF_NULL;
+	stream.data = f;
+	res = tsf_load_programs(&stream, programs);
 	fclose(f);
 	return res;
 }
@@ -912,15 +931,21 @@ static int tsf_decode_ogg(const tsf_u8 *pSmpl, const tsf_u8 *pSmplEnd, float** p
 	return 1;
 }
 
-static int tsf_decode_sf3_samples(const void* rawBuffer, float** pFloatBuffer, unsigned int* pSmplCount, struct tsf_hydra *hydra)
+static int tsf_decode_sf3_samples(const void* rawBuffer, float** pFloatBuffer, unsigned int* pSmplCount, struct tsf_hydra *hydra, const unsigned char* neededSamples)
 {
 	const tsf_u8* smplBuffer = (const tsf_u8*)rawBuffer;
-	tsf_u32 smplLength = *pSmplCount, resNum = 0, resMax = 0, resInitial = (smplLength > 0x100000 ? (smplLength & ~0xFFFFF) : 65536);
+	tsf_u32 smplLength = *pSmplCount, resNum = 0, resMax = 0, resInitial =
+		(neededSamples ? 65536 : (smplLength > 0x100000 ? (smplLength & ~0xFFFFF) : 65536));
 	float *res = TSF_NULL, *oldres;
 	int i, shdrLast = hydra->shdrNum - 1, is_sf3 = 0;
 	for (i = 0; i <= shdrLast; i++)
 	{
 		struct tsf_hydra_shdr *shdr = &hydra->shdrs[i];
+		if (neededSamples && !neededSamples[i])
+		{
+			shdr->start = shdr->end = shdr->startLoop = shdr->endLoop = 0;
+			continue;
+		}
 		if (shdr->sampleType & 0x30) // compression flags (sometimes Vorbis flag)
 		{
 			const tsf_u8 *pSmpl = smplBuffer + shdr->start, *pSmplEnd = smplBuffer + shdr->end;
@@ -1363,7 +1388,7 @@ static void tsf_voice_render(tsf* f, struct tsf_voice* v, float* outputBuffer, i
 	if (tmpLowpass.active || dynamicLowpass) v->lowpass = tmpLowpass;
 }
 
-TSFDEF tsf* tsf_load(struct tsf_stream* stream)
+TSFDEF tsf* tsf_load_programs(struct tsf_stream* stream, const unsigned char* programs)
 {
 	tsf* res = TSF_NULL;
 	struct tsf_riffchunk chunkHead;
@@ -1371,6 +1396,7 @@ TSFDEF tsf* tsf_load(struct tsf_stream* stream)
 	struct tsf_hydra hydra;
 	void* rawBuffer = TSF_NULL;
 	float* floatBuffer = TSF_NULL;
+	unsigned char* neededSamples = TSF_NULL;
 	tsf_u32 smplCount = 0;
 
 	if (!tsf_riffchunk_read(TSF_NULL, &chunkHead, stream) || !TSF_FourCCEquals(chunkHead.id, "sfbk"))
@@ -1436,8 +1462,43 @@ TSFDEF tsf* tsf_load(struct tsf_stream* stream)
 	}
 	else
 	{
+		if (programs)
+		{
+			int i;
+			neededSamples = (unsigned char*)TSF_MALLOC(hydra.shdrNum);
+			if (!neededSamples) goto out_of_memory;
+			TSF_MEMSET(neededSamples, 0, hydra.shdrNum);
+			for (i = 0; i < hydra.phdrNum - 1; ++i)
+			{
+				struct tsf_hydra_phdr* preset = &hydra.phdrs[i];
+				int programIndex = preset->bank == 0 ? preset->preset : (preset->bank == 128 ? 128 + preset->preset : -1);
+				struct tsf_hydra_pbag *pbag, *pbagEnd;
+				if (programIndex < 0 || programIndex >= 256 || !programs[programIndex]) continue;
+				for (pbag = hydra.pbags + preset->presetBagNdx, pbagEnd = hydra.pbags + preset[1].presetBagNdx; pbag != pbagEnd; ++pbag)
+				{
+					struct tsf_hydra_pgen *pgen, *pgenEnd;
+					for (pgen = hydra.pgens + pbag->genNdx, pgenEnd = hydra.pgens + pbag[1].genNdx; pgen != pgenEnd; ++pgen)
+					if (pgen->genOper == 41 && pgen->genAmount.wordAmount < hydra.instNum)
+					{
+						struct tsf_hydra_inst* inst = &hydra.insts[pgen->genAmount.wordAmount];
+						struct tsf_hydra_ibag *ibag, *ibagEnd;
+						for (ibag = hydra.ibags + inst->instBagNdx, ibagEnd = hydra.ibags + inst[1].instBagNdx; ibag != ibagEnd; ++ibag)
+						{
+							struct tsf_hydra_igen *igen, *igenEnd;
+							for (igen = hydra.igens + ibag->instGenNdx, igenEnd = hydra.igens + ibag[1].instGenNdx; igen != igenEnd; ++igen)
+							if (igen->genOper == 53 && igen->genAmount.wordAmount < hydra.shdrNum - 1)
+								neededSamples[igen->genAmount.wordAmount] = 1;
+						}
+					}
+				}
+			}
+			for (i = 0; i < hydra.shdrNum - 1; ++i)
+				if (neededSamples[i] && (hydra.shdrs[i].sampleType & 0x0F) != 1 &&
+					hydra.shdrs[i].sampleLink < hydra.shdrNum - 1)
+					neededSamples[hydra.shdrs[i].sampleLink] = 1;
+		}
 		#ifdef STB_VORBIS_INCLUDE_STB_VORBIS_H
-		if (!floatBuffer && !tsf_decode_sf3_samples(rawBuffer, &floatBuffer, &smplCount, &hydra)) goto out_of_memory;
+		if (!floatBuffer && !tsf_decode_sf3_samples(rawBuffer, &floatBuffer, &smplCount, &hydra, neededSamples)) goto out_of_memory;
 		#endif
 		res = (tsf*)TSF_MALLOC(sizeof(tsf));
 		if (res) TSF_MEMSET(res, 0, sizeof(tsf));
@@ -1454,11 +1515,17 @@ TSFDEF tsf* tsf_load(struct tsf_stream* stream)
 		res = TSF_NULL;
 		//if (e) *e = TSF_OUT_OF_MEMORY;
 	}
+	TSF_FREE(neededSamples);
 	TSF_FREE(hydra.phdrs); TSF_FREE(hydra.pbags); TSF_FREE(hydra.pmods);
 	TSF_FREE(hydra.pgens); TSF_FREE(hydra.insts); TSF_FREE(hydra.ibags);
 	TSF_FREE(hydra.imods); TSF_FREE(hydra.igens); TSF_FREE(hydra.shdrs);
 	TSF_FREE(rawBuffer);   TSF_FREE(floatBuffer);
 	return res;
+}
+
+TSFDEF tsf* tsf_load(struct tsf_stream* stream)
+{
+	return tsf_load_programs(stream, TSF_NULL);
 }
 
 TSFDEF tsf* tsf_copy(tsf* f)

@@ -155,6 +155,17 @@ export type AppLayoutProps = {
   onDocuments: () => void;
   /** Shows the keyboard shortcuts. Absent where the holder has no sheet for them. */
   onShortcuts?: () => void;
+  /** Reports a server-side voice transcription job to the editor's job strip. */
+  onVoiceTranscriptionJob?: (
+    projectId: string,
+    cancel: () => void,
+    progress?: {
+      stage: 'plan' | 'part' | 'section' | 'chunk';
+      label: string;
+      done: number;
+      total: number;
+    },
+  ) => void;
   /**
    * The export sheet, mounted here rather than built here.
    *
@@ -256,6 +267,7 @@ export function AppLayout({
   onSettings,
   onDocuments,
   onShortcuts,
+  onVoiceTranscriptionJob,
   exportSheet,
   overlay,
   scoreReadOnly = false,
@@ -647,6 +659,7 @@ export function AppLayout({
           inspectorVisible={inspectorVisible}
           {...(onGenerateTrack ? { onGenerateTrack } : {})}
           {...(onGenerateInsertedBars ? { onGenerateInsertedBars } : {})}
+          {...(onVoiceTranscriptionJob ? { onVoiceTranscriptionJob } : {})}
           onToggleInspector={() => setInspectorOpen(!inspectorVisible)}
         />
       </SafeAreaView>

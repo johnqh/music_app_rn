@@ -155,6 +155,15 @@ export function EditorScreen() {
 
 function DocumentEditor({ document }: { document: MusicDocument }) {
   const { t } = useTranslation();
+  const [voiceJob, setVoiceJob] = useState<{
+    cancel: () => void;
+    progress: {
+      stage: 'plan' | 'part' | 'section' | 'chunk';
+      label: string;
+      done: number;
+      total: number;
+    } | null;
+  } | null>(null);
   /*
     This tab's scroll memory. The component is fresh per document, so the score
     view would otherwise open at the top whatever caret the list restored: it
@@ -659,6 +668,9 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       onSettings={onSettings}
       onDocuments={onDocuments}
       onShortcuts={onShortcuts}
+      onVoiceTranscriptionJob={(projectId, cancel, progress) =>
+        setVoiceJob(projectId ? { cancel, progress: progress ?? null } : null)
+      }
       {...(canPrint() ? { onPrint, printing } : {})}
       {...(projectId
         ? {
@@ -701,14 +713,24 @@ function DocumentEditor({ document }: { document: MusicDocument }) {
       scoreReadOnly={generating}
       playDisabled={generating}
       overlay={
-        <GenerationOverlay
-          visible={generating}
-          status={generation.status}
-          error={generation.error}
-          progress={generation.progress}
-          live={generation.live}
-          onCancel={() => void generation.cancel()}
-        />
+        generating ? (
+          <GenerationOverlay
+            visible
+            status={generation.status}
+            error={generation.error}
+            progress={generation.progress}
+            live={generation.live}
+            onCancel={() => void generation.cancel()}
+          />
+        ) : voiceJob ? (
+          <GenerationOverlay
+            visible
+            status="transcribing"
+            error={null}
+            progress={voiceJob.progress}
+            onCancel={voiceJob.cancel}
+          />
+        ) : null
       }
       exportSheet={
         <>

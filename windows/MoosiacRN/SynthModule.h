@@ -9,6 +9,7 @@
 namespace winrt::MoosiacRN::implementation {
 
 struct WindowsSynthState;
+struct WindowsVoiceState;
 
 REACT_MODULE(SynthModule, L"MoosiacSynth")
 struct SynthModule {
@@ -28,6 +29,12 @@ struct SynthModule {
   void setOutputDevice(std::string deviceId,
                        React::ReactPromise<React::JSValue> result) noexcept;
 
+  REACT_METHOD(startVoiceRecording)
+  void startVoiceRecording(React::ReactPromise<React::JSValue> result) noexcept;
+
+  REACT_METHOD(stopVoiceRecording)
+  void stopVoiceRecording(React::ReactPromise<React::JSValue> result) noexcept;
+
   REACT_METHOD(initialize)
   void initialize(std::string soundfontUri, double instanceCount,
                   React::JSValueObject settings,
@@ -36,6 +43,11 @@ struct SynthModule {
   REACT_METHOD(ensureInstances)
   void ensureInstances(double count,
                        React::ReactPromise<React::JSValue> result) noexcept;
+
+  REACT_METHOD(setPrograms)
+  void setPrograms(React::JSValueArray melodicPrograms,
+                   React::JSValueArray percussionPrograms,
+                   React::ReactPromise<React::JSValue> result) noexcept;
 
   REACT_SYNC_METHOD(currentTime)
   double currentTime() noexcept;
@@ -79,6 +91,7 @@ struct SynthModule {
 
  private:
   std::shared_ptr<WindowsSynthState> m_state;
+  std::shared_ptr<WindowsVoiceState> m_voice;
 };
 
 } // namespace winrt::MoosiacRN::implementation

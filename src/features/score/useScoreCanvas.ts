@@ -30,6 +30,7 @@
  */
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import type { RefObject } from 'react';
+import { Platform } from 'react-native';
 import type { ScrollView } from 'react-native';
 import * as skia from '@shopify/react-native-skia';
 import type { SkPicture } from '@shopify/react-native-skia';
@@ -43,8 +44,26 @@ import { createSkiaLayeredPaint } from '@sudobility/music_drawing/skia';
 
 const SCHEDULER: CanvasScheduler = {
   frame: callback => {
-    const id = requestAnimationFrame(callback);
-    return () => cancelAnimationFrame(id);
+    // macOS can stop delivering animation frames to an occluded window while
+    // audio and the cursor's native clock continue. Keep its score painting on
+    // a timer too, so a page turn is ready when the window comes forward.
+    let pending = true;
+    let frame: number | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const run = () => {
+      if (!pending) return;
+      pending = false;
+      if (frame !== null) cancelAnimationFrame(frame);
+      if (timer !== null) clearTimeout(timer);
+      callback();
+    };
+    frame = requestAnimationFrame(run);
+    if (Platform.OS === 'macos' && pending) timer = setTimeout(run, 32);
+    return () => {
+      pending = false;
+      if (frame !== null) cancelAnimationFrame(frame);
+      if (timer !== null) clearTimeout(timer);
+    };
   },
   timeout: (callback, ms) => {
     const id = setTimeout(callback, ms);
@@ -129,7 +148,8 @@ export function useScoreCanvas({
       size: () => size.current,
       show: picture => signals.picture.set(picture as SkPicture),
     });
-    return new ScoreCanvas({
+    let canvas: ScoreCanvas;
+    canvas = new ScoreCanvas({
       scheduler: SCHEDULER,
       surface: {
         paint,
@@ -143,9 +163,14 @@ export function useScoreCanvas({
         scrollTo: target => {
           vertical.current?.scrollTo({ y: target.top, animated: false });
           horizontal.current?.scrollTo({ x: target.left, animated: false });
+          // A programmatic ScrollView move may not report onScroll while the
+          // window is behind another app. Update the viewport and cursor now.
+          canvas.setScroll(target.left, target.top);
+          signals.scroll.set({ left: target.left, top: target.top });
         },
       },
     });
+    return canvas;
     // The refs and signals are stable objects; the canvas is made once.
   }, [vertical, horizontal, size, signals]);
 

@@ -105,6 +105,7 @@ import {
 import { NotationIcon } from '@/components/icons/NotationIcon';
 import { useNotationInk } from '@/components/icons/notation-ink';
 import { IconButton } from '@/components/layout/IconButton';
+import { VoiceRecordButton } from './VoiceRecordButton';
 import { ToolbarSelect } from '@/components/controls/ToolbarSelect';
 import type { ToolbarOption } from '@/components/controls/ToolbarSelect';
 import { ChoiceSheet } from './ChoiceSheet';
@@ -165,6 +166,16 @@ export type EditorToolbarProps = {
    * has been posted; the insert sheet waits on it with its button spinning.
    */
   onGenerateInsertedBars?: () => void | Promise<void>;
+  onVoiceTranscriptionJob?: (
+    projectId: string,
+    cancel: () => void,
+    progress?: {
+      stage: 'plan' | 'part' | 'section' | 'chunk';
+      label: string;
+      done: number;
+      total: number;
+    },
+  ) => void;
 };
 
 export function EditorToolbar({
@@ -176,6 +187,7 @@ export function EditorToolbar({
   inspectorVisible,
   onGenerateTrack,
   onGenerateInsertedBars,
+  onVoiceTranscriptionJob,
 }: EditorToolbarProps) {
   const { t } = useTranslation();
   const ink = useNotationInk();
@@ -533,6 +545,10 @@ export function EditorToolbar({
           hint={t('editor.slurHint')}
           disabled={!available.slur}
           onPress={() => toggleSlur(store)}
+        />
+        <VoiceRecordButton
+          document={document}
+          onTranscriptionJob={onVoiceTranscriptionJob}
         />
         {/*
           The hairpins. Two chips rather than a menu: crescendo and diminuendo

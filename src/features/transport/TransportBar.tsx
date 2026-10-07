@@ -312,6 +312,8 @@ export function TransportBar({
         at the old width the knob very nearly filled its own track and the
         control read as a button rather than as a fader.
       */}
+      <AudioOutputSelect />
+
       <View className="w-32 flex-row items-center gap-1">
         <Text className="text-foreground text-sm">{t('transport.volume')}</Text>
         <LevelSlider
@@ -325,8 +327,6 @@ export function TransportBar({
           }}
         />
       </View>
-
-      <AudioOutputSelect />
 
       <PositionScrubber maxTick={maxTick} transport={transport} />
       <Timecode

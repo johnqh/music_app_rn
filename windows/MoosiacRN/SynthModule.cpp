@@ -8,8 +8,12 @@
 #include <propsys.h>
 #include <ksmedia.h>
 #include <wrl/client.h>
+#include <winrt/Windows.Media.Capture.h>
+#include <winrt/Windows.Media.MediaProperties.h>
+#include <winrt/Windows.Storage.h>
 
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cmath>
 #include <mutex>
@@ -292,6 +296,9 @@ struct WindowsSynthState {
   bool chorusActive = true;
   bool reverbActive = true;
   std::string outputDeviceId;
+  std::array<unsigned char, 256> programs{};
+  double clockOffset = 0;
+  size_t targetInstanceCount = 0;
 
   ~WindowsSynthState() {
     for (auto &instance : instances) closeInstance(*instance);
@@ -299,10 +306,12 @@ struct WindowsSynthState {
   }
 
   /** Adopts a decoded font, closing the one it replaces. Under the lock. */
-  void adoptFont(tsf *loaded, const std::string &path) {
+  void adoptFont(tsf *loaded, const std::string &path,
+                 const std::array<unsigned char, 256> &loadedPrograms) {
     if (font) tsf_close(font);
     font = loaded;
     fontPath = path;
+    programs = loadedPrograms;
   }
 
   bool addInstance(std::string &error) {
@@ -327,7 +336,103 @@ struct WindowsSynthState {
   }
 };
 
+std::array<unsigned char, 256> programMaskFromSettings(
+    const React::JSValueObject &settings) {
+  std::array<unsigned char, 256> mask{};
+  auto add = [&settings, &mask](const char *key, size_t offset) {
+    auto it = settings.find(key);
+    if (it == settings.end()) return;
+    const auto *values = it->second.TryGetArray();
+    if (!values) return;
+    for (const auto &value : *values) {
+      const int program = value.AsInt32();
+      if (program >= 0 && program < 128) mask[offset + program] = 1;
+    }
+  };
+  add("melodicPrograms", 0);
+  add("percussionPrograms", 128);
+  // Keep a usable default when called by an older JS bundle.
+  if (std::none_of(mask.begin(), mask.end(), [](unsigned char used) { return used != 0; })) {
+    mask[0] = 1;
+    mask[128] = 1;
+  }
+  return mask;
+}
+
+struct WindowsVoiceState {
+  std::mutex mutex;
+  winrt::Windows::Media::Capture::MediaCapture capture{nullptr};
+  winrt::Windows::Storage::StorageFile file{nullptr};
+  bool recording = false;
+};
+
 bool SynthModule::isSupported() noexcept { return true; }
+
+void SynthModule::startVoiceRecording(
+    React::ReactPromise<React::JSValue> result) noexcept {
+  if (!m_voice) m_voice = std::make_shared<WindowsVoiceState>();
+  auto state = m_voice;
+  std::thread([state, result = std::move(result)]() mutable {
+    winrt::init_apartment(winrt::apartment_type::multi_threaded);
+    std::lock_guard lock(state->mutex);
+    if (state->recording) {
+      result.Reject(React::ReactError{"MIC_BUSY", "A recording is already active."});
+      return;
+    }
+    try {
+      using namespace winrt::Windows::Media::Capture;
+      using namespace winrt::Windows::Media::MediaProperties;
+      using namespace winrt::Windows::Storage;
+      MediaCaptureInitializationSettings settings;
+      settings.StreamingCaptureMode(StreamingCaptureMode::Audio);
+      state->capture = MediaCapture();
+      state->capture.InitializeAsync(settings).get();
+      auto folder = ApplicationData::Current().TemporaryFolder();
+      state->file = folder.CreateFileAsync(
+          L"moosiac-voice.wav", CreationCollisionOption::GenerateUniqueName).get();
+      auto profile = MediaEncodingProfile::CreateWav(AudioEncodingQuality::High);
+      state->capture.StartRecordToStorageFileAsync(profile, state->file).get();
+      state->recording = true;
+      result.Resolve(React::JSValue{nullptr});
+    } catch (winrt::hresult_error const &error) {
+      state->capture = nullptr;
+      state->file = nullptr;
+      result.Reject(React::ReactError{"MIC_UNAVAILABLE",
+                                      winrt::to_string(error.message())});
+    }
+  }).detach();
+}
+
+void SynthModule::stopVoiceRecording(
+    React::ReactPromise<React::JSValue> result) noexcept {
+  auto state = m_voice;
+  if (!state) {
+    result.Reject(React::ReactError{"MIC_IDLE", "No recording is active."});
+    return;
+  }
+  std::thread([state, result = std::move(result)]() mutable {
+    winrt::init_apartment(winrt::apartment_type::multi_threaded);
+    std::lock_guard lock(state->mutex);
+    if (!state->recording) {
+      result.Reject(React::ReactError{"MIC_IDLE", "No recording is active."});
+      return;
+    }
+    try {
+      state->capture.StopRecordAsync().get();
+      std::string path = winrt::to_string(state->file.Path());
+      state->recording = false;
+      state->capture = nullptr;
+      state->file = nullptr;
+      result.Resolve(React::JSValue{path});
+    } catch (winrt::hresult_error const &error) {
+      state->recording = false;
+      state->capture = nullptr;
+      state->file = nullptr;
+      result.Reject(React::ReactError{"MIC_STOP_FAILED",
+                                      winrt::to_string(error.message())});
+    }
+  }).detach();
+}
 
 std::string SynthModule::bundledSoundfontPath() noexcept {
   return winrt::to_string(::MoosiacApp::AppDirectory()) +
@@ -421,22 +526,32 @@ void SynthModule::initialize(std::string soundfontUri, double instanceCount,
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     const std::string path =
         soundfontUri.rfind("file://", 0) == 0 ? soundfontUri.substr(7) : soundfontUri;
+    const auto requestedPrograms = programMaskFromSettings(settings);
     // Decoded before the lock is taken: JS reads `currentTime` and
     // `selectedOutputDevice` synchronously, and while the decode held the lock
     // the JS thread — the whole UI — waited for it.
     bool decoded;
     {
       std::lock_guard lock(state->mutex);
-      decoded = state->font && state->fontPath == path;
+      decoded = state->font && state->fontPath == path &&
+          state->programs == requestedPrograms;
     }
-    tsf *loaded = decoded ? nullptr : tsf_load_filename(path.c_str());
+    tsf *loaded = decoded ? nullptr :
+        tsf_load_filename_programs(path.c_str(), requestedPrograms.data());
+    if (!decoded && !loaded) {
+      result.Reject(React::ReactError{"SYNTH_INIT", "Could not decode the score's SoundFont instruments."});
+      CoUninitialize();
+      return;
+    }
     std::lock_guard lock(state->mutex);
     if (loaded) {
       for (auto &instance : state->instances) closeInstance(*instance);
       state->instances.clear();
-      state->adoptFont(loaded, path);
+      state->adoptFont(loaded, path, requestedPrograms);
+      state->clockOffset = 0;
     }
     state->soundfontPath = path;
+    state->targetInstanceCount = static_cast<size_t>(std::max(0.0, instanceCount));
     if (auto it = settings.find("initialGain"); it != settings.end() &&
         (it->second.TryGetDouble() || it->second.TryGetInt64())) {
       state->initialGain = static_cast<float>(it->second.AsDouble());
@@ -475,6 +590,82 @@ void SynthModule::ensureInstances(double count, React::ReactPromise<React::JSVal
         return;
       }
     }
+    state->targetInstanceCount = std::max(state->targetInstanceCount,
+        static_cast<size_t>(std::max(0.0, count)));
+    result.Resolve(React::JSValue{nullptr});
+    CoUninitialize();
+  }).detach();
+}
+
+void SynthModule::setPrograms(React::JSValueArray melodicPrograms,
+                              React::JSValueArray percussionPrograms,
+                              React::ReactPromise<React::JSValue> result) noexcept {
+  if (!m_state) {
+    result.Reject(React::ReactError{"SYNTH_INIT", "Synthesizer is not initialized."});
+    return;
+  }
+  auto state = m_state;
+  std::array<unsigned char, 256> requested{};
+  auto addPrograms = [&requested](const React::JSValueArray &values, size_t offset) {
+    for (const auto &value : values) {
+      const int program = value.AsInt32();
+      if (program >= 0 && program < 128) requested[offset + program] = 1;
+    }
+  };
+  addPrograms(melodicPrograms, 0);
+  addPrograms(percussionPrograms, 128);
+  if (std::none_of(requested.begin(), requested.end(), [](unsigned char used) { return used != 0; })) {
+    requested[0] = 1;
+    requested[128] = 1;
+  }
+
+  std::thread([state, requested, result = std::move(result)]() mutable {
+    CoInitializeEx(nullptr, COINIT_MULTITHREADED);
+    std::string path;
+    size_t instanceCount = 0;
+    {
+      std::lock_guard lock(state->mutex);
+      if (state->programs == requested) {
+        result.Resolve(React::JSValue{nullptr});
+        CoUninitialize();
+        return;
+      }
+      path = state->fontPath;
+      instanceCount = state->targetInstanceCount;
+    }
+
+    // Decode the changed score's presets before interrupting the current audio.
+    tsf *loaded = tsf_load_filename_programs(path.c_str(), requested.data());
+    if (!loaded) {
+      result.Reject(React::ReactError{"SYNTH_PROGRAMS", "Could not decode the score's SoundFont instruments."});
+      CoUninitialize();
+      return;
+    }
+
+    std::lock_guard lock(state->mutex);
+    if (state->programs == requested) {
+      tsf_close(loaded);
+      result.Resolve(React::JSValue{nullptr});
+      CoUninitialize();
+      return;
+    }
+    double oldTime = state->clockOffset;
+    if (!state->instances.empty() && state->instances.front()->sampleRate > 0) {
+      oldTime += state->instances.front()->renderedSamples /
+          state->instances.front()->sampleRate;
+    }
+    for (auto &instance : state->instances) closeInstance(*instance);
+    state->instances.clear();
+    state->adoptFont(loaded, path, requested);
+    state->clockOffset = oldTime;
+    std::string error;
+    while (state->instances.size() < instanceCount) {
+      if (!state->addInstance(error)) {
+        result.Reject(React::ReactError{"SYNTH_PROGRAMS", error});
+        CoUninitialize();
+        return;
+      }
+    }
     result.Resolve(React::JSValue{nullptr});
     CoUninitialize();
   }).detach();
@@ -483,7 +674,8 @@ void SynthModule::ensureInstances(double count, React::ReactPromise<React::JSVal
 double SynthModule::currentTime() noexcept {
   if (!m_state) return 0;
   std::lock_guard lock(m_state->mutex);
-  return m_state->instances.empty() ? 0 : m_state->instances.front()->renderedSamples / m_state->instances.front()->sampleRate;
+  return m_state->clockOffset + (m_state->instances.empty() ? 0 :
+      m_state->instances.front()->renderedSamples / m_state->instances.front()->sampleRate);
 }
 
 double SynthModule::outputLatency() noexcept {

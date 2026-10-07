@@ -1,6 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Android 13+ shows Firebase Cloud Messaging notifications only with this. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

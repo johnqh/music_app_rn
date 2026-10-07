@@ -177,11 +177,10 @@ export function ScrollingScore({
   });
 
   /*
-    Scroll offsets, in content px. A ref for the touch handler, and a signal for
-    the cursor overlay, which is placed in content coordinates and has to move
-    with the sheet — neither re-renders this component.
+    Scroll offsets, in content px. The signal is shared by touch handling and
+    the cursor overlay, so a playback scroll is visible to both immediately.
+    Reading it does not re-render this component.
   */
-  const scrollRef = useRef({ left: 0, top: 0 });
   const continuous = layoutMode === 'continuous';
 
   const [contentSize, setContentSize] = useState({ width: 0, height: 0 });
@@ -260,7 +259,6 @@ export function ScrollingScore({
 
   const updateScroll = useCallback(
     (left: number, top: number) => {
-      scrollRef.current = { left, top };
       canvas.setScroll(left, top);
       const previous = scroll.get();
       if (previous.left !== left || previous.top !== top) {
@@ -311,9 +309,9 @@ export function ScrollingScore({
       );
       if (top <= 0) return;
       verticalRef.current?.scrollTo({ y: top, animated: false });
-      updateScroll(scrollRef.current.left, top);
+      updateScroll(scroll.get().left, top);
     },
-    [restoreTarget, updateScroll],
+    [restoreTarget, updateScroll, scroll],
   );
 
   const onContentSizeChangeHorizontal = useCallback(
@@ -329,32 +327,32 @@ export function ScrollingScore({
       );
       if (left <= 0) return;
       horizontalRef.current?.scrollTo({ x: left, animated: false });
-      updateScroll(left, scrollRef.current.top);
+      updateScroll(left, scroll.get().top);
     },
-    [restoreTarget, updateScroll],
+    [restoreTarget, updateScroll, scroll],
   );
 
-  // Banked on the way out, from a ref so the report is where the reader left
-  // it rather than where the effect last ran.
+  // Banked on the way out from the latest signal value, including a playback
+  // scroll that did not produce a native onScroll event.
   const onLeaveScrollRef = useRef(onLeaveScroll);
   onLeaveScrollRef.current = onLeaveScroll;
   useEffect(
-    () => () => onLeaveScrollRef.current?.({ ...scrollRef.current }),
-    [],
+    () => () => onLeaveScrollRef.current?.({ ...scroll.get() }),
+    [scroll],
   );
 
   const onScroll = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      updateScroll(scrollRef.current.left, e.nativeEvent.contentOffset.y);
+      updateScroll(scroll.get().left, e.nativeEvent.contentOffset.y);
     },
-    [updateScroll],
+    [updateScroll, scroll],
   );
 
   const onScrollHorizontal = useCallback(
     (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      updateScroll(e.nativeEvent.contentOffset.x, scrollRef.current.top);
+      updateScroll(e.nativeEvent.contentOffset.x, scroll.get().top);
     },
-    [updateScroll],
+    [updateScroll, scroll],
   );
 
   /**
@@ -398,14 +396,14 @@ export function ScrollingScore({
         bar-number band, a note, a stave.
       */
       const point = {
-        x: locationX - scrollRef.current.left,
-        y: locationY - scrollRef.current.top,
+        x: locationX - scroll.get().left,
+        y: locationY - scroll.get().top,
       };
       const hit = canvas.hitTest(point);
       if (kind === 'longPress') onLongPress?.(hit);
       else onPress?.(hit, canvas.tickAt(point));
     },
-    [canvas, onPress, onLongPress],
+    [canvas, scroll, onPress, onLongPress],
   );
 
   return (
