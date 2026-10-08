@@ -54,7 +54,7 @@ diff --git a/node_modules/react-native-svg/src/elements/Svg.tsx b/node_modules/r
 index 23f0840..acdd16e 100644
 --- a/node_modules/react-native-svg/src/elements/Svg.tsx
 +++ b/node_modules/react-native-svg/src/elements/Svg.tsx
-@@ -26,6 +26,43 @@ import RNSVGSvgIOS from '../fabric/IOSSvgViewNativeComponent';
+@@ -26,6 +26,42 @@ import RNSVGSvgIOS from '../fabric/IOSSvgViewNativeComponent';
  import type { Spec } from '../fabric/NativeSvgViewModule';
  import extractOpacity from '../lib/extract/extractOpacity';
  import { extractTransformSvgView } from '../lib/extract/extractTransform';
@@ -94,11 +94,10 @@ index 23f0840..acdd16e 100644
 +        );
 +  });
 +}
-+import { ViewProps } from '../fabric/utils';
  import { ViewProps } from '../fabric/utils';
  
  const styles = StyleSheet.create({
-@@ -195,7 +232,14 @@ export default class Svg extends Shape<SvgProps> {
+@@ -195,7 +231,14 @@ export default class Svg extends Shape<SvgProps> {
          {...extractViewBox({ viewBox, preserveAspectRatio })}>
          <G
            {...{

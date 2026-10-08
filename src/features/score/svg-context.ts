@@ -321,16 +321,16 @@ export class SvgDrawingContext implements DrawingContext2D {
     this.current.lineDash = [...segments];
   }
 
-  toSvg(): string {
+  toSvg(background: string | null = 'white'): string {
     return `<svg xmlns="http://www.w3.org/2000/svg" width="${number(
       this.canvas.width,
     )}" height="${number(this.canvas.height)}" viewBox="0 0 ${number(
       this.canvas.width,
-    )} ${number(
-      this.canvas.height,
-    )}"><rect width="100%" height="100%" fill="white"/>${this.elements.join(
-      '',
-    )}</svg>`;
+    )} ${number(this.canvas.height)}">${
+      background === null
+        ? ''
+        : `<rect width="100%" height="100%" fill="${esc(background)}"/>`
+    }${this.elements.join('')}</svg>`;
   }
 
   private multiply(next: Matrix): void {

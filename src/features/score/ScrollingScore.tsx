@@ -24,7 +24,13 @@ import {
   useState,
 } from 'react';
 import { useTheme } from '@/config/ThemeContext';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import type {
   GestureResponderEvent,
   NativeScrollEvent,
@@ -36,7 +42,10 @@ import {
   bindPlaybackToCanvas,
 } from '@sudobility/music_drawing';
 import type { RenderTheme } from '@sudobility/music_drawing';
-import { getMusicPosition } from '@sudobility/music_types';
+import {
+  getMusicPosition,
+  getMusicPositionSource,
+} from '@sudobility/music_types';
 import type { PitchDisplay, Score } from '@sudobility/music_types';
 import { getAppServices } from '@/config/initialize';
 import { ScoreView } from './ScoreView';
@@ -367,6 +376,25 @@ export function ScrollingScore({
    */
   const pressStart = useRef<{ x: number; y: number; at: number } | null>(null);
 
+  const pressAt = useCallback(
+    (event: GestureResponderEvent, longPress: boolean) => {
+      const { locationX, locationY } = event.nativeEvent;
+      const point = {
+        x: locationX - scrollRef.current.left,
+        y: locationY - scrollRef.current.top,
+      };
+      const hit = canvas.hitTest(point);
+      if (longPress) {
+        onLongPress?.(hit);
+      } else {
+        const tick = canvas.tickAt(point);
+        if (onPress) onPress(hit, tick);
+        else if (tick !== null) getMusicPositionSource().moveTo(tick);
+      }
+    },
+    [canvas, onPress, onLongPress],
+  );
+
   const onTouchStart = useCallback((e: GestureResponderEvent) => {
     const { pageX, pageY } = e.nativeEvent;
     pressStart.current = { x: pageX, y: pageY, at: Date.now() };
@@ -374,10 +402,10 @@ export function ScrollingScore({
 
   const onTouchEnd = useCallback(
     (e: GestureResponderEvent) => {
-      const { locationX, locationY, pageX, pageY } = e.nativeEvent;
+      const { pageX, pageY } = e.nativeEvent;
       const start = pressStart.current;
       pressStart.current = null;
-      if (!start || (!onPress && !onLongPress)) return;
+      if (!start) return;
 
       /*
         Decided before anything is hit-tested, so holding a track's name or a
@@ -397,16 +425,24 @@ export function ScrollingScore({
         canvas takes view px. Its own hit order is the spec's: the gutter, the
         bar-number band, a note, a stave.
       */
-      const point = {
-        x: locationX - scrollRef.current.left,
-        y: locationY - scrollRef.current.top,
-      };
-      const hit = canvas.hitTest(point);
-      if (kind === 'longPress') onLongPress?.(hit);
-      else onPress?.(hit, canvas.tickAt(point));
+      pressAt(e, kind === 'longPress');
     },
-    [canvas, onPress, onLongPress],
+    [pressAt],
   );
+
+  const TouchSurface = Platform.OS === 'windows' ? Pressable : View;
+  const surfaceHandlers =
+    Platform.OS === 'windows'
+      ? {
+          onPress: (event: GestureResponderEvent) => pressAt(event, false),
+          ...(onLongPress
+            ? {
+                onLongPress: (event: GestureResponderEvent) =>
+                  pressAt(event, true),
+              }
+            : {}),
+        }
+      : { onTouchStart, onTouchEnd };
 
   return (
     <View style={styles.fill} onLayout={onLayout}>
@@ -452,17 +488,15 @@ export function ScrollingScore({
             onContentSizeChange={onContentSizeChangeHorizontal}
             scrollEventThrottle={SCROLL_EVENT_THROTTLE}
           >
-            <View
+            <TouchSurface
               style={{ height: contentSize.height, width: contentSize.width }}
-              onTouchStart={onTouchStart}
-              onTouchEnd={onTouchEnd}
+              {...surfaceHandlers}
             />
           </ScrollView>
         ) : (
-          <View
+          <TouchSurface
             style={{ height: contentSize.height }}
-            onTouchStart={onTouchStart}
-            onTouchEnd={onTouchEnd}
+            {...surfaceHandlers}
           />
         )}
       </ScrollView>

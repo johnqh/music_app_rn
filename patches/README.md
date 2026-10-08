@@ -1,5 +1,12 @@
 # Patches
 
+## `react-native-safe-area-context+5.6.2.patch` — Windows dialog content
+
+Adds a Windows provider backed by an ordinary `View`, reporting its client
+frame with zero cutout insets. The package has no native Windows provider;
+without a layout event, a modal's `SafeAreaProvider` never mounts its children.
+
+
 ## `react-native-audio-api+0.13.3.patch` — macOS support
 
 The library declares `:ios` alone in its podspec, but its implementation is

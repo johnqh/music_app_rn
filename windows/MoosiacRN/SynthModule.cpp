@@ -61,12 +61,12 @@ struct Instance {
   double chorusPhase = 0;
   bool chorusActive = true;
   bool reverbActive = true;
-  uint64_t renderedSamples = 0;
+  std::atomic<uint64_t> renderedSamples{0};
   UINT32 bufferFrames = 0;
   UINT32 channels = 2;
   double sampleRate = kDefaultSampleRate;
   std::atomic<bool> running{false};
-  std::mutex *ownerMutex = nullptr;
+  std::mutex synthMutex;
 };
 
 void closeOutput(Instance &instance) {
@@ -92,7 +92,6 @@ void closeInstance(Instance &instance) {
   instance.synth = nullptr;
   instance.events.clear();
   instance.renderedSamples = 0;
-  instance.ownerMutex = nullptr;
 }
 
 void applyEvents(Instance &instance, uint64_t endSample) {
@@ -181,16 +180,11 @@ void audioLoop(Instance *instance) {
     auto *output = reinterpret_cast<float *>(raw);
     stereo.assign(static_cast<size_t>(frames) * 2, 0.0f);
     {
-      // TSF is not re-entrant. The same lock gives noteAt a sample-clock
-      // boundary, so scheduled events cannot race the audio callback.
-      // Device switching holds this lock while joining the render thread.
-      // A blocking lock here would deadlock that join when the thread has
-      // already entered the callback, so output silence for that one buffer.
-      std::unique_lock lock(*instance->ownerMutex, std::try_to_lock);
-      if (!lock.owns_lock()) {
-        instance->renderClient->ReleaseBuffer(frames, AUDCLNT_BUFFERFLAGS_SILENT);
-        continue;
-      }
+      // Each instance renders on its own audio thread. Sharing the collection
+      // lock with the metronome dropped music buffers whenever the other
+      // instance rendered, also losing elapsed time from the playback clock.
+      // Control calls take this instance lock; teardown joins without it.
+      std::lock_guard lock(instance->synthMutex);
       applyEvents(*instance, instance->renderedSamples + frames);
       tsf_render_float(instance->synth, stereo.data(), static_cast<int>(frames), TSF_FALSE);
       applyEffects(*instance, stereo, frames);
@@ -263,7 +257,7 @@ bool openOutput(Instance &instance, const std::string &deviceId, std::string &er
   }
   if (previousRate > 0 && previousRate != instance.sampleRate) {
     const double ratio = instance.sampleRate / previousRate;
-    instance.renderedSamples = static_cast<uint64_t>(instance.renderedSamples * ratio);
+    instance.renderedSamples = static_cast<uint64_t>(instance.renderedSamples.load() * ratio);
     for (auto &event : instance.events)
       event.sample = static_cast<uint64_t>(event.sample * ratio);
   }
@@ -317,7 +311,6 @@ struct WindowsSynthState {
     tsf_set_volume(instance->synth, initialGain * static_cast<float>(masterVolume));
     instance->chorusActive = chorusActive;
     instance->reverbActive = reverbActive;
-    instance->ownerMutex = &mutex;
     if (!openOutput(*instance, outputDeviceId, error)) {
       closeInstance(*instance);
       return false;
@@ -483,7 +476,7 @@ void SynthModule::ensureInstances(double count, React::ReactPromise<React::JSVal
 double SynthModule::currentTime() noexcept {
   if (!m_state) return 0;
   std::lock_guard lock(m_state->mutex);
-  return m_state->instances.empty() ? 0 : m_state->instances.front()->renderedSamples / m_state->instances.front()->sampleRate;
+  return m_state->instances.empty() ? 0 : m_state->instances.front()->renderedSamples.load() / m_state->instances.front()->sampleRate;
 }
 
 double SynthModule::outputLatency() noexcept {
@@ -497,6 +490,7 @@ void SynthModule::noteAt(double index, double channel, double midi, double veloc
   if (!m_state) return; std::lock_guard lock(m_state->mutex);
   if (index < 0 || index >= static_cast<double>(m_state->instances.size())) return;
   auto &instance = *m_state->instances[static_cast<size_t>(index)];
+  std::lock_guard synthLock(instance.synthMutex);
   const auto start = instance.renderedSamples + static_cast<uint64_t>(std::max(0.0, delaySeconds) * instance.sampleRate);
   const auto duration = std::max<uint64_t>(1, static_cast<uint64_t>(std::max(0.0, durationSeconds) * instance.sampleRate));
   instance.events.push_back({start, true, static_cast<int>(channel), static_cast<int>(midi), static_cast<float>(velocity) / 127.0f});
@@ -504,15 +498,15 @@ void SynthModule::noteAt(double index, double channel, double midi, double veloc
   std::sort(instance.events.begin(), instance.events.end(), [](const auto &a, const auto &b) { return a.sample < b.sample; });
 }
 
-void SynthModule::noteOn(double index, double channel, double midi, double velocity) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) tsf_channel_note_on(m_state->instances[index]->synth, static_cast<int>(channel), static_cast<int>(midi), static_cast<float>(velocity) / 127.0f); }
-void SynthModule::noteOff(double index, double channel, double midi) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) tsf_channel_note_off(m_state->instances[index]->synth, static_cast<int>(channel), static_cast<int>(midi)); }
-void SynthModule::programSelect(double index, double channel, double program) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size() && static_cast<int>(channel) != kPercussionChannel) tsf_channel_set_presetnumber(m_state->instances[index]->synth, static_cast<int>(channel), static_cast<int>(program), 0); }
-void SynthModule::setChannelPercussion(double index, double channel, double kit) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) { auto *s = m_state->instances[index]->synth; tsf_channel_set_bank(s, static_cast<int>(channel), kDrumBank); tsf_channel_set_presetnumber(s, static_cast<int>(channel), static_cast<int>(kit < 0 ? kStandardKit : kit), 1); } }
-void SynthModule::controlChange(double index, double channel, double control, double value) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) tsf_channel_midi_control(m_state->instances[index]->synth, static_cast<int>(channel), static_cast<int>(control), static_cast<int>(value)); }
-void SynthModule::cancelScheduledOn(double index) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) m_state->instances[index]->events.clear(); }
-void SynthModule::allSoundOff() noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); for (auto &i : m_state->instances) { i->events.clear(); tsf_note_off_all(i->synth); } }
-void SynthModule::setInterpolation(double order) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); m_state->interpolation = static_cast<int>(order); for (auto &i : m_state->instances) tsf_set_interpolation(i->synth, static_cast<int>(order)); }
-void SynthModule::setMasterVolume(double volume) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); m_state->masterVolume = volume; for (auto &i : m_state->instances) tsf_set_volume(i->synth, m_state->initialGain * static_cast<float>(volume)); }
+void SynthModule::noteOn(double index, double channel, double midi, double velocity) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) { std::lock_guard synthLock(m_state->instances[index]->synthMutex); tsf_channel_note_on(m_state->instances[index]->synth, static_cast<int>(channel), static_cast<int>(midi), static_cast<float>(velocity) / 127.0f); } }
+void SynthModule::noteOff(double index, double channel, double midi) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) { std::lock_guard synthLock(m_state->instances[index]->synthMutex); tsf_channel_note_off(m_state->instances[index]->synth, static_cast<int>(channel), static_cast<int>(midi)); } }
+void SynthModule::programSelect(double index, double channel, double program) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size() && static_cast<int>(channel) != kPercussionChannel) { std::lock_guard synthLock(m_state->instances[index]->synthMutex); tsf_channel_set_presetnumber(m_state->instances[index]->synth, static_cast<int>(channel), static_cast<int>(program), 0); } }
+void SynthModule::setChannelPercussion(double index, double channel, double kit) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) { std::lock_guard synthLock(m_state->instances[index]->synthMutex); auto *s = m_state->instances[index]->synth; tsf_channel_set_bank(s, static_cast<int>(channel), kDrumBank); tsf_channel_set_presetnumber(s, static_cast<int>(channel), static_cast<int>(kit < 0 ? kStandardKit : kit), 1); } }
+void SynthModule::controlChange(double index, double channel, double control, double value) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) { std::lock_guard synthLock(m_state->instances[index]->synthMutex); tsf_channel_midi_control(m_state->instances[index]->synth, static_cast<int>(channel), static_cast<int>(control), static_cast<int>(value)); } }
+void SynthModule::cancelScheduledOn(double index) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) { std::lock_guard synthLock(m_state->instances[index]->synthMutex); m_state->instances[index]->events.clear(); } }
+void SynthModule::allSoundOff() noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); for (auto &i : m_state->instances) { std::lock_guard synthLock(i->synthMutex); i->events.clear(); tsf_note_off_all(i->synth); } }
+void SynthModule::setInterpolation(double order) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); m_state->interpolation = static_cast<int>(order); for (auto &i : m_state->instances) { std::lock_guard synthLock(i->synthMutex); tsf_set_interpolation(i->synth, static_cast<int>(order)); } }
+void SynthModule::setMasterVolume(double volume) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); m_state->masterVolume = volume; for (auto &i : m_state->instances) { std::lock_guard synthLock(i->synthMutex); tsf_set_volume(i->synth, m_state->initialGain * static_cast<float>(volume)); } }
 void SynthModule::dispose() noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); for (auto &i : m_state->instances) closeInstance(*i); m_state->instances.clear(); }
 
 } // namespace winrt::MoosiacRN::implementation

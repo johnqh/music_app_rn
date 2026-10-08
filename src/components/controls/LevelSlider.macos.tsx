@@ -189,8 +189,14 @@ function SliderShell({
       accessibilityState={{ disabled }}
       {...(disabled ? {} : responder.panHandlers)}
     >
-      {children(width)}
       <View
+        pointerEvents="none"
+        style={{ width: '100%', height: TRACK_HEIGHT }}
+      >
+        {children(width)}
+      </View>
+      <View
+        pointerEvents="none"
         className={thumbClassName}
         style={{
           position: 'absolute',
