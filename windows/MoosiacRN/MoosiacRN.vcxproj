@@ -24,6 +24,10 @@
   <PropertyGroup>
     <BuildingBlocksRNWindowsDir Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\building_blocks_rn\windows\WebAuthModule.cpp')">$(MSBuildThisFileDirectory)..\..\..\building_blocks_rn\windows\</BuildingBlocksRNWindowsDir>
     <BuildingBlocksRNWindowsDir Condition="'$(BuildingBlocksRNWindowsDir)' == ''">$(MSBuildThisFileDirectory)..\..\node_modules\@sudobility\building_blocks_rn\windows\</BuildingBlocksRNWindowsDir>
+    <ComponentsRNWindowsDir Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\mail_box_components_rn\windows\MoosiacNativeSlider.cpp')">$(MSBuildThisFileDirectory)..\..\..\mail_box_components_rn\windows\</ComponentsRNWindowsDir>
+    <ComponentsRNWindowsDir Condition="'$(ComponentsRNWindowsDir)' == ''">$(MSBuildThisFileDirectory)..\..\node_modules\@sudobility\components-rn\windows\</ComponentsRNWindowsDir>
+    <WindowsCanvasRNDir Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\windows_canvas_rn\windows\WindowsCanvas.cpp')">$(MSBuildThisFileDirectory)..\..\..\windows_canvas_rn\windows\</WindowsCanvasRNDir>
+    <WindowsCanvasRNDir Condition="'$(WindowsCanvasRNDir)' == ''">$(MSBuildThisFileDirectory)..\..\node_modules\@sudobility\windows_canvas_rn\windows\</WindowsCanvasRNDir>
   </PropertyGroup>
   <Import Project="$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.WindowsSdk.Default.props" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -85,6 +89,8 @@
       <AdditionalIncludeDirectories>
         $(MSBuildThisFileDirectory);
         $(BuildingBlocksRNWindowsDir);
+        $(ComponentsRNWindowsDir);
+        $(WindowsCanvasRNDir);
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
     </ClCompile>
@@ -111,6 +117,9 @@
     <ClInclude Include="AutolinkedNativeModules.g.h" />
     <ClInclude Include="$(BuildingBlocksRNWindowsDir)WebAuthModule.h" />
     <ClInclude Include="$(BuildingBlocksRNWindowsDir)FileSystemUtils.h" />
+    <ClInclude Include="$(ComponentsRNWindowsDir)MoosiacNativeSlider.h" />
+    <ClInclude Include="$(WindowsCanvasRNDir)WindowsCanvas.h" />
+    <ClInclude Include="$(WindowsCanvasRNDir)PictureFormat.h" />
     <ClInclude Include="FilePickerModule.h" />
     <ClInclude Include="FileSystemModule.h" />
     <ClInclude Include="MenuBridgeModule.h" />
@@ -125,6 +134,12 @@
     <ClCompile Include="MoosiacRN.cpp" />
     <ClCompile Include="AutolinkedNativeModules.g.cpp" />
     <ClCompile Include="$(BuildingBlocksRNWindowsDir)WebAuthModule.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(ComponentsRNWindowsDir)MoosiacNativeSlider.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="$(WindowsCanvasRNDir)WindowsCanvas.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="FilePickerModule.cpp" />

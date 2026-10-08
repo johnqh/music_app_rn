@@ -1588,14 +1588,14 @@
     "jobMissing": "The job that generated this project is no longer listed."
   },
   "home": {
-    "heroTitle": "Compose with AI, refine by hand",
-    "heroBody": "{{appName}} pairs a full notation editor and a playable piano keyboard with AI generation: describe the music you want, then edit every note.",
-    "featureEditorTitle": "Real notation editing",
-    "featureEditorBody": "Engraved notation with a piano keyboard beneath it, over one score, with full undo history.",
-    "featureAiTitle": "AI generation",
-    "featureAiBody": "Generate whole pieces, or regenerate a selection of bars.",
-    "featureFormatsTitle": "Bring in audio. Make it yours.",
-    "featureFormatsBody": "Import MP3, MPA, or WAV recordings and turn them into editable notes. Work with songs from AI music generators like Suno and Udio, or pull notes from a favorite song to practice an instrument."
+    "heroTitle": "Source code for music",
+    "heroBody": "{{appName}} is for musicians who want creative control, with AI to help. Compose, inspect, and edit every note in a standard score.",
+    "featureEditorTitle": "Your music, note by note",
+    "featureEditorBody": "Work in standard notation and shape every part yourself. AI can help you get started; you stay the composer.",
+    "featureAiTitle": "AI that follows your direction",
+    "featureAiBody": "Generate a score or rework selected bars, then review and refine the notes yourself.",
+    "featureFormatsTitle": "Import and export music your way",
+    "featureFormatsBody": "Import audio recordings (MP3, MPA, WAV), MIDI, and MusicXML. Export MIDI, MusicXML, WAV, and MP3."
   },
   "clef": {
     "treble": "Treble",

@@ -56,10 +56,6 @@ describe('colours come from the theme', () => {
       'The hairline between white keys. A key is an instrument colour (music_drawing fills them white and black in both themes), so its edge is one too.',
     ],
     [
-      'src/features/score/ScoreView.windows.tsx',
-      'Paper. The score is drawn in ink on white in both themes; the SVG it holds paints the same white.',
-    ],
-    [
       'src/features/editor/ProjectsPopup.tsx',
       'A shadow colour. A shadow is black in both themes and the theme has no token for one.',
     ],

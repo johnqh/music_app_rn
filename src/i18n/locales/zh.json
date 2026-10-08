@@ -1588,14 +1588,14 @@
     "jobMissing": "生成此项目的任务已不在列表中。"
   },
   "home": {
-    "heroTitle": "用 AI 创作，逐音修改",
-    "heroBody": "{{appName}} 将完整的记谱编辑器和可弹奏的钢琴键盘与 AI 生成结合：描述你想要的音乐，然后编辑每一个音符。",
-    "featureEditorTitle": "真正的记谱编辑",
-    "featureEditorBody": "同一份乐谱上的雕版记谱，下方配有钢琴键盘，并具备完整的撤销历史。",
-    "featureAiTitle": "AI 生成",
-    "featureAiBody": "生成整首作品，或重新生成选中的小节。",
-    "featureFormatsTitle": "导入音频，创作属于你的版本",
-    "featureFormatsBody": "导入 MP3、MPA 或 WAV 录音，将音频转换为可编辑的音符。无论是来自 Suno、Udio 等 AI 音乐生成器的作品，还是你喜欢的歌曲，都可以提取音符来编辑或练习乐器。"
+    "heroTitle": "音乐的源代码",
+    "heroBody": "{{appName}} 面向希望掌控创作过程、同时借助 AI 助力的音乐人。用标准乐谱创作、检查并编辑每一个音符。",
+    "featureEditorTitle": "逐音创作，掌控作品",
+    "featureEditorBody": "使用标准记谱法塑造音乐的每个部分。AI 可以帮你起步，作曲的主导权始终在你手中。",
+    "featureAiTitle": "听从你方向的 AI",
+    "featureAiBody": "生成乐谱或改写选中的小节，然后亲自检查并打磨音符。",
+    "featureFormatsTitle": "按你的方式导入和导出",
+    "featureFormatsBody": "可导入音频录音（MP3、MPA、WAV）、MIDI 和 MusicXML；可导出 MIDI、MusicXML、WAV 和 MP3。"
   },
   "clef": {
     "treble": "高音谱号",

@@ -98,6 +98,21 @@ void closeInstance(Instance &instance) {
   instance.renderedSamples = 0;
 }
 
+/**
+ * Inserts in time order, a note-off before a note-on at the same sample and
+ * otherwise in the order scheduled. A repeated pitch's off and the next on
+ * share a sample; `std::sort` (not stable) could put the on first, and the
+ * off then silenced the note that had just started. Inserting also avoids
+ * re-sorting the whole queue for every note under the instance lock.
+ */
+void insertEvent(std::vector<ScheduledEvent> &events, const ScheduledEvent &event) {
+  const auto at = std::upper_bound(events.begin(), events.end(), event,
+      [](const ScheduledEvent &a, const ScheduledEvent &b) {
+        return a.sample != b.sample ? a.sample < b.sample : (!a.on && b.on);
+      });
+  events.insert(at, event);
+}
+
 void applyEvents(Instance &instance, uint64_t endSample) {
   while (!instance.events.empty() && instance.events.front().sample <= endSample) {
     const auto event = instance.events.front();
@@ -685,9 +700,8 @@ void SynthModule::noteAt(double index, double channel, double midi, double veloc
   std::lock_guard synthLock(instance.synthMutex);
   const auto start = instance.renderedSamples.load() + static_cast<uint64_t>(std::max(0.0, delaySeconds) * instance.sampleRate);
   const auto duration = std::max<uint64_t>(1, static_cast<uint64_t>(std::max(0.0, durationSeconds) * instance.sampleRate));
-  instance.events.push_back({start, true, static_cast<int>(channel), static_cast<int>(midi), static_cast<float>(velocity) / 127.0f});
-  instance.events.push_back({start + duration, false, static_cast<int>(channel), static_cast<int>(midi), 0});
-  std::sort(instance.events.begin(), instance.events.end(), [](const auto &a, const auto &b) { return a.sample < b.sample; });
+  insertEvent(instance.events, {start, true, static_cast<int>(channel), static_cast<int>(midi), static_cast<float>(velocity) / 127.0f});
+  insertEvent(instance.events, {start + duration, false, static_cast<int>(channel), static_cast<int>(midi), 0});
 }
 
 void SynthModule::noteOn(double index, double channel, double midi, double velocity) noexcept { if (!m_state) return; std::lock_guard lock(m_state->mutex); if (index >= 0 && index < m_state->instances.size()) { std::lock_guard synthLock(m_state->instances[index]->synthMutex); tsf_channel_note_on(m_state->instances[index]->synth, static_cast<int>(channel), static_cast<int>(midi), static_cast<float>(velocity) / 127.0f); } }

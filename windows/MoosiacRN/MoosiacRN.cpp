@@ -24,6 +24,8 @@
 #include "FilePickerModule.h"
 #include "FileSystemModule.h"
 #include "MenuBridgeModule.h"
+#include "MoosiacNativeSlider.h"
+#include "WindowsCanvas.h"
 #include "PrintModule.h"
 #include "SynthModule.h"
 #include "WebAuthModule.h"
@@ -38,6 +40,10 @@ struct CompReactPackageProvider
  public: // IReactPackageProvider
   void CreatePackage(winrt::Microsoft::ReactNative::IReactPackageBuilder const &packageBuilder) noexcept {
     AddAttributedModules(packageBuilder, true);
+    winrt::MoosiacNativeSlider::implementation::RegisterMoosiacNativeSlider(packageBuilder);
+    // The score is drawn by windows_canvas_rn's picture view; its measureText
+    // module is picked up by AddAttributedModules above.
+    WindowsCanvas::RegisterWindowsCanvas(packageBuilder);
   }
 };
 

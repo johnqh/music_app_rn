@@ -1,15 +1,5 @@
 # Patches
 
-## `@sudobility+components-rn+1.0.117.patch` — themed macOS slider
-
-The macOS `NSSlider` in components-rn uses the design theme's primary colour
-for its filled track. Pan uses a narrow rectangular fader thumb. The patch
-also carries the React Native props and TypeScript declarations, so a fresh
-install builds the same control as the checked macOS app. These changes belong
-in `mail_box_components_rn`; remove this patch when a published package
-includes them. Verified by applying it to the unmodified 1.0.117 package with
-`patch-package --error-on-fail`.
-
 ## `react-native-safe-area-context+5.6.2.patch` — Windows dialog content
 
 Adds a Windows provider backed by an ordinary `View`, reporting its client
@@ -85,13 +75,37 @@ The upgrade itself was not cosmetic — see the React-version note in
 `react@^19.1.4`, and that trio is the only combination in which all three
 platforms' renderers agree on a React version.
 
-## `react-native-svg+15.12.1.patch` — macOS
+## `react-native-svg+15.12.1.patch` — macOS and Windows
 
 `RNSVGImage.mm` and `RNSVGSvgView.mm` use UIKit image APIs (`CGImage` and
 `size` on a `UIImage`), which do not exist on macOS. Ported from
 `sudojo_app_rn`, which hit this first — the same shape of problem as the Skia
 patch beside it, and a reminder that a pod appearing in `Podfile.lock` says
 nothing about whether it *compiles* for this platform.
+
+The Windows half fixes two bugs in its Fabric renderer that scale with the
+number of elements in a drawing. They are why the score froze at every page
+turn while it was an SVG string replayed by `SvgXml`; the score is now drawn by
+`@sudobility/windows_canvas_rn` instead, but every icon on Windows still goes
+through react-native-svg:
+
+- **`SvgView::Invalidate` redrew the whole document once per element.** Fabric
+  calls it for every descendant mounted, updated or unmounted, and each call
+  rebuilt the D2D SVG document from every child and drew it, synchronously, on
+  the UI thread. A page turn changes every element (the scroll offset is in
+  each one's transform), so it cost N full redraws of N elements. RNW creates
+  and fires JS timers through the UI thread too, so the player's scheduling
+  pump starved meanwhile and the audio broke up. The patch posts one redraw
+  per batch to the UI dispatcher, after the mount transaction.
+- **`RenderableView::Render` leaked the previous D2D element on every redraw**:
+  `com_ptr::put()` does not release what it overwrites (it only asserts, in a
+  debug build, that there is nothing there). Each leaked element kept its
+  whole document alive, so every redraw leaked a document, and each page turn
+  was slower than the last.
+
+Neither has been compiled here; there is no Windows toolchain on the Mac this
+was written on. The Windows hunks were diffed by hand and the whole patch
+checked with `git apply --check -R` against the installed package.
 
 Note the filename: `patch-package` could not generate this one under Bun
 (`Cannot read properties of undefined`), so the file is sudojo's, renamed to

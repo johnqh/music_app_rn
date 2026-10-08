@@ -120,10 +120,11 @@ const ALLOWED_NON_UI = new Set([
   // separate platform capabilities, so this stays platform-specific.
   'src/features/print/print-service.windows.ts',
   'src/features/print/print-pages.windows.ts',
-  // The Windows score adapter records the shared renderer into SVG and keeps
-  // its signal/scheduling glue outside the UI component.
+  // The Windows score adapter records the shared renderer into
+  // windows_canvas_rn pictures (and, for printing, into SVG for WebView2) and
+  // keeps its signal/scheduling glue outside the UI component.
   'src/features/score/svg-context.ts',
-  'src/features/score/svg-layered-paint.ts',
+  'src/features/score/picture-layered-paint.ts',
   'src/features/score/useScoreCanvas.windows.ts',
   // Platform capability and frame scheduling are UI glue for Windows.
   'src/features/spatial/availability.ts',
