@@ -277,7 +277,8 @@ describe('touches', () => {
       const score = createEmptyScore({ title: 'Test', measures: 2 });
       const view = renderWithApp(<ScrollingScore score={score} />);
       const surface = view.UNSAFE_root.findAll(
-        node => typeof node.props.onPress === 'function',
+        (node: { props: Record<string, unknown> }) =>
+          typeof node.props.onPress === 'function',
       )[0]!;
       fireEvent(surface, 'press', {
         nativeEvent: { locationX: 40, locationY: 50 },
