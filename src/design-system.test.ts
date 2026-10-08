@@ -64,7 +64,7 @@ describe('colours come from the theme', () => {
       'A shadow colour. A shadow is black in both themes and the theme has no token for one.',
     ],
     [
-      'src/components/controls/LevelSlider.macos.tsx',
+      'src/components/controls/LevelSlider.painted.tsx',
       'A shadow colour, under the slider knob, for the same reason.',
     ],
   ]);

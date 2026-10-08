@@ -7,12 +7,9 @@
  * TalkBack behaviour — none of which a `PanResponder` over two `View`s can
  * reproduce, and all of which a user recognises without being told.
  *
- * Its podspec declares `:ios` and `:visionos` only, so there is **no macOS
- * implementation**: `LevelSlider.macos.tsx` keeps the hand-painted control for
- * that platform, and `react-native.config.js` excludes the package from macOS
- * autolinking so CocoaPods is never asked to install something that cannot
- * build. The two files export the same two names, which is the whole contract —
- * a caller never learns which one it got.
+ * Its podspec declares `:ios` and `:visionos` only. macOS uses the shared
+ * AppKit slider from `@sudobility/components-rn`; Windows uses the painted
+ * fallback. Callers use the same two names on every platform.
  *
  * Colours are literal, from `useNotationInk`, for the reason the notation
  * glyphs' are: these are native views, so a NativeWind class never reaches

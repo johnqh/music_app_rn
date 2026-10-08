@@ -107,11 +107,9 @@ export type PanSliderProps = MixerSliderProps & {
 /**
  * -1 to 1, as a position rather than a level.
  *
- * `PositionSlider` is what carries that distinction — an unfilled track on the
- * platforms whose native slider has one track colour either side of the thumb,
- * a bar growing out of the centre on macOS, where the control is drawn and can
- * say so. Either way the readout beside it states the value exactly, which is
- * the reading that actually matters: which side of centre, and how far.
+ * `PositionSlider` carries that distinction. Native sliders show the position
+ * with their thumb; the Windows fallback also fills from the centre. The
+ * readout beside it states which side of centre and how far.
  */
 export function PanSlider({
   label,

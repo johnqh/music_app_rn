@@ -346,23 +346,13 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   Go to bar passes the typed text to
   `goToBarFromInput`, which counts bars as drawn (a pickup has no number). Fix
   all's toast and whether the issues list closes are `repairIssuesOutcome`'s.
-- **Volume and pan are painted here, not taken from the library.**
-  `components-rn`'s `Slider` fills over a `bg-muted` groove, which against
-  these surfaces is very nearly the background — a quiet track reads as a short
-  bar floating in space with nothing to say how much further it goes. The web
-  app rejected its own library slider for exactly this and paints
-  `bg-border` instead; `components/controls/LevelSlider.tsx` is that drawing,
-  with the web's geometry restated in numbers because NativeWind cannot express
-  `::-webkit-slider-thumb`. **Pan is drawn as a position, not an amount**:
-  square bed, centre detent, fill growing out of the middle, an 8×16 slotted
-  knob instead of a bead, and a `C`/`L40`/`R25` readout — a bar growing from
-  the left says "40% of maximum pan", which is not a thing. Both rows come from
-  `features/tracks/MixerSliders.tsx` and each owns its whole row, label column
-  and all, because they sit directly above one another and any difference
-  between them reads as a mistake. The **gesture takes its origin on grant**
-  (`pageX - locationX`) and measures the drag against it; the library slider
-  uses `gesture.moveX` raw, which is a screen coordinate and correct only for a
-  track whose left edge is the window's.
+- **Volume and pan use native sliders on Apple platforms.** iOS uses
+  `@react-native-community/slider`; macOS uses the `@sudobility/components-rn`
+  AppKit `NSSlider` view. Android uses the community slider's SeekBar, while
+  Windows keeps the painted fallback in `LevelSlider.painted.tsx`. Both mixer
+  rows come from `features/tracks/MixerSliders.tsx` so their labels, slider
+  widths and readouts stay aligned. Pan's `C`/`L40`/`R25` readout states the
+  position even where the native track fills from the left.
 - **The tempo field is the one control on the playback bar that edits the
   score.** Loop, metronome, speed, volume and seeking are real-time device
   control and go to the player; BPM is persisted with the music and goes
@@ -891,12 +881,10 @@ renderer per view, and `hit-test` in the library, is what fixed it.
 
 ## Patches
 
-Three, all for macOS, all applied by `patch-package` on `postinstall`:
-`react-native-audio-api` (the library declares `:ios` alone, though its audio
-graph is `AVAudioEngine`/`AVAudioSourceNode`, which macOS has),
-`@shopify/react-native-skia` (`UIImage` is UIKit and does not exist on macOS),
-and `react-native-macos` (codegen). The last two are ported from
-`sudojo_app_rn`. See `patches/README.md`.
+macOS dependency fixes are applied by `patch-package` on `postinstall`:
+`react-native-audio-api`, `@shopify/react-native-skia`, `react-native-svg`,
+`react-native-macos`, and `@sudobility/components-rn` (the themed native slider
+and fader thumb). See `patches/README.md`.
 
 **A `Podfile.lock` entry proves a pod resolved, not that it compiles.** Skia
 was assumed to build on macOS because `sudojo_app_rn` links it; it builds there
@@ -936,7 +924,7 @@ compiler was told. Pod sources land read-only, so it `chmod`s first.
   (`RESOURCE_GROUPS`) is shared from music*lib, and the home page's \_content* is a section of Settings
   without the landing-page shape an installed app has already answered.
 - `src/components/controls/` — the controls the shared libraries cannot
-  supply: `LevelSlider` (a slider painted like the web's, level and pan),
+  supply: `LevelSlider` (native on macOS, painted on Windows),
   `ToolbarSelect` (a picker whose trigger is a toolbar button rather than a
   bordered text field) and `ConfirmSheet` (a yes/no whose confirm can be
   destructive, which `FormModal`'s `onSave` shorthand cannot express).

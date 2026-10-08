@@ -1,5 +1,15 @@
 # Patches
 
+## `@sudobility+components-rn+1.0.117.patch` — themed macOS slider
+
+The macOS `NSSlider` in components-rn uses the design theme's primary colour
+for its filled track. Pan uses a narrow rectangular fader thumb. The patch
+also carries the React Native props and TypeScript declarations, so a fresh
+install builds the same control as the checked macOS app. These changes belong
+in `mail_box_components_rn`; remove this patch when a published package
+includes them. Verified by applying it to the unmodified 1.0.117 package with
+`patch-package --error-on-fail`.
+
 ## `react-native-audio-api+0.13.3.patch` — macOS support
 
 The library declares `:ios` alone in its podspec, but its implementation is

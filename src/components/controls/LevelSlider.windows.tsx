@@ -1,8 +1,6 @@
-// React Native Windows has no implementation of
-// @react-native-community/slider. The gesture-driven desktop control is
-// platform-neutral and is already used by the macOS renderer.
+// React Native Windows uses the gesture-driven painted control.
 export {
   LevelSlider,
   PositionSlider,
   type LevelSliderProps,
-} from './LevelSlider.macos';
+} from './LevelSlider.painted';

@@ -1,0 +1,252 @@
+diff --git a/node_modules/@sudobility/components-rn/macos/MoosiacNativeSlider.mm b/node_modules/@sudobility/components-rn/macos/MoosiacNativeSlider.mm
+index f513e28..1d5056c 100644
+--- a/node_modules/@sudobility/components-rn/macos/MoosiacNativeSlider.mm
++++ b/node_modules/@sudobility/components-rn/macos/MoosiacNativeSlider.mm
+@@ -2,6 +2,7 @@
+ 
+ #if TARGET_OS_OSX
+ #import <AppKit/AppKit.h>
++#import <React/RCTConvert.h>
+ #define SliderMinimum(slider) [(slider) minValue]
+ #define SliderMaximum(slider) [(slider) maxValue]
+ #define SliderCurrent(slider) [(slider) doubleValue]
+@@ -23,17 +24,65 @@
+ #import <React/RCTViewManager.h>
+ 
+ #if TARGET_OS_OSX
++@interface MoosiacNativeSliderCell : NSSliderCell
++@property (nonatomic, assign) BOOL faderThumb;
++@end
++
++@implementation MoosiacNativeSliderCell
++
++- (void)drawKnob:(NSRect)knobRect
++{
++  if (!self.faderThumb) {
++    [super drawKnob:knobRect];
++    return;
++  }
++
++  // Keep the system track and interaction; only the pan handle becomes a fader.
++  NSRect handle = NSMakeRect(NSMidX(knobRect) - 4, NSMidY(knobRect) - 8, 8, 16);
++  NSBezierPath *path = [NSBezierPath bezierPathWithRoundedRect:handle xRadius:2 yRadius:2];
++  [NSGraphicsContext saveGraphicsState];
++  NSShadow *shadow = [NSShadow new];
++  shadow.shadowColor = [[NSColor blackColor] colorWithAlphaComponent:0.25];
++  shadow.shadowBlurRadius = 3;
++  shadow.shadowOffset = NSMakeSize(0, -1);
++  [shadow set];
++  [[NSColor controlBackgroundColor] setFill];
++  [path fill];
++  [NSGraphicsContext restoreGraphicsState];
++  [[NSColor separatorColor] setStroke];
++  path.lineWidth = 0.5;
++  [path stroke];
++}
++
++@end
++
+ @interface MoosiacNativeSliderControl : NSSlider
+ #else
+ @interface MoosiacNativeSliderControl : UISlider
+ #endif
+ @property (nonatomic, copy) dispatch_block_t onInteractionComplete;
+ @property (nonatomic, assign) double stepValue;
++#if TARGET_OS_OSX
++@property (nonatomic, assign) BOOL faderThumb;
++#endif
+ @property (nonatomic, copy) RCTBubblingEventBlock onValueChange;
+ @property (nonatomic, copy) RCTBubblingEventBlock onSlidingComplete;
+ @end
+ 
+ @implementation MoosiacNativeSliderControl
++
++#if TARGET_OS_OSX
+++ (Class)cellClass
++{
++  return [MoosiacNativeSliderCell class];
++}
++
++- (void)setFaderThumb:(BOOL)faderThumb
++{
++  ((MoosiacNativeSliderCell *)self.cell).faderThumb = faderThumb;
++  [self setNeedsDisplay:YES];
++}
++#endif
+ 
+ - (instancetype)initWithFrame:(CGRect)frame
+ {
+@@ -81,6 +130,9 @@
+ 
+ #ifdef RCT_NEW_ARCH_ENABLED
+ 
++#if TARGET_OS_OSX
++#import <React/RCTConversions.h>
++#endif
+ #import <React/RCTViewComponentView.h>
+ #import <react/renderer/components/MoosiacNativeSliderSpec/ComponentDescriptors.h>
+ #import <react/renderer/components/MoosiacNativeSliderSpec/EventEmitters.h>
+@@ -138,6 +190,10 @@
+   SliderSetMaximum(_slider, MAX(newProps.minimumValue, newProps.maximumValue));
+   _slider.stepValue = newProps.step;
+   _slider.enabled = !newProps.disabled;
++#if TARGET_OS_OSX
++  _slider.trackFillColor = RCTUIColorFromSharedColor(newProps.trackFillColor);
++  _slider.faderThumb = newProps.faderThumb;
++#endif
+   SliderSetCurrent(_slider, MIN(SliderMaximum(_slider), MAX(SliderMinimum(_slider), newProps.value)));
+ }
+ 
+@@ -242,8 +298,18 @@
+ {
+   view.enabled = json ? ![RCTConvert BOOL:json] : YES;
+ }
+-
+-@end
+-
+-#endif
+-#endif
++#if TARGET_OS_OSX
++RCT_CUSTOM_VIEW_PROPERTY(trackFillColor, NSColor, MoosiacNativeSliderControl)
++{
++  view.trackFillColor = json ? [RCTConvert NSColor:json] : nil;
++}
++RCT_CUSTOM_VIEW_PROPERTY(faderThumb, BOOL, MoosiacNativeSliderControl)
++{
++  view.faderThumb = json ? [RCTConvert BOOL:json] : NO;
++}
++#endif
++
++@end
++
++#endif
++#endif
+diff --git a/node_modules/@sudobility/components-rn/src/ui/Slider/MoosiacNativeSliderNativeComponent.ts b/node_modules/@sudobility/components-rn/src/ui/Slider/MoosiacNativeSliderNativeComponent.ts
+index 0a3d448..57ebe2d 100644
+--- a/node_modules/@sudobility/components-rn/src/ui/Slider/MoosiacNativeSliderNativeComponent.ts
++++ b/node_modules/@sudobility/components-rn/src/ui/Slider/MoosiacNativeSliderNativeComponent.ts
+@@ -5,7 +5,7 @@
+   DirectEventHandler,
+   WithDefault,
+ } from 'react-native/Libraries/Types/CodegenTypes';
+-import type { HostComponent, ViewProps } from 'react-native';
++import type { ColorValue, HostComponent, ViewProps } from 'react-native';
+ 
+ type SliderValueEvent = Readonly<{ value: Double }>;
+ 
+@@ -15,6 +15,8 @@
+   value?: Double;
+   step?: Double;
+   disabled?: WithDefault<boolean, false>;
++  trackFillColor?: ColorValue;
++  faderThumb?: WithDefault<boolean, false>;
+   onValueChange?: BubblingEventHandler<SliderValueEvent>;
+   onSlidingComplete?: DirectEventHandler<SliderValueEvent>;
+ }
+diff --git a/node_modules/@sudobility/components-rn/src/ui/Slider/Slider.macos.tsx b/node_modules/@sudobility/components-rn/src/ui/Slider/Slider.macos.tsx
+index 60963a5..5dceca4 100644
+--- a/node_modules/@sudobility/components-rn/src/ui/Slider/Slider.macos.tsx
++++ b/node_modules/@sudobility/components-rn/src/ui/Slider/Slider.macos.tsx
+@@ -1,6 +1,7 @@
+ import * as React from 'react';
+ import { View } from 'react-native';
+ import { cn } from '../../lib/utils';
++import { useThemeColor } from '../../lib/theme-color';
+ import type { SliderProps } from './Slider';
+ import NativeSlider from './MoosiacNativeSliderNativeComponent';
+ 
+@@ -15,9 +16,11 @@
+   disabled = false,
+   className,
+   accessibilityLabel,
++  thumbStyle = 'default',
+ }) => {
+   const safeValue = Math.min(max, Math.max(min, value));
+   const nativeMax = max === min ? min + 1 : max;
++  const fillColor = useThemeColor('primary');
+ 
+   return (
+     <View className={cn('justify-center', disabled && 'opacity-40', className)}>
+@@ -28,9 +31,15 @@
+         value={safeValue}
+         step={step}
+         disabled={disabled}
++        trackFillColor={fillColor}
++        faderThumb={thumbStyle === 'fader'}
+         accessibilityRole='adjustable'
+         accessibilityLabel={accessibilityLabel}
+-        accessibilityValue={{ min, max, now: safeValue }}
++        accessibilityValue={{
++          min: 0,
++          max: 100,
++          now: Math.round(((safeValue - min) / (nativeMax - min)) * 100),
++        }}
+         onValueChange={event => onValueChange?.(event.nativeEvent.value)}
+         onSlidingComplete={event =>
+           onSlidingComplete?.(event.nativeEvent.value)
+diff --git a/node_modules/@sudobility/components-rn/src/ui/Slider/Slider.tsx b/node_modules/@sudobility/components-rn/src/ui/Slider/Slider.tsx
+index bf0f3c2..e2cafbc 100644
+--- a/node_modules/@sudobility/components-rn/src/ui/Slider/Slider.tsx
++++ b/node_modules/@sudobility/components-rn/src/ui/Slider/Slider.tsx
+@@ -10,6 +10,8 @@
+   max?: number;
+   /** Quantum. 0 means continuous. */
+   step?: number;
++  /** macOS: a narrow audio-fader thumb for position controls such as pan. */
++  thumbStyle?: 'default' | 'fader';
+   /** Called continuously while dragging. */
+   onValueChange?: (value: number) => void;
+   /** Called once, on release — for work too expensive to do per frame. */
+@@ -21,8 +23,7 @@
+ 
+ /**
+  * Native platform slider on iOS, Android, and Windows.
+- * macOS uses the platform fallback in `Slider.macos.tsx` because the native
+- * slider module does not implement React Native macOS.
++ * macOS uses the package's AppKit NSSlider view in `Slider.macos.tsx`.
+  */
+ export const Slider: React.FC<SliderProps> = ({
+   value,
+diff --git a/node_modules/@sudobility/components-rn/dist/ui/Slider/MoosiacNativeSliderNativeComponent.d.ts b/node_modules/@sudobility/components-rn/dist/ui/Slider/MoosiacNativeSliderNativeComponent.d.ts
+index 863f4dd..7ee0193 100644
+--- a/node_modules/@sudobility/components-rn/dist/ui/Slider/MoosiacNativeSliderNativeComponent.d.ts
++++ b/node_modules/@sudobility/components-rn/dist/ui/Slider/MoosiacNativeSliderNativeComponent.d.ts
+@@ -1,5 +1,5 @@
+ import { BubblingEventHandler, Double, DirectEventHandler, WithDefault } from 'react-native/Libraries/Types/CodegenTypes';
+-import { HostComponent, ViewProps } from 'react-native';
++import { ColorValue, HostComponent, ViewProps } from 'react-native';
+ type SliderValueEvent = Readonly<{
+     value: Double;
+ }>;
+@@ -9,6 +9,8 @@
+     value?: Double;
+     step?: Double;
+     disabled?: WithDefault<boolean, false>;
++    trackFillColor?: ColorValue;
++    faderThumb?: WithDefault<boolean, false>;
+     onValueChange?: BubblingEventHandler<SliderValueEvent>;
+     onSlidingComplete?: DirectEventHandler<SliderValueEvent>;
+ }
+diff --git a/node_modules/@sudobility/components-rn/dist/ui/Slider/Slider.d.ts b/node_modules/@sudobility/components-rn/dist/ui/Slider/Slider.d.ts
+index 426e172..c64b1df 100644
+--- a/node_modules/@sudobility/components-rn/dist/ui/Slider/Slider.d.ts
++++ b/node_modules/@sudobility/components-rn/dist/ui/Slider/Slider.d.ts
+@@ -6,6 +6,8 @@
+     max?: number;
+     /** Quantum. 0 means continuous. */
+     step?: number;
++    /** macOS: a narrow audio-fader thumb for position controls such as pan. */
++    thumbStyle?: 'default' | 'fader';
+     /** Called continuously while dragging. */
+     onValueChange?: (value: number) => void;
+     /** Called once, on release — for work too expensive to do per frame. */
+@@ -16,8 +18,7 @@
+ }
+ /**
+  * Native platform slider on iOS, Android, and Windows.
+- * macOS uses the platform fallback in `Slider.macos.tsx` because the native
+- * slider module does not implement React Native macOS.
++ * macOS uses the package's AppKit NSSlider view in `Slider.macos.tsx`.
+  */
+ export declare const Slider: React.FC<SliderProps>;
+ //# sourceMappingURL=Slider.d.ts.map
