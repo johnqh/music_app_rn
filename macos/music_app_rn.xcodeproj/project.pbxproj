@@ -12,6 +12,7 @@
 		514201522437B4B40078DB4F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 514201512437B4B40078DB4F /* Assets.xcassets */; };
 		514201552437B4B40078DB4F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 514201532437B4B40078DB4F /* Main.storyboard */; };
 		514201582437B4B40078DB4F /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 514201572437B4B40078DB4F /* main.m */; };
+		A93C00102A76000100000001 /* SpatialMouseDragView.m in Sources */ = {isa = PBXBuildFile; fileRef = A93C00102A76000100000002 /* SpatialMouseDragView.m */; };
 		754AFE157BCB2B430E48128A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 40BE94A665FAB7324CB01A46 /* PrivacyInfo.xcprivacy */; };
 /* End PBXBuildFile section */
 
@@ -25,6 +26,7 @@
 		514201542437B4B40078DB4F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		514201562437B4B40078DB4F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		514201572437B4B40078DB4F /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		A93C00102A76000100000002 /* SpatialMouseDragView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SpatialMouseDragView.m; sourceTree = "<group>"; };
 		514201592437B4B40078DB4F /* music_app_rn.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = music_app_rn.entitlements; sourceTree = "<group>"; };
 		743C37F95C9A13212E54EBC2 /* Pods-music_app_rn-macOS.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-music_app_rn-macOS.debug.xcconfig"; path = "Target Support Files/Pods-music_app_rn-macOS/Pods-music_app_rn-macOS.debug.xcconfig"; sourceTree = "<group>"; };
 		BA823BBA82ACB9DAAC6A765A /* libPods-music_app_rn-macOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-music_app_rn-macOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -61,6 +63,7 @@
 				514201532437B4B40078DB4F /* Main.storyboard */,
 				514201562437B4B40078DB4F /* Info.plist */,
 				514201572437B4B40078DB4F /* main.m */,
+				A93C00102A76000100000002 /* SpatialMouseDragView.m */,
 				514201592437B4B40078DB4F /* music_app_rn.entitlements */,
 			);
 			path = "music_app_rn-macOS";
@@ -281,6 +284,7 @@
 			files = (
 				514201582437B4B40078DB4F /* main.m in Sources */,
 				5142014D2437B4B30078DB4F /* AppDelegate.mm in Sources */,
+				A93C00102A76000100000001 /* SpatialMouseDragView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

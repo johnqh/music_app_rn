@@ -815,9 +815,9 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   white background under the dark theme's light notation. react-native-svg is
   still patched for both bugs (`patches/README.md`), since icons use it.
   `svg-context.ts` remains for **printing** only: WebView2 prints SVG, text
-  included, onto white paper. Native code: `windows/WindowsCanvas.cpp` from the
-  package (or a sibling `../windows_canvas_rn` checkout, which the vcxproj
-  prefers), registered in `MoosiacRN.cpp`. Four things on this side go with
+  included, onto white paper. Native code: the package's `windows/WindowsCanvas.targets`,
+  imported by `MoosiacRN.vcxproj` (preferring a sibling `../windows_canvas_rn`
+  checkout), registered in `MoosiacRN.cpp`. Four things on this side go with
   it: `useScoreCanvas.windows.ts`'s `scrollTo` tells the canvas and the scroll
   signal at once rather than waiting for RNW's `onScroll` (until then the
   cursor sat on the new system's path against the old offset, and the old page

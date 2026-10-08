@@ -26,7 +26,7 @@
     <BuildingBlocksRNWindowsDir Condition="'$(BuildingBlocksRNWindowsDir)' == ''">$(MSBuildThisFileDirectory)..\..\node_modules\@sudobility\building_blocks_rn\windows\</BuildingBlocksRNWindowsDir>
     <ComponentsRNWindowsDir Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\mail_box_components_rn\windows\MoosiacNativeSlider.cpp')">$(MSBuildThisFileDirectory)..\..\..\mail_box_components_rn\windows\</ComponentsRNWindowsDir>
     <ComponentsRNWindowsDir Condition="'$(ComponentsRNWindowsDir)' == ''">$(MSBuildThisFileDirectory)..\..\node_modules\@sudobility\components-rn\windows\</ComponentsRNWindowsDir>
-    <WindowsCanvasRNDir Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\windows_canvas_rn\windows\WindowsCanvas.cpp')">$(MSBuildThisFileDirectory)..\..\..\windows_canvas_rn\windows\</WindowsCanvasRNDir>
+    <WindowsCanvasRNDir Condition="Exists('$(MSBuildThisFileDirectory)..\..\..\windows_canvas_rn\windows\WindowsCanvas.targets')">$(MSBuildThisFileDirectory)..\..\..\windows_canvas_rn\windows\</WindowsCanvasRNDir>
     <WindowsCanvasRNDir Condition="'$(WindowsCanvasRNDir)' == ''">$(MSBuildThisFileDirectory)..\..\node_modules\@sudobility\windows_canvas_rn\windows\</WindowsCanvasRNDir>
   </PropertyGroup>
   <Import Project="$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.WindowsSdk.Default.props" />
@@ -90,7 +90,6 @@
         $(MSBuildThisFileDirectory);
         $(BuildingBlocksRNWindowsDir);
         $(ComponentsRNWindowsDir);
-        $(WindowsCanvasRNDir);
         %(AdditionalIncludeDirectories)
       </AdditionalIncludeDirectories>
     </ClCompile>
@@ -118,8 +117,6 @@
     <ClInclude Include="$(BuildingBlocksRNWindowsDir)WebAuthModule.h" />
     <ClInclude Include="$(BuildingBlocksRNWindowsDir)FileSystemUtils.h" />
     <ClInclude Include="$(ComponentsRNWindowsDir)MoosiacNativeSlider.h" />
-    <ClInclude Include="$(WindowsCanvasRNDir)WindowsCanvas.h" />
-    <ClInclude Include="$(WindowsCanvasRNDir)PictureFormat.h" />
     <ClInclude Include="FilePickerModule.h" />
     <ClInclude Include="FileSystemModule.h" />
     <ClInclude Include="MenuBridgeModule.h" />
@@ -137,9 +134,6 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="$(ComponentsRNWindowsDir)MoosiacNativeSlider.cpp">
-      <PrecompiledHeader>NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="$(WindowsCanvasRNDir)WindowsCanvas.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="FilePickerModule.cpp" />
@@ -197,6 +191,8 @@
     <!-- PrintModule renders the score's SVG pages to PDF through WebView2. -->
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
   </ItemGroup>
+  <!-- windows_canvas_rn: its sources, include path and libraries. -->
+  <Import Project="$(WindowsCanvasRNDir)WindowsCanvas.targets" />
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ReactNativeWindowsTargets">
     <Import Project="$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.Composition.CppApp.targets" Condition="Exists('$(ReactNativeWindowsDir)\PropertySheets\External\Microsoft.ReactNative.Composition.CppApp.targets')" />

@@ -86,6 +86,15 @@ function nativeFirebaseOnMobileOnly(packageName) {
 
 const config = {
   dependencies: {
+    // This package's iOS slider is the community slider (the custom
+    // MoosiacNativeSlider component is implemented for macOS/Windows only).
+    // Its codegen metadata currently advertises an iOS Fabric component
+    // without an iOS ComponentView class, which makes RN crash while
+    // constructing the third-party Fabric registry. Keep it linked for the
+    // macOS build, where the native implementation exists.
+    ...(!process.env.RN_MACOS_BUILD
+      ? { '@sudobility/components-rn': { platforms: { ios: null } } }
+      : {}),
     '@react-native-documents/picker': {
       platforms: { macos: null, windows: null },
     },

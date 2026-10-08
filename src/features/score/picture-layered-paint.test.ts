@@ -6,8 +6,7 @@ import {
 } from '@sudobility/music_drawing';
 import { twinkleScore } from '@sudobility/music_types/test';
 import {
-  FORMAT_VERSION,
-  Op,
+  decodePicture,
   PictureRecorder,
   parseColor,
 } from '@sudobility/windows_canvas_rn/core';
@@ -15,23 +14,17 @@ import type { Picture } from '@sudobility/windows_canvas_rn/core';
 import { createPictureLayeredPaint } from './picture-layered-paint';
 import type { ScorePicture } from './picture-layered-paint';
 
-/** Which ops a picture holds, and the colours its fills use. */
+/** Which ops a picture holds, and the colours its solid fills use. */
 function survey(picture: Picture) {
-  const ops = new Set<number>();
-  const fills = new Set<number>();
-  // Walk op by op only as far as each op's opcode and colour: enough to see
-  // what was drawn without re-implementing the decoder here.
-  const raw = picture.ops;
-  expect(raw[0]).toBe(FORMAT_VERSION);
   // A NaN would reach Direct2D as a point or a width.
-  expect(raw.every(Number.isFinite)).toBe(true);
-  for (let i = 1; i < raw.length; i++) {
-    if (raw[i] === Op.Fill && Number.isInteger(raw[i + 1])) {
-      fills.add(raw[i + 1]!);
-    }
-  }
-  for (const value of [Op.Fill, Op.Stroke, Op.Text]) {
-    if (raw.includes(value)) ops.add(value);
+  expect(picture.ops.every(Number.isFinite)).toBe(true);
+  // Throws on anything malformed: the decoder reads what the native view reads.
+  const decoded = decodePicture(picture);
+  const ops = new Set(decoded.map(op => op.op));
+  const fills = new Set<number>();
+  for (const op of decoded) {
+    if (op.op === 'Fill' && op.paint.kind === 'Solid')
+      fills.add(op.paint.color);
   }
   return { ops, fills };
 }
@@ -88,16 +81,16 @@ describe('Windows layered score rendering', () => {
     paint(score, options, { baseVersion: 1 });
     const { base, overlay } = pictures[0]!;
     const drawn = survey(base);
-    expect(drawn.ops.has(Op.Fill)).toBe(true);
-    expect(drawn.ops.has(Op.Stroke)).toBe(true);
+    expect(drawn.ops.has('Fill')).toBe(true);
+    expect(drawn.ops.has('Stroke')).toBe(true);
     // Words, which react-native-svg on Windows dropped: the bar numbers are
     // in the base, and the gutter — the track's name — is painted last, over
     // the overlay.
-    expect(drawn.ops.has(Op.Text)).toBe(true);
+    expect(drawn.ops.has('Text')).toBe(true);
     expect(base.strings).toContain('2');
     expect(overlay.strings).toContain(score.tracks[0]!.name);
     // The active track's notes are the overlay.
-    expect(survey(overlay).ops.has(Op.Fill)).toBe(true);
+    expect(survey(overlay).ops.has('Fill')).toBe(true);
   });
 
   it('paints no background of its own, so a dark theme is not drawn on white', () => {

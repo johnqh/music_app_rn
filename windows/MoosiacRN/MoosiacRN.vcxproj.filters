@@ -30,9 +30,6 @@
     <ClCompile Include="$(ComponentsRNWindowsDir)MoosiacNativeSlider.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="$(WindowsCanvasRNDir)WindowsCanvas.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="FilePickerModule.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -75,12 +72,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="$(ComponentsRNWindowsDir)MoosiacNativeSlider.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="$(WindowsCanvasRNDir)WindowsCanvas.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="$(WindowsCanvasRNDir)PictureFormat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FilePickerModule.h">

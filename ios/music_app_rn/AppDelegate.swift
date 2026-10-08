@@ -253,7 +253,7 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
     // hit the same wall and settled on this: override the port at runtime,
     // the one thing `jsLocation` is for, rather than the app's compiled default.
     let provider = RCTBundleURLProvider.sharedSettings()
-    provider.jsLocation = "localhost:8091"
+    provider.jsLocation = "localhost:8092"
     return provider.jsBundleURL(forBundleRoot: "index")
 #else
     Bundle.main.url(forResource: "main", withExtension: "jsbundle")

@@ -329,7 +329,7 @@ static NSDictionary<NSString *, NSString *> *MoosiacCommandsBySelector(void)
     the iOS side (`AppDelegate.swift`) and this project's Metro port.
   */
   RCTBundleURLProvider *provider = [RCTBundleURLProvider sharedSettings];
-  provider.jsLocation = @"localhost:8091";
+  provider.jsLocation = @"localhost:8092";
   return [provider jsBundleURLForBundleRoot:@"index"];
 #else
   return [[NSBundle mainBundle] URLForResource:@"main" withExtension:@"jsbundle"];

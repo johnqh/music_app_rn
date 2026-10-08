@@ -12,7 +12,7 @@ This repo is UI and arrangement, and `src/__architecture.test.ts` enforces it.
 bun install          # runs patch-package afterwards
 bun run verify       # format, typecheck, lint, test
 
-bun run start        # Metro, port 8091
+bun run start        # Metro, port 8092
 bun run macos        # or: ios / android
 ```
 
