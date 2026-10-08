@@ -31,6 +31,7 @@ import { getMusicClient } from '@/config/server';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
 import { TransportBar } from '@/features/transport/TransportBar';
 import { SpatialSection } from '@/features/spatial/SpatialSection';
+import { supportsSpatialView } from '@/features/spatial/availability';
 import { SafeAreaView } from '@/platform/SafeArea';
 import { useSafeEdgeList } from '@/platform/safe-edges';
 import type { RootStackParamList } from '@/app/Navigation';
@@ -201,13 +202,13 @@ export function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
     // reaches the edge while what is on it does not sit under the island.
     <View className="bg-background flex-1">
       {/*
-        No `onPress`: there is no caret to aim on a page you cannot edit. The
+        No editing `onPress`: the score view still allows click-to-seek. The
         gutter is the instrument icons alone, always: a visitor is here to
         listen, and the column of names was a fifth of a phone's width taken
         from the music they came for.
       */}
       <SafeAreaView edges={sideEdges} className="min-h-0 flex-1">
-        {spatialActive ? (
+        {supportsSpatialView && spatialActive ? (
           <SpatialSection store={store} />
         ) : (
           <ScrollingScore score={snapshot.score} trackInfo="icon" />
@@ -239,7 +240,11 @@ export function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
           // The 3D stage, as in the editor: listening in 3D is listening,
           // which is what a visitor is here for.
           spatialActive={spatialActive}
-          onToggleSpatial={() => setSpatialActive(active => !active)}
+          onToggleSpatial={
+            supportsSpatialView
+              ? () => setSpatialActive(active => !active)
+              : undefined
+          }
         />
       </SafeAreaView>
     </View>

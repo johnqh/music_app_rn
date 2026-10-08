@@ -35,6 +35,9 @@ import {
 import type { LibraryCopy } from '@sudobility/music_lib';
 import { BUNDLED_SOUNDFONT, readBundledPack } from './soundfont-packs';
 import { bundledSoundfontPath, nativeSynthApi } from '@moosiac/synth';
+import { installWindowsAnimationFrames } from '@/platform/windows-animation-frames';
+
+if (Platform.OS === 'windows') installWindowsAnimationFrames();
 
 /**
  * The player for this platform.

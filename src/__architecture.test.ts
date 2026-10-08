@@ -123,7 +123,11 @@ const ALLOWED_NON_UI = new Set([
   // The Windows score adapter records the shared renderer into SVG and keeps
   // its signal/scheduling glue outside the UI component.
   'src/features/score/svg-context.ts',
+  'src/features/score/svg-layered-paint.ts',
   'src/features/score/useScoreCanvas.windows.ts',
+  // Platform capability and frame scheduling are UI glue for Windows.
+  'src/features/spatial/availability.ts',
+  'src/platform/windows-animation-frames.ts',
   // Build-time configuration and the server gateway: what this build points
   // at, constructed rather than implemented.
   'src/config/constants.ts',

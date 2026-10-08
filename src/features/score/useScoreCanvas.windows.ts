@@ -11,7 +11,8 @@ import type { RefObject } from 'react';
 import type { ScrollView } from 'react-native';
 import { CanvasScoreRenderer, ScoreCanvas } from '@sudobility/music_drawing';
 import type { CursorMotion, CursorPath } from '@sudobility/music_drawing';
-import { SvgDrawingContext } from './svg-context';
+import { createSvgLayeredPaint } from './svg-layered-paint';
+import type { SvgPicture } from './svg-layered-paint';
 
 export type CursorState = {
   path: CursorPath | null;
@@ -20,6 +21,8 @@ export type CursorState = {
 };
 
 export type ScrollOffset = { left: number; top: number };
+
+export type { SvgPicture } from './svg-layered-paint';
 
 export type Signal<T> = {
   get: () => T;
@@ -67,7 +70,7 @@ export function useScoreCanvas({
 }: ScoreCanvasHandles) {
   const signals = useMemo(
     () => ({
-      picture: createSignal<string | null>(null),
+      picture: createSignal<SvgPicture | null>(null),
       cursor: createSignal<CursorState>(EMPTY_CURSOR),
       scroll: createSignal<ScrollOffset>({ left: 0, top: 0 }),
     }),
@@ -76,6 +79,11 @@ export function useScoreCanvas({
 
   const canvas = useMemo(() => {
     const renderer = new CanvasScoreRenderer();
+    const paint = createSvgLayeredPaint(
+      renderer,
+      () => size.current,
+      picture => signals.picture.set(picture),
+    );
     return new ScoreCanvas({
       scheduler: {
         frame: callback => {
@@ -89,16 +97,10 @@ export function useScoreCanvas({
         now: () => performance.now(),
       },
       surface: {
-        paint: (score, options) => {
-          const context = new SvgDrawingContext(
-            size.current.width,
-            size.current.height,
-          );
-          const result = renderer.render(score, context, options);
-          signals.picture.set(context.toSvg());
-          return result;
-        },
-        prepare: (score, options) => renderer.prepare(score, options),
+        paint,
+        // Lookahead is optional. SVG pages build through the renderer's cache
+        // when painted; eager preparation competes with pointer events and
+        // uses the frame metadata involved in the reported page-turn crash.
         showCursor: (path, motion) =>
           signals.cursor.set({ path, motion, id: signals.cursor.get().id + 1 }),
         scrollTo: target => {

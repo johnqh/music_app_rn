@@ -21,7 +21,7 @@ import { jest } from '@jest/globals';
 import type { ReactNode } from 'react';
 import { act, fireEvent } from '@testing-library/react-native';
 import { DARK_RENDER_THEME } from '@sudobility/music_drawing';
-import { ScrollView } from 'react-native';
+import { Platform, ScrollView } from 'react-native';
 import {
   createEmptyScore,
   getMusicPositionSource,
@@ -257,6 +257,38 @@ describe('touches', () => {
     );
     press(view);
     expect(onPress).toHaveBeenCalledWith(null, 960);
+  });
+
+  it('leaves read-only score taps alone on mobile and macOS', () => {
+    const score = createEmptyScore({ title: 'Test', measures: 2 });
+    mockCanvasAnswers.tick = 480;
+    const view = renderWithApp(<ScrollingScore score={score} />);
+    press(view);
+    expect(getMusicPositionSource().reportedTick).toBe(0);
+    view.unmount();
+  });
+
+  it('routes a Windows mouse click through the score hit test to the playhead', () => {
+    const originalOS = Platform.OS;
+    Platform.OS = 'windows';
+    try {
+      mockCanvasAnswers.tick = 960;
+      const score = createEmptyScore({ title: 'Test', measures: 2 });
+      const view = renderWithApp(<ScrollingScore score={score} />);
+      const surface = view.UNSAFE_root.findAll(
+        (node: { props: Record<string, unknown> }) =>
+          typeof node.props.onPress === 'function',
+      )[0]!;
+      fireEvent(surface, 'press', {
+        nativeEvent: { locationX: 40, locationY: 50 },
+      });
+      expect(getMusicPositionSource().reportedTick).toBe(960);
+      expect(mockCanvasAnswers.points.at(-1)).toEqual({ x: 40, y: 50 });
+      view.unmount();
+      act(() => getMusicPositionSource().moveTo(0));
+    } finally {
+      Platform.OS = originalOS;
+    }
   });
 
   it('reads a hold as a long press, not a tap', () => {

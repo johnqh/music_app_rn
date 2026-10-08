@@ -97,7 +97,7 @@ index 23f0840..acdd16e 100644
  import { ViewProps } from '../fabric/utils';
  
  const styles = StyleSheet.create({
-@@ -195,7 +232,14 @@ export default class Svg extends Shape<SvgProps> {
+@@ -195,7 +231,14 @@ export default class Svg extends Shape<SvgProps> {
          {...extractViewBox({ viewBox, preserveAspectRatio })}>
          <G
            {...{
