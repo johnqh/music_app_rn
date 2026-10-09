@@ -107,6 +107,12 @@ const ALLOWED_NON_UI = new Set([
   // the pagination included, which this app used to hold in `print-plan.ts`.
   'src/features/print/print-pages.ts',
   'src/features/print/print-service.ts',
+  // The Windows playhead: a codegen declaration of the native view, and the
+  // keyframes it is handed. Presentation over music_drawing's cursor path —
+  // every tick-to-x decision is `cursorTickAt`/`cursorXAt`; this only turns
+  // the path into times and positions a compositor animation can replay.
+  'src/features/score/WindowsPlayheadNativeComponent.ts',
+  'src/features/score/cursor-keyframes.ts',
   // The file panels. A picker is a platform control, and which one exists is
   // a property of the OS rather than of the music — so this is exactly the
   // kind of thing a library must not contain, and the `.macos` variant beside
