@@ -219,6 +219,7 @@ void audioLoop(Instance *instance) {
     instance->renderClient->ReleaseBuffer(frames, 0);
   }
 
+  instance->running.store(false);
   if (instance->audioClient) instance->audioClient->Stop();
   CoUninitialize();
 }
@@ -245,7 +246,16 @@ bool openOutput(Instance &instance, const std::string &deviceId, std::string &er
   }
   const double previousRate = instance.sampleRate;
   instance.sampleRate = format->nSamplesPerSec;
-  instance.channels = format->nChannels;
+  // The render loop writes float stereo. An endpoint (including Remote
+  // Audio) may expose integer PCM: do not write floats into that buffer.
+  WAVEFORMATEX renderFormat{};
+  renderFormat.wFormatTag = WAVE_FORMAT_IEEE_FLOAT;
+  renderFormat.nChannels = 2;
+  renderFormat.nSamplesPerSec = format->nSamplesPerSec;
+  renderFormat.wBitsPerSample = 32;
+  renderFormat.nBlockAlign = 2 * sizeof(float);
+  renderFormat.nAvgBytesPerSec = renderFormat.nSamplesPerSec * renderFormat.nBlockAlign;
+  instance.channels = renderFormat.nChannels;
   const auto effectSamples = static_cast<size_t>(instance.sampleRate);
   instance.chorusDelayLeft.assign(effectSamples, 0.0f);
   instance.chorusDelayRight.assign(effectSamples, 0.0f);
@@ -263,8 +273,9 @@ bool openOutput(Instance &instance, const std::string &deviceId, std::string &er
     return false;
   }
   hr = instance.audioClient->Initialize(AUDCLNT_SHAREMODE_SHARED,
-      AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM,
-      0, 0, format, nullptr);
+      AUDCLNT_STREAMFLAGS_EVENTCALLBACK | AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM |
+          AUDCLNT_STREAMFLAGS_SRC_DEFAULT_QUALITY,
+      0, 0, &renderFormat, nullptr);
   CoTaskMemFree(format);
   if (FAILED(hr) || FAILED(instance.audioClient->SetEventHandle(instance.event)) ||
       FAILED(instance.audioClient->GetBufferSize(&instance.bufferFrames)) ||
@@ -497,23 +508,24 @@ void SynthModule::setOutputDevice(std::string deviceId,
     CoInitializeEx(nullptr, COINIT_MULTITHREADED);
     std::lock_guard lock(state->mutex);
     const std::string chosen = deviceId == "default" ? "" : deviceId;
-    if (chosen == state->outputDeviceId) {
-      result.Resolve(React::JSValue{nullptr});
-      CoUninitialize();
-      return;
-    }
+    // Always resolve System default again: an RDP connection can replace the
+    // endpoint without changing the selected logical device id.
     const std::string previous = state->outputDeviceId;
     for (auto &instance : state->instances) closeOutput(*instance);
     std::string error;
     bool opened = true;
     for (auto &instance : state->instances) {
       if (!openOutput(*instance, chosen, error)) { opened = false; break; }
+      std::lock_guard synthLock(instance->synthMutex);
+      tsf_set_volume(instance->synth, state->initialGain * static_cast<float>(state->masterVolume));
     }
     if (!opened) {
       for (auto &instance : state->instances) closeOutput(*instance);
       for (auto &instance : state->instances) {
         std::string ignored;
         openOutput(*instance, previous, ignored);
+        std::lock_guard synthLock(instance->synthMutex);
+        tsf_set_volume(instance->synth, state->initialGain * static_cast<float>(state->masterVolume));
       }
       result.Reject(React::ReactError{"OUTPUT_UNAVAILABLE", error});
     } else {

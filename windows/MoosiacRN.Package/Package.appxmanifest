@@ -52,7 +52,7 @@
   -->
   <Capabilities>
     <Capability Name="internetClient" />
-    <uap:DeviceCapability Name="microphone" />
     <rescap:Capability Name="runFullTrust" />
+    <DeviceCapability Name="microphone" />
   </Capabilities>
 </Package>

@@ -1,72 +1,33 @@
-/**
- * Windows cannot safely run this cursor through Native Animated's compositor.
- * Read the latest shared path, motion, and scroll in one frame; the score's
- * cached SVG base keeps note highlights from monopolizing this JS thread.
- */
-import { useLayoutEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
-import {
-  cursorTickAt,
-  cursorVisible,
-  cursorXAt,
-} from '@sudobility/music_drawing';
+/** The compositor replays the shared cursor path without a JS update per frame. */
+import { useMemo } from 'react';
+import { processColor, StyleSheet } from 'react-native';
+import { cursorKeyframes } from './cursor-keyframes';
+import WindowsPlayhead from './WindowsPlayheadNativeComponent';
+import { useSignal } from './useScoreCanvas';
 import type { PlaybackCursorProps } from './PlaybackCursor';
 
 export type { PlaybackCursorProps } from './PlaybackCursor';
-const CURSOR_WIDTH = 2;
 
 export function PlaybackCursor({ cursor, scroll, color }: PlaybackCursorProps) {
-  const line = useRef<View>(null);
-  useLayoutEffect(() => {
-    let frame: number | null = null;
-    let disposed = false;
-    const draw = () => {
-      if (disposed) return;
-      if (frame !== null) cancelAnimationFrame(frame);
-      frame = null;
-      const { path, motion } = cursor.get();
-      const { left, top } = scroll.get();
-      if (!path) {
-        line.current?.setNativeProps({ style: { opacity: 0 } });
-        return;
-      }
-      const x = cursorXAt(path, cursorTickAt(motion, performance.now()));
-      line.current?.setNativeProps({
-        style: {
-          opacity: cursorVisible(path, x, left) ? 1 : 0,
-          height: path.height,
-          transform: [
-            { translateX: x - left - CURSOR_WIDTH / 2 },
-            { translateY: path.top - top },
-          ],
-        },
-      });
-      if (motion.ticksPerSecond > 0) frame = requestAnimationFrame(draw);
-    };
-    const offCursor = cursor.subscribe(draw);
-    const offScroll = scroll.subscribe(draw);
-    draw();
-    return () => {
-      disposed = true;
-      offCursor();
-      offScroll();
-      if (frame !== null) cancelAnimationFrame(frame);
-    };
-  }, [cursor, scroll]);
+  const { path, motion, id } = useSignal(cursor);
+  const { left, top } = useSignal(scroll);
+  const plan = useMemo(
+    () => (path ? cursorKeyframes(path, motion, performance.now()) : null),
+    [path, motion, id],
+  );
+  if (!path || !plan) return null;
+  const parsed = processColor(color);
   return (
-    <View
-      ref={line}
+    <WindowsPlayhead
       pointerEvents="none"
-      style={[styles.line, { backgroundColor: color }]}
+      style={StyleSheet.absoluteFill}
+      {...plan}
+      lineTop={path.top}
+      lineHeight={path.height}
+      lineColor={typeof parsed === 'number' ? parsed >>> 0 : 0xffd32f2f}
+      scrollLeft={left}
+      scrollTop={top}
+      clipLeft={path.clipLeft}
     />
   );
 }
-const styles = StyleSheet.create({
-  line: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    width: CURSOR_WIDTH,
-    opacity: 0,
-  },
-});

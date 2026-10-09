@@ -125,6 +125,7 @@
     <ClInclude Include="MenuBridgeModule.h" />
     <ClInclude Include="PrintModule.h" />
     <ClInclude Include="SynthModule.h" />
+    <ClInclude Include="WindowsPlayhead.h" />
     <ClInclude Include="WindowManagerModule.h" />
     <ClInclude Include="WindowTitleModule.h" />
     <ClInclude Include="pch.h" />
@@ -132,6 +133,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="MoosiacRN.cpp" />
+    <ClCompile Include="WindowsPlayhead.cpp" />
     <ClCompile Include="AutolinkedNativeModules.g.cpp" />
     <ClCompile Include="$(BuildingBlocksRNWindowsDir)WebAuthModule.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>

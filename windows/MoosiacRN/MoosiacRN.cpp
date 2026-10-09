@@ -26,6 +26,7 @@
 #include "MenuBridgeModule.h"
 #include "MoosiacNativeSlider.h"
 #include "WindowsCanvas.h"
+#include "WindowsPlayhead.h"
 #include "PrintModule.h"
 #include "SynthModule.h"
 #include "WebAuthModule.h"
@@ -44,6 +45,7 @@ struct CompReactPackageProvider
     // The score is drawn by windows_canvas_rn's picture view; its measureText
     // module is picked up by AddAttributedModules above.
     WindowsCanvas::RegisterWindowsCanvas(packageBuilder);
+    RegisterWindowsPlayhead(packageBuilder);
   }
 };
 

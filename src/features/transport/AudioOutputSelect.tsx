@@ -45,7 +45,9 @@ export function AudioOutputSelect() {
 
   const choose = async (id: string) => {
     setOpen(false);
-    if (id === selectedOutputDevice()) return;
+    // RDP can replace the endpoint behind "System default" while the app is
+    // running. Selecting it again must reopen the Windows audio stream.
+    if (Platform.OS !== 'windows' && id === selectedOutputDevice()) return;
     try {
       await setOutputDevice(id);
       setSelected(id);

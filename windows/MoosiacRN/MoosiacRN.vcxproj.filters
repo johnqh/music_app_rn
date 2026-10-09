@@ -21,6 +21,9 @@
     <ClCompile Include="MoosiacRN.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="WindowsPlayhead.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="AutolinkedNativeModules.g.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -96,6 +99,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SynthModule.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="WindowsPlayhead.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WindowManagerModule.h">

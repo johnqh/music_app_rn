@@ -3,25 +3,14 @@ import { act, render } from '@testing-library/react-native';
 import { PlaybackCursor } from './PlaybackCursor.windows';
 import type { CursorState, Signal } from './useScoreCanvas';
 
-const mockNativeProps =
-  jest.fn<
-    (props: {
-      style: { opacity: number; height?: number; transform?: unknown[] };
-    }) => void
-  >();
-jest.mock('react-native', () => {
-  const React = require('react');
-  const native = Object.create(jest.requireActual('react-native'));
-  Object.defineProperty(native, 'View', {
-    value: React.forwardRef((_props: unknown, ref: unknown) => {
-      React.useImperativeHandle(ref, () => ({
-        setNativeProps: mockNativeProps,
-      }));
-      return null;
-    }),
-  });
-  return native;
-});
+const mockPlans: Array<Record<string, unknown>> = [];
+jest.mock('./WindowsPlayheadNativeComponent', () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => {
+    mockPlans.push(props);
+    return null;
+  },
+}));
 function signal<T>(initial: T): Signal<T> {
   let value = initial;
   const listeners = new Set<() => void>();
@@ -37,15 +26,10 @@ function signal<T>(initial: T): Signal<T> {
     },
   };
 }
-it('samples the current shared motion and atomically applies a new row and scroll offset', () => {
+it('hands timing and scroll to a native view without a JavaScript frame loop', () => {
   let now = 1000;
-  let nextFrame: ((time: number) => void) | undefined;
   jest.spyOn(performance, 'now').mockImplementation(() => now);
-  jest.spyOn(global, 'requestAnimationFrame').mockImplementation(callback => {
-    nextFrame = callback;
-    return 1;
-  });
-  const cancel = jest.spyOn(global, 'cancelAnimationFrame');
+  const raf = jest.spyOn(global, 'requestAnimationFrame');
   const cursor = signal<CursorState>({
     path: {
       systemIndex: 0,
@@ -53,25 +37,32 @@ it('samples the current shared motion and atomically applies a new row and scrol
       xs: [0, 150, 200],
       top: 20,
       height: 80,
-      clipLeft: 0,
+      clipLeft: 40,
     },
     motion: { tick: 0, atMs: 0, ticksPerSecond: 10 },
     id: 1,
   });
   const scroll = signal({ left: 0, top: 0 });
   const view = render(
-    <PlaybackCursor cursor={cursor} scroll={scroll} color="red" />,
+    <PlaybackCursor cursor={cursor} scroll={scroll} color="#ff0000" />,
   );
-  expect(mockNativeProps.mock.calls.at(-1)?.[0].style.transform).toEqual([
-    { translateX: 29 },
-    { translateY: 20 },
-  ]);
+  expect(mockPlans.at(-1)).toMatchObject({
+    times: [0, 4000, 9000],
+    positions: [30, 150, 200],
+    sentAt: 1000,
+    lineTop: 20,
+    lineHeight: 80,
+    clipLeft: 40,
+    lineColor: 0xffff0000,
+  });
   now = 5000;
-  act(() => nextFrame?.(now));
-  expect(mockNativeProps.mock.calls.at(-1)?.[0].style.transform).toEqual([
-    { translateX: 149 },
-    { translateY: 20 },
-  ]);
+  act(() => scroll.set({ left: 310, top: 100 }));
+  // Scrolling preserves the animation's timestamp; native time advances it.
+  expect(mockPlans.at(-1)).toMatchObject({
+    sentAt: 1000,
+    scrollLeft: 310,
+    scrollTop: 100,
+  });
   act(() =>
     cursor.set({
       path: {
@@ -82,21 +73,17 @@ it('samples the current shared motion and atomically applies a new row and scrol
         height: 80,
         clipLeft: 0,
       },
-      motion: { tick: 50, atMs: now, ticksPerSecond: 10 },
+      motion: { tick: 50, atMs: now, ticksPerSecond: 0 },
       id: 2,
     }),
   );
-  expect(mockNativeProps.mock.calls.at(-1)?.[0].style.transform).toEqual([
-    { translateX: 299 },
-    { translateY: 120 },
-  ]);
-  act(() => scroll.set({ left: 310, top: 100 }));
-  expect(mockNativeProps.mock.calls.at(-1)?.[0].style).toEqual({
-    opacity: 0,
-    height: 80,
-    transform: [{ translateX: -11 }, { translateY: 20 }],
+  expect(mockPlans.at(-1)).toMatchObject({
+    positions: [300],
+    times: [0],
+    sentAt: 5000,
+    lineTop: 120,
   });
+  expect(raf).not.toHaveBeenCalled();
   view.unmount();
-  expect(cancel).toHaveBeenCalled();
   jest.restoreAllMocks();
 });
