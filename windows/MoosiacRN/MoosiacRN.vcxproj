@@ -4,6 +4,14 @@
   <Import Project="$(SolutionDir)\ExperimentalFeatures.props" Condition="Exists('$(SolutionDir)\ExperimentalFeatures.props')" />
   <PropertyGroup Label="Globals">
     <CppWinRTOptimized>true</CppWinRTOptimized>
+    <!-- This Win32 Application exports no WinMD (no .idl, no static WinMD
+         references), so its CppWinRTGenerateWindowsMetadata computes to false.
+         Pre-stating it is the escape hatch cppwinrt's targets document: with
+         the property already set, CppWinRTComputeGetResolvedWinMD short-circuits
+         instead of running its DependsOnTargets chain, which is what the MSIX
+         Package project's appxsym step drove into a self-referential graph —
+         "MSB4006: circular dependency ... CppWinRTComputeGetResolvedWinMD". -->
+    <CppWinRTGenerateWindowsMetadata>false</CppWinRTGenerateWindowsMetadata>
     <MinimalCoreWin>true</MinimalCoreWin>
     <ProjectGuid>{A411D03C-D10E-425F-8529-EE73B8EB792C}</ProjectGuid>
     <ProjectName>MoosiacRN</ProjectName>
