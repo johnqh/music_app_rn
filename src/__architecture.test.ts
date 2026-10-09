@@ -126,8 +126,7 @@ const ALLOWED_NON_UI = new Set([
   'src/features/score/svg-context.ts',
   'src/features/score/picture-layered-paint.ts',
   'src/features/score/useScoreCanvas.windows.ts',
-  // Platform capability and frame scheduling are UI glue for Windows.
-  'src/features/spatial/availability.ts',
+  // Frame scheduling is UI glue for Windows.
   'src/platform/windows-animation-frames.ts',
   // Build-time configuration and the server gateway: what this build points
   // at, constructed rather than implemented.

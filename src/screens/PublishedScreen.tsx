@@ -31,7 +31,6 @@ import { getMusicClient } from '@/config/server';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
 import { TransportBar } from '@/features/transport/TransportBar';
 import { SpatialSection } from '@/features/spatial/SpatialSection';
-import { supportsSpatialView } from '@/features/spatial/availability';
 import { SafeAreaView } from '@/platform/SafeArea';
 import { useSafeEdgeList } from '@/platform/safe-edges';
 import type { RootStackParamList } from '@/app/Navigation';
@@ -208,7 +207,7 @@ export function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
         from the music they came for.
       */}
       <SafeAreaView edges={sideEdges} className="min-h-0 flex-1">
-        {supportsSpatialView && spatialActive ? (
+        {spatialActive ? (
           <SpatialSection store={store} />
         ) : (
           <ScrollingScore score={snapshot.score} trackInfo="icon" />
@@ -240,11 +239,7 @@ export function PublishedScore({ snapshot }: { snapshot: PublishedSnapshot }) {
           // The 3D stage, as in the editor: listening in 3D is listening,
           // which is what a visitor is here for.
           spatialActive={spatialActive}
-          onToggleSpatial={
-            supportsSpatialView
-              ? () => setSpatialActive(active => !active)
-              : undefined
-          }
+          onToggleSpatial={() => setSpatialActive(active => !active)}
         />
       </SafeAreaView>
     </View>

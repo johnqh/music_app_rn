@@ -827,6 +827,20 @@ renderer per view, and `hit-test` in the library, is what fixed it.
   look-ahead (`prepare`) is on again; and `installWindowsAnimationFrames`
   serves every frame request with one timer aimed at a 60Hz grid — a fixed
   `setTimeout(16.7)` lands on the second ~15.6ms system tick, a 32fps cursor.
+- **On Windows the Spatial stage is drawn on the GPU, in 3D, by
+  windows_canvas_rn's `LineScene`** — Direct3D 11 on the device the
+  Composition surfaces already use, with a depth buffer, multisampling and
+  linear fog. music_spatial_rn's `SpatialCanvas.windows.tsx` hands it what the
+  web hands three.js (each model's geometry and world transform, the camera's
+  view matrix) instead of projecting in JavaScript. The view was turned off on
+  Windows (`spatial/availability.ts`, a `null` `SpatialSection.windows.tsx`)
+  while the only Windows canvas was react-native-svg; both are deleted, and
+  the transport's 3D toggle shows on every platform. `LineScene` is registered
+  by `RegisterWindowsCanvas`, so the app project needed nothing new.
+  gesture-handler runs no gestures on Windows, so the stage drag and the
+  map's marker drags both go through the responder system there
+  (music_spatial_rn's `usePointerDrag`) rather than `Gesture.Pan`. The native
+  view is as uncompiled as the rest of the Windows code.
 - **A legacy native view's colour prop must be processed by hand when it is declared `NSColor`.** React Native runs `processColor` only for props a view manager declares `UIColor`; `@moosiac/playhead` declares `lineColor` as `NSColor`, so the theme's CSS string reached AppKit as a string, converted to nil, and the caret drew transparent — invisible on the Mac from the day it began taking the theme's colour, with no error anywhere. The package's `index.js` now wraps the native component and processes the colour. Found by drawing a plain `View` at the cursor's props (visible) beside the native view (not).
 - **The keyboard is sized like the web's, from music_drawing.** `AppLayout` measures the score area and hands `KeyboardPanel` a `height` of `keyboardPanelHeight(score + keyboard as drawn)` — half the room they share, up to 160 — so on a short screen the two are the same height. White keys are `WHITE_KEY_WIDTH` (44): the panel is a horizontal `ScrollView` that centres a keyboard narrower than itself and opens a wider one at `keyboardScrollStart`. **A drag scrolls only from the strip under the keys** (`labelGutter`, which includes music_drawing's `KEYBOARD_SCROLL_STRIP`), through a `PanResponder` that calls `scrollTo`: a finger on the keys plays them, so on iOS and Android the `ScrollView`'s own dragging is off (`scrollEnabled` only on macOS/Windows, which keep trackpad and wheel scrolling), and on a desktop the strip is what a mouse drags. The drag has momentum and bounces at the ends — music_drawing's `KineticScroller`, shared by both apps — with overscroll drawn as a shift of the content, and the platform scrollbar is hidden for a 3px indicator (`keyboardScrollIndicator`).
 - **The keyboard ignores notes it does not show.** The player reports every track's sounding notes; `KeyboardPanel` compares the active track's lit keys with `samePitchSet` (music*drawing, shared with the web keyboard) against a ref \_before* `setSounding` — an updater that returns the previous set still renders to find that out. Keys come from music_drawing's `keyboardKeys` (`fit: 'width'`) and fills from `keyboardKeyFill`; what is lit is music_drawing's `litKeys` (from `playingPitchesForTrack`; sounding only while playing, plus held keys). A pressed key auditions through music_types' `auditionVoiceFor(track)` — program and percussion flag together, a stray kit address resolved as playback resolves it.

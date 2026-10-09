@@ -64,7 +64,6 @@ import {
 } from '@sudobility/music_editing';
 import { ScrollingScore } from '@/features/score/ScrollingScore';
 import { SpatialSection } from '@/features/spatial/SpatialSection';
-import { supportsSpatialView } from '@/features/spatial/availability';
 import { useScreenshotScene } from '@/features/screenshots/screenshot-scene';
 import type { ScrollOffset } from '@/features/score/useScoreCanvas';
 import { TransportBar } from '@/features/transport/TransportBar';
@@ -675,7 +674,7 @@ export function AppLayout({
         */}
         <View className="min-h-0 flex-1 flex-row" onLayout={onScoreLayout}>
           <View className="min-h-0 min-w-0 flex-1">
-            {supportsSpatialView && spatialActive ? (
+            {spatialActive ? (
               <SpatialSection store={document.store} />
             ) : (
               <ScrollingScore
@@ -768,11 +767,7 @@ export function AppLayout({
           store={document.store}
           playDisabled={playDisabled}
           spatialActive={spatialActive}
-          onToggleSpatial={
-            supportsSpatialView
-              ? () => setSpatialActive(active => !active)
-              : undefined
-          }
+          onToggleSpatial={() => setSpatialActive(active => !active)}
           keyboardCollapsed={keyboardCollapsed}
           onToggleKeyboard={() =>
             devicePrefs.getState().setKeyboardCollapsed(!keyboardCollapsed)
